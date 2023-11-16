@@ -1,0 +1,33 @@
+service: boost-api
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  stage: dev
+  region: us-west-2
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:us-west-2:*:table/Boost.GitHub-App.installations"
+    - Effect: "Allow"
+      Action:
+        - secretsmanager:GetSecretValue
+      Resource: "arn:aws:secretsmanager:us-west-2:*:secret:*"
+
+functions:
+  getFromFileURI:
+    handler: handlers.getFromFileURI
+    events:
+      - http:
+          path: api/get_file_from_uri
+          method: get
+          cors: true
+
+plugins:
+  - serverless-offline

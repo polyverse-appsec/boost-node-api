@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug Serverless Offline",
+            "type": "node",
+            "request": "launch",
+            "args": [
+                "offline",
+                "--noTimeout",
+            ],
+            "cwd": "${workspaceFolder}",
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/sls",
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "console": "integratedTerminal",
+            "sourceMaps": true
+        }
+    ]
+}
