@@ -3,7 +3,20 @@ Polyverse Boost GitHub App
 
 # Release Notes
 
-## Version 0.1.0: November 16th, 2023
+## Version 0.1.1: November 16th, 2023
+
+### New Features
+- N/A
+
+### Enhancements
+- Raise Node to v18 to fix Octokit/rest load issues
+- Print App Version on startup
+
+### Bug Fixes
+- N/A
+
+
+## Version 0.1.0: November 15th, 2023
 
 ### New Features
 - Added get_file_from_uri API to retrieve files from GitHub
