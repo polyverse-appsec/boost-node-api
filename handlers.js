@@ -44,7 +44,13 @@ app.get('/api/get_file_from_uri', async (req, res) => {
     // remove the leading blob/main/ from the path
     const filePathWithoutBranch = filePath.replace(/^blob\/main\//, '');
 
-    console.log(`Inboumd Request: ${JSON.stringify(req)}`);
+    const payload = {
+        headers: req.headers,
+        query: req.query,
+        body: req.body
+    }
+
+    console.log(`Inboumd Request: ${JSON.stringify(payload)}`);
 
     // Get user information, including email address
     let installationId;
@@ -83,7 +89,13 @@ app.get('/api/get_file_from_uri', async (req, res) => {
         return res.send(fileContent);
 
     } catch (error) {
+        if (error.status !== 404) {
+            console.error(`Error: retrieving file via public access`, error);
+        } else if (error?.response?.data?.message === 'Not Found') {
+            console.error(`Failed to retrieve file via public access`);
+        } else {
         console.error(`Error: retrieving file via public access`, error);
+        }
     }
 
     try {
