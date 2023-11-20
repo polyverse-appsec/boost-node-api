@@ -1,9 +1,9 @@
-Polyverse Boost GitHub App
+Polyverse Boost API on Node.js
 ======================
 
 # Release Notes
 
-## Version 0.1.2: November 16th, 2023
+## Version 0.1.2: November 20th, 2023
 
 ### New Features
 - N/A
