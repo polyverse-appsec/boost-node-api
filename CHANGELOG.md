@@ -3,6 +3,17 @@ Polyverse Boost GitHub App
 
 # Release Notes
 
+## Version 0.1.2: November 16th, 2023
+
+### New Features
+- N/A
+
+### Enhancements
+- Ensure logging in all paths for get_file_for_uri
+
+### Bug Fixes
+- N/A
+
 ## Version 0.1.1: November 16th, 2023
 
 ### New Features
@@ -11,10 +22,11 @@ Polyverse Boost GitHub App
 ### Enhancements
 - Raise Node to v18 to fix Octokit/rest load issues
 - Print App Version on startup
+- Enable Polytest.ai accounts to be mapped back to Polyverse.com
+- Ensure all accounts are stored as lower-case email for consistency
 
 ### Bug Fixes
 - N/A
-
 
 ## Version 0.1.0: November 15th, 2023
 
