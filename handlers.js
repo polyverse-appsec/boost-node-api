@@ -7,16 +7,21 @@ const serverless = require('serverless-http');
 const { Octokit } = require("@octokit/rest");
 const { createAppAuth } = require("@octokit/auth-app");
 const { getSecret } = require('./secrets');
+const { getUser } = require('./users');
+const { getProjectData, storeProjectData, SourceType } = require('./storage');
+const { validateUser } = require('./auth');
 
 const app = express();
-const dynamoDB = new AWS.DynamoDB.DocumentClient();
 
-const installationsKeyValueStore = 'Boost.GitHub-App.installations';
 const BoostGitHubAppId = "472802";
 
 app.use(express.json()); // Make sure to use express.json middleware to parse JSON request body
 
 app.get('/api/get_file_from_uri', async (req, res) => {
+    const email = validateUser(req, res);
+    if (!email) {
+        return;
+    }
 
     // Assume the URI is passed as a query parameter
     // For example, /api/get_file_from_uri?uri=...
@@ -25,13 +30,6 @@ app.get('/api/get_file_from_uri', async (req, res) => {
         console.error(`URI is required`);
         return res.status(400).send('URI is required');
     }
-
-    if (!req.query.email) {
-        console.error(`Unauthorized:  Email is required`);
-        return res.status(401).send('Unauthorized');
-    }
-
-    email = normalizeEmail(req.query.email);
 
     const uri = new URL(req.query.uri);
     if (uri.protocol !== 'http:' && uri.protocol !== 'https:') {
@@ -52,26 +50,8 @@ app.get('/api/get_file_from_uri', async (req, res) => {
 
     console.log(`Inboumd Request: ${JSON.stringify(payload)}`);
 
-    // Get user information, including email address
-    let installationId;
-    try {
-        // load from DynamoDB
-        const params = {
-            TableName: installationsKeyValueStore,
-            Key: {
-                email: email
-            }
-        };
-
-        const userInfo = await dynamoDB.get(params).promise();
-
-        installationId = userInfo.Item.installationId;
-        const installingUser = userInfo.Item.username;
-
-    } catch (error) {
-
-        console.error(`Error retrieving installation user info:`, error);
-
+    const installationId = await getUser(email)?.installationId;
+    if (!installationId) {
         return res.status(401).send('Unauthorized');
     }
 
@@ -86,6 +66,12 @@ app.get('/api/get_file_from_uri', async (req, res) => {
 
         // Assuming the file is small and can be sent as a response
         const fileContent = Buffer.from(response.data.content, 'base64').toString('utf8');
+
+        // Set the custom header
+        // Example: 'X-Resource-Access' or public or private
+        const fileVisibility = 'public';
+        res.set('X-Resource-Access', fileVisibility);
+        
         return res.send(fileContent);
 
     } catch (error) {
@@ -130,19 +116,99 @@ app.get('/api/get_file_from_uri', async (req, res) => {
         // Assuming the file is small and can be sent as a response
         const fileContent = Buffer.from(response.data.content, 'base64').toString('utf8');
         console.log(`File returned: Owner: ${owner}, Repo: ${repo}, Path: ${filePathWithoutBranch}`);
-        return res.send(fileContent);
 
+        // Set the custom header
+        // Example: 'X-Resource-Access' or public or private
+        const fileVisibility = 'private';
+        res.set('X-Resource-Access', fileVisibility);
+
+        return res.send(fileContent);
+        
     } catch (error) {
         console.error(`Error:`, error);
         return res.status(500).send('Internal Server Error');
     }
 });
 
-function normalizeEmail(email) {
-    // if the domain of the email is polytest.ai then change it to polyverse.com
-    // use a regex to replace the domain case insensitive
-    email = email.toLowerCase();
-    return email.replace(/@polytest\.ai$/i, '@polyverse.com');
-}
+app.get('/api/files/:source/:owner/:project/:pathBase64/:analysisType', async (req, res) => {
+    try {
+        const email = validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const { source, owner, project, pathBase64, analysisType } = req.params;
+
+        if (!source || !owner || !project || !pathBase64 || !analysisType) {
+            if (!source) {
+                console.error(`Source is required`);
+            } else if (!owner) {
+                console.error(`Owner is required`);
+            } else if (!project) {
+                console.error(`Project is required`);
+            }
+            else if (!pathBase64) {
+                console.error(`Path is required`);
+            }
+            else if (!analysisType) {
+                console.error(`Analysis type is required`);
+            }
+            return res.status(400).send('Invalid resource path');
+        }
+
+        let decodedPath;
+        try {
+            decodedPath = Buffer.from(pathBase64, 'base64').toString('utf8');
+        } catch (error) {
+            console.error(`Error decoding path: ${pathBase64}`, error);
+            return res.status(400).send(`Invalid resource path`);
+        }
+
+        const data = await getProjectData(email, source, owner, project, decodedPath, analysisType);
+        if (!data) {
+            console.error(`Resource not found: ${source}, ${owner}, ${project}, ${decodedPath}, ${analysisType}`);
+            return res.status(404).send('Resource not found');
+        }
+    } catch (error) {
+        console.error(`Handler Error: /api/files/:source/:owner/:project/:pathBase64/:analysisType`, error);
+        return res.status(500).send('Internal Server Error');
+    }
+});
+
+app.post('/api/files/:source/:owner/:project/:pathBase64/:analysisType', async (req, res) => {
+    try {
+        const email = validateUser(req, res);
+        if (!email) {
+            return res.status(401).send('Unauthorized');
+        }
+
+        const { source, owner, project, pathBase64, analysisType } = req.params;
+
+        if (!source || !owner || !project || !pathBase64 || !analysisType) {
+            console.error('Missing required parameters in request:', req.params);
+            return res.status(400).send('Invalid resource path');
+        }
+
+        let decodedPath;
+        try {
+            decodedPath = Buffer.from(pathBase64, 'base64').toString('utf8');
+        } catch (error) {
+            console.error(`Error decoding path: ${pathBase64}`, error);
+            return res.status(400).send('Invalid resource path');
+        }
+
+        const data = req.body; // Assuming data is sent directly in the body
+        if (!data) {
+            return res.status(400).send('No data provided');
+        }
+
+        await storeProjectData(email, source, owner, project, decodedPath, analysisType, data);
+        res.sendStatus(200);
+
+    } catch (error) {
+        console.error(`Handler Error: /api/files/:source/:owner/:project/:pathBase64/:analysisType`, error);
+        return res.status(500).send('Internal Server Error');
+    }
+});
 
 module.exports.getFromFileURI = serverless(app);
