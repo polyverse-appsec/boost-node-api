@@ -3,7 +3,8 @@
   "version": "0.1.2",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
@@ -17,7 +18,12 @@
   },
   "description": "",
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.130",
+    "@types/aws-sdk": "^2.7.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.5",
     "serverless": "^3.36.0",
-    "serverless-offline": "^13.3.0"
+    "serverless-offline": "^13.3.0",
+    "typescript": "^5.3.3"
   }
 }

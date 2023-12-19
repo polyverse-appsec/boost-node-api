@@ -1,0 +1,129 @@
+{
+  "dataFormatVersion": "1.9.0",
+  "summary": {
+    "projectName": "boost-node-api",
+    "summaryUrl": ".boost/boost-node-api.summary.boost-notebook",
+    "filesToAnalyze": 8,
+    "filesAnalyzed": 0,
+    "issues": [
+      "No summary file found at .boost/boost-node-api.summary.boost-notebook"
+    ]
+  },
+  "sectionSummary": {
+    "summary": {
+      "analysisType": "summary",
+      "status": "not-started",
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "totalCells": 0,
+      "filesAnalyzed": 0
+    }
+  },
+  "files": {
+    ".vscode/launch.json": {
+      "sourceRelFile": ".vscode/launch.json",
+      "notebookRelFile": ".boost/.vscode/launch.json.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "secrets.js": {
+      "sourceRelFile": "secrets.js",
+      "notebookRelFile": ".boost/secrets.js.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "package.json": {
+      "sourceRelFile": "package.json",
+      "notebookRelFile": ".boost/package.json.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "package-lock.json": {
+      "sourceRelFile": "package-lock.json",
+      "notebookRelFile": ".boost/package-lock.json.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "README.md": {
+      "sourceRelFile": "README.md",
+      "notebookRelFile": ".boost/README.md.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "handlers.js": {
+      "sourceRelFile": "handlers.js",
+      "notebookRelFile": ".boost/handlers.js.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "CHANGELOG.md": {
+      "sourceRelFile": "CHANGELOG.md",
+      "notebookRelFile": ".boost/CHANGELOG.md.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "serverless.yml": {
+      "sourceRelFile": "serverless.yml",
+      "notebookRelFile": ".boost/serverless.yml.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    }
+  },
+  "account": {
+    "refreshed": true,
+    "enabled": true,
+    "status": "paid",
+    "trialRemaining": 100,
+    "usageThisMonth": 0,
+    "discountedUsage": 0,
+    "lastOperationCost": 0,
+    "batchOperationCost": 0,
+    "balanceDue": 0,
+    "couponType": "Polyverse Boost Free Trial",
+    "org": "polyverse-appsec",
+    "owner": "alex@polyverse.io",
+    "created": "2023-05-06",
+    "creditCardLinked": false
+  },
+  "uiState": {
+    "analysisState": "quiescent",
+    "activityBarState": {
+      "summaryViewState": {
+        "analysisMode": "analyze-all-mode",
+        "analysisTypesState": {
+          "security": true,
+          "compliance": true,
+          "documentation": true
+        }
+      }
+    }
+  },
+  "settings": {
+    "fileLimit": 100
+  }
+}
