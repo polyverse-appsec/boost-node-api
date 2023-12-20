@@ -1,13 +1,15 @@
-import * as AWS from 'aws-sdk';
+import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 
 interface SecretObject {
   [key: string]: string;
 }
 
-async function getSecrets(secretName: string, region: string = 'us-west-2'): Promise<SecretObject> {
-  const client = new AWS.SecretsManager({ region });
+const client = new SecretsManagerClient({ region: "us-west-2" });
+
+async function getSecrets(secretName: string): Promise<SecretObject> {
   try {
-    const rawSecretData = await client.getSecretValue({ SecretId: secretName }).promise();
+    const command = new GetSecretValueCommand({ SecretId: secretName });
+    const rawSecretData = await client.send(command);
     if (rawSecretData.SecretString) {
       return JSON.parse(rawSecretData.SecretString);
     }
@@ -18,10 +20,10 @@ async function getSecrets(secretName: string, region: string = 'us-west-2'): Pro
   }
 }
 
-async function getSecret(secretName: string, region: string = 'us-west-2'): Promise<string> {
-  const client = new AWS.SecretsManager({ region });
+async function getSecret(secretName: string): Promise<string> {
   try {
-    const rawSecretData = await client.getSecretValue({ SecretId: secretName }).promise();
+    const command = new GetSecretValueCommand({ SecretId: secretName });
+    const rawSecretData = await client.send(command);
     if (rawSecretData.SecretString) {
       return rawSecretData.SecretString;
     }

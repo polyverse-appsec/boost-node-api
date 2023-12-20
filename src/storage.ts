@@ -1,6 +1,8 @@
-import AWS from 'aws-sdk';
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
 
-const dynamoDB = new AWS.DynamoDB.DocumentClient();
+const client = new DynamoDBClient({ region: "us-west-2" });
+const dynamoDB = DynamoDBDocumentClient.from(client);
 
 const analysisDatastoreTableName = 'Boost.AnalysisDataStore';
 
@@ -19,7 +21,7 @@ export async function getProjectData(email: string | null, sourceType: SourceTyp
     const dataPath = `${resourcePath}/${analysisType}`;
     console.log(`getProjectData for: ${projectPath}/${dataPath}`);
 
-    const params: AWS.DynamoDB.DocumentClient.GetItemInput = {
+    const params = {
         TableName: analysisDatastoreTableName,
         Key: {
             tableKey: projectPath, // primary key
@@ -27,24 +29,23 @@ export async function getProjectData(email: string | null, sourceType: SourceTyp
         }
     };
 
-    const data = await dynamoDB.get(params).promise();
-
-    if (!data.Item || !data.Item.data) {
-        return undefined;
+    try {
+        const data = await dynamoDB.send(new GetCommand(params));
+        return data.Item ? data.Item.data : undefined;
+    } catch (error) {
+        console.error(`Error getting project data: ${error}`);
+        throw error;
     }
-
-    return data.Item.data;
 }
 
 export async function storeProjectData(email: string | null, sourceType: SourceType, owner: string, project: string, resourcePath: string, analysisType: string, data: any): Promise<void> {
     const projectPath = `${email ? email : "public"}/${sourceType}/${owner}/${project}`;
     const dataPath = `${resourcePath}/${analysisType}`;
 
-    const dataSize = Buffer.byteLength(data, 'utf8');
-
+    const dataSize = Buffer.byteLength(JSON.stringify(data), 'utf8');
     console.log(`storeProjectData for (${dataSize} bytes): ${projectPath}/${dataPath}`);
 
-    const params: AWS.DynamoDB.DocumentClient.PutItemInput = {
+    const params = {
         TableName: analysisDatastoreTableName,
         Item: {
             tableKey: projectPath, // primary key
@@ -53,5 +54,10 @@ export async function storeProjectData(email: string | null, sourceType: SourceT
         }
     };
 
-    await dynamoDB.put(params).promise();
+    try {
+        await dynamoDB.send(new PutCommand(params));
+    } catch (error) {
+        console.error(`Error storing project data: ${error}`);
+        throw error;
+    }
 }
