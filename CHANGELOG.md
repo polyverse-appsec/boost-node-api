@@ -3,6 +3,18 @@ Polyverse Boost API on Node.js
 
 # Release Notes
 
+## Version 0.3.1: December 20th, 2023
+
+### New Features
+- N/A
+
+### Enhancements
+- N/A
+
+### Bug Fixes
+- Fix service start/load failure (index, aws, etc module references failed)
+- Move 'hello world' test endpoint to /test (instead of / root to avoid surpise responses)
+
 ## Version 0.3.0: December 20th, 2023
 
 ### New Features
