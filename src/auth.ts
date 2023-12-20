@@ -9,7 +9,7 @@ export function validateUser(req: Request, res: Response): string | undefined {
 
     let email = normalizeEmail(req.query.email);
 
-    if (email.endsWith('@polyverse.com')) {
+    if (!email.endsWith('@polyverse.com')) {
         console.error(`Unauthorized: Access restricted for polyverse.com domain`);
         res.status(401).send('Unauthorized');
         return undefined;

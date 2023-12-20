@@ -14,6 +14,7 @@ Polyverse Boost API on Node.js
 ### Bug Fixes
 - Fix service start/load failure (index, aws, etc module references failed)
 - Move 'hello world' test endpoint to /test (instead of / root to avoid surpise responses)
+- Fix Authorization checks to restrict to polyverse.com domains
 
 ## Version 0.3.0: December 20th, 2023
 
