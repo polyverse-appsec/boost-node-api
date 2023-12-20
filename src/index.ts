@@ -2,10 +2,10 @@ import express, { Request, Response } from 'express';
 import serverless from 'serverless-http';
 import { Octokit } from '@octokit/rest';
 import { createAppAuth } from '@octokit/auth-app';
-import { getSecret } from './src/secrets';
-import { getUser } from './src/users';
-import { getProjectData, storeProjectData, SourceType, convertToSourceType } from './src/storage';
-import { validateUser } from './src/auth';
+import { getSecret } from './secrets';
+import { getUser } from './users';
+import { getProjectData, storeProjectData, SourceType, convertToSourceType } from './storage';
+import { validateUser } from './auth';
 
 const app = express();
 
@@ -214,7 +214,8 @@ app.post('/api/files/:source/:owner/:project/:pathBase64/:analysisType', async (
         return res.status(500).send('Internal Server Error');
     }
 });
-app.get("/", (req, res, next) => {
+
+app.get("/test", (req, res, next) => {
     // Set the content type to text
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
