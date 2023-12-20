@@ -2,7 +2,7 @@ service: boost-api
 
 provider:
   name: aws
-  runtime: nodejs18.x
+  runtime: nodejs20.x
   stage: dev
   region: us-west-2
   environment:
@@ -25,7 +25,7 @@ provider:
 functions:
   api:
     handler: build/index.handler
-    timeout: 900 # Timeout set to 15 minutes (900 seconds)
+    timeout: 29 # Lambda supports 15 minutes (900 seconds), but Serverless HTTP API only 30 seconds
     events:
       - httpApi: '*'
     url:
