@@ -3,7 +3,7 @@
   "summary": {
     "projectName": "boost-node-api",
     "summaryUrl": ".boost/boost-node-api.summary.boost-notebook",
-    "filesToAnalyze": 12,
+    "filesToAnalyze": 20,
     "filesAnalyzed": 0,
     "issues": [
       "No summary file found at .boost/boost-node-api.summary.boost-notebook"
@@ -84,45 +84,117 @@
       "issueCells": 0,
       "sections": {}
     },
-    "handlers.ts": {
-      "sourceRelFile": "handlers.ts",
-      "notebookRelFile": ".boost/handlers.ts.boost-notebook",
+    "src/auth.ts": {
+      "sourceRelFile": "src/auth.ts",
+      "notebookRelFile": ".boost/src/auth.ts.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
       "issueCells": 0,
       "sections": {}
     },
-    "secrets.ts": {
-      "sourceRelFile": "secrets.ts",
-      "notebookRelFile": ".boost/secrets.ts.boost-notebook",
+    "src/users.ts": {
+      "sourceRelFile": "src/users.ts",
+      "notebookRelFile": ".boost/src/users.ts.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
       "issueCells": 0,
       "sections": {}
     },
-    "auth.ts": {
-      "sourceRelFile": "auth.ts",
-      "notebookRelFile": ".boost/auth.ts.boost-notebook",
+    "src/secrets.ts": {
+      "sourceRelFile": "src/secrets.ts",
+      "notebookRelFile": ".boost/src/secrets.ts.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
       "issueCells": 0,
       "sections": {}
     },
-    "users.ts": {
-      "sourceRelFile": "users.ts",
-      "notebookRelFile": ".boost/users.ts.boost-notebook",
+    "src/storage.ts": {
+      "sourceRelFile": "src/storage.ts",
+      "notebookRelFile": ".boost/src/storage.ts.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
       "issueCells": 0,
       "sections": {}
     },
-    "storage.ts": {
-      "sourceRelFile": "storage.ts",
-      "notebookRelFile": ".boost/storage.ts.boost-notebook",
+    ".vscode/tasks.json": {
+      "sourceRelFile": ".vscode/tasks.json",
+      "notebookRelFile": ".boost/.vscode/tasks.json.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "build/src/storage.js": {
+      "sourceRelFile": "build/src/storage.js",
+      "notebookRelFile": ".boost/build/src/storage.js.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "build/src/secrets.js": {
+      "sourceRelFile": "build/src/secrets.js",
+      "notebookRelFile": ".boost/build/src/secrets.js.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "build/src/index.js": {
+      "sourceRelFile": "build/src/index.js",
+      "notebookRelFile": ".boost/build/src/index.js.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "build/src/users.js": {
+      "sourceRelFile": "build/src/users.js",
+      "notebookRelFile": ".boost/build/src/users.js.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "build/src/auth.js": {
+      "sourceRelFile": "build/src/auth.js",
+      "notebookRelFile": ".boost/build/src/auth.js.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "build/src/handlers.js": {
+      "sourceRelFile": "build/src/handlers.js",
+      "notebookRelFile": ".boost/build/src/handlers.js.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "build/index.js": {
+      "sourceRelFile": "build/index.js",
+      "notebookRelFile": ".boost/build/index.js.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "index.ts": {
+      "sourceRelFile": "index.ts",
+      "notebookRelFile": ".boost/index.ts.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,

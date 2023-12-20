@@ -10,7 +10,7 @@
                 "--noTimeout",
             ],
             "cwd": "${workspaceFolder}",
-            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/sls",
+            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/serverless",
             "env": {
                 "NODE_ENV": "development"
             },

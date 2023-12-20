@@ -1,12 +1,11 @@
 import express, { Request, Response } from 'express';
 import serverless from 'serverless-http';
-import AWS from 'aws-sdk'; // Ensure AWS SDK supports ES module import
 import { Octokit } from '@octokit/rest';
 import { createAppAuth } from '@octokit/auth-app';
-import { getSecret } from './secrets';
-import { getUser } from './users';
-import { getProjectData, storeProjectData, SourceType, convertToSourceType } from './storage';
-import { validateUser } from './auth';
+import { getSecret } from './src/secrets';
+import { getUser } from './src/users';
+import { getProjectData, storeProjectData, SourceType, convertToSourceType } from './src/storage';
+import { validateUser } from './src/auth';
 
 const app = express();
 
@@ -215,5 +214,10 @@ app.post('/api/files/:source/:owner/:project/:pathBase64/:analysisType', async (
         return res.status(500).send('Internal Server Error');
     }
 });
+app.get("/", (req, res, next) => {
+    return res.status(200).json({
+      message: "Hello from root!",
+    });
+  });
 
-module.exports.getFromFileURI = serverless(app);
+module.exports.handler = serverless(app);

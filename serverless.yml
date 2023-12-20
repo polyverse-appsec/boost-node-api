@@ -23,13 +23,10 @@ provider:
       Resource: "arn:aws:secretsmanager:us-west-2:*:secret:*"
 
 functions:
-  getFromFileURI:
-    handler: handlers.getFromFileURI
+  api:
+    handler: build/index.handler
     events:
-      - http:
-          path: api/get_file_from_uri
-          method: get
-          cors: true
+      - httpApi: '*'
 
 plugins:
   - serverless-offline
