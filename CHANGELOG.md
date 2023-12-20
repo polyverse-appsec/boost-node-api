@@ -10,6 +10,7 @@ Polyverse Boost API on Node.js
 
 ### Enhancements
 - Service code converted from JavaScript to TypeScript
+- Change default service timeout to 15 minutes (max) instead of 30 seconds (default) - not needed for now, but for future processing
 
 ### Bug Fixes
 - Fix version in service header responses and package code

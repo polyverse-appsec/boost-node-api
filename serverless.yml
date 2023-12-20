@@ -25,6 +25,7 @@ provider:
 functions:
   api:
     handler: build/index.handler
+    timeout: 900 # Timeout set to 15 minutes (900 seconds)
     events:
       - httpApi: '*'
     url:
