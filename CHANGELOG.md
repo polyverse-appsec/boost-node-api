@@ -3,6 +3,20 @@ Polyverse Boost API on Node.js
 
 # Release Notes
 
+## Version 0.2.0: December 4th, 2023
+
+### New Features
+- Added User library
+- Added Storage library
+        Results are loaded and stored via `GET /api/files/{source}/{owner}/{project}/{path-base64}/{analysis_type}` and `POST /api/files/{owner}/{project}}/{path-base64}/{analysis_type}`
+
+### Enhancements
+- Only polyverse.com and polytest.ai accounts are allowed to use the API
+- Get file API now returns the X-Resource-Access header if the file is public or private
+
+### Bug Fixes
+- N/A
+
 ## Version 0.1.2: November 20th, 2023
 
 ### New Features

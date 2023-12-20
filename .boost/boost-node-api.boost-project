@@ -3,7 +3,7 @@
   "summary": {
     "projectName": "boost-node-api",
     "summaryUrl": ".boost/boost-node-api.summary.boost-notebook",
-    "filesToAnalyze": 8,
+    "filesToAnalyze": 12,
     "filesAnalyzed": 0,
     "issues": [
       "No summary file found at .boost/boost-node-api.summary.boost-notebook"
@@ -24,15 +24,6 @@
     ".vscode/launch.json": {
       "sourceRelFile": ".vscode/launch.json",
       "notebookRelFile": ".boost/.vscode/launch.json.boost-notebook",
-      "totalCells": 0,
-      "completedCells": 0,
-      "errorCells": 0,
-      "issueCells": 0,
-      "sections": {}
-    },
-    "secrets.js": {
-      "sourceRelFile": "secrets.js",
-      "notebookRelFile": ".boost/secrets.js.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
@@ -66,15 +57,6 @@
       "issueCells": 0,
       "sections": {}
     },
-    "handlers.js": {
-      "sourceRelFile": "handlers.js",
-      "notebookRelFile": ".boost/handlers.js.boost-notebook",
-      "totalCells": 0,
-      "completedCells": 0,
-      "errorCells": 0,
-      "issueCells": 0,
-      "sections": {}
-    },
     "CHANGELOG.md": {
       "sourceRelFile": "CHANGELOG.md",
       "notebookRelFile": ".boost/CHANGELOG.md.boost-notebook",
@@ -87,6 +69,60 @@
     "serverless.yml": {
       "sourceRelFile": "serverless.yml",
       "notebookRelFile": ".boost/serverless.yml.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "tsconfig.json": {
+      "sourceRelFile": "tsconfig.json",
+      "notebookRelFile": ".boost/tsconfig.json.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "handlers.ts": {
+      "sourceRelFile": "handlers.ts",
+      "notebookRelFile": ".boost/handlers.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "secrets.ts": {
+      "sourceRelFile": "secrets.ts",
+      "notebookRelFile": ".boost/secrets.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "auth.ts": {
+      "sourceRelFile": "auth.ts",
+      "notebookRelFile": ".boost/auth.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "users.ts": {
+      "sourceRelFile": "users.ts",
+      "notebookRelFile": ".boost/users.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "storage.ts": {
+      "sourceRelFile": "storage.ts",
+      "notebookRelFile": ".boost/storage.ts.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
