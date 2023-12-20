@@ -215,9 +215,24 @@ app.post('/api/files/:source/:owner/:project/:pathBase64/:analysisType', async (
     }
 });
 app.get("/", (req, res, next) => {
-    return res.status(200).json({
-      message: "Hello from root!",
-    });
-  });
+    // Set the content type to text
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // Write initial part of the response
+    res.write("Hello ");
+
+    // Use a setInterval to send data in intervals
+    const intervalId = setInterval(() => {
+        res.write("world ");
+    }, 1000); // Sends "world " every second
+
+    // Stop sending data after 5 seconds
+    setTimeout(() => {
+        clearInterval(intervalId);
+        res.end("Goodbye!"); // End the response with a final message
+    }, 5000);
+});
 
 module.exports.handler = serverless(app);

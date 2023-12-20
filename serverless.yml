@@ -27,6 +27,9 @@ functions:
     handler: build/index.handler
     events:
       - httpApi: '*'
+    url:
+      invokeMode: RESPONSE_STREAM
+
 
 plugins:
   - serverless-offline
