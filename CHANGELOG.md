@@ -3,6 +3,17 @@ Polyverse Boost API on Node.js
 
 # Release Notes
 
+## Version 0.3.0: December 20th, 2023
+
+### New Features
+- N/A
+
+### Enhancements
+- Service code converted from JavaScript to TypeScript
+
+### Bug Fixes
+- Fix version in service header responses and package code
+
 ## Version 0.2.0: December 4th, 2023
 
 ### New Features
