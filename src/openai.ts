@@ -23,6 +23,9 @@ export async function store_vectordata_for_project(email: string, uri: URL, data
         throw new Error(`Invalid URI: ${uri}`);
     }
 
+    const dataNameWithGitHubProjectPrefix = `${generateFilenameFromGitHubProject(ownerName, repoName)}_${dataName}`;
+    console.log(`store_vectordata_for_project: proposed AI file resource name: ${dataNameWithGitHubProjectPrefix}`);
+    console.log(`store_vectordata_for_project: actual AI file resource name: ${dataName}`);
     const vectorDataId = await createAssistantFile(dataName, vectorData);
     
     // we store the project data under the owner (instead of email) so all users in the org can see the data
@@ -31,6 +34,15 @@ export async function store_vectordata_for_project(email: string, uri: URL, data
     console.log(`store_vectordata_for_project: vectorData stored`);
 
     return vectorDataId;
+}
+
+function generateFilenameFromGitHubProject(part1: string, part2: string): string {
+    // Replace any non-alphanumeric characters (including dots) with underscores
+    const safePart1 = part1.replace(/[^a-zA-Z0-9]/g, '_');
+    const safePart2 = part2.replace(/[^a-zA-Z0-9]/g, '_');
+
+    // Combine the parts with an underscore
+    return `${safePart1}_${safePart2}`;
 }
 
 interface OpenAIFileUploadResponse {
