@@ -5,10 +5,9 @@ import { getSecrets, getSecret } from './secrets';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 
-export async function store_vectordata_for_project(email: string, uri: URL, vectorData: string, req: Request, res: Response) : Promise<Response> {
+export async function store_vectordata_for_project(email: string, uri: URL, dataId: string, dataName: string, vectorData: string, req: Request, res: Response) : Promise<string> {
 
     if (!vectorData) {
-        res.status(400).send('Invalid vector data');
         throw new Error('Invalid vector data');
     }
 
@@ -21,29 +20,17 @@ export async function store_vectordata_for_project(email: string, uri: URL, vect
     const repoName = pathSegments.pop();
     const ownerName = pathSegments.pop();
     if (!repoName || !ownerName) {
-        console.error(`Invalid URI: ${uri}`);
-        return res.status(400).send('Invalid URI');
+        throw new Error(`Invalid URI: ${uri}`);
     }
 
-    const vectorDataType = 'vectordata';
-
-    const vectorDataId = await createAssistantFile(`allfiles_concat`, vectorData);
+    const vectorDataId = await createAssistantFile(dataName, vectorData);
     
     // we store the project data under the owner (instead of email) so all users in the org can see the data
-    await storeProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${vectorDataType}:4:id`, vectorDataId);
-
-    // return a list of assistant file resource id
-    const assistantFileResourceIds = [];
-
-    // add a single faux id for now - until we call the OpenAI assistant file creation api
-    assistantFileResourceIds.push(vectorDataId);
-
-    // send result as a JSON string in the body
-    res.header('Content-Type', 'application/json');
+    await storeProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${dataId}:4:id`, vectorDataId);
 
     console.log(`store_vectordata_for_project: vectorData stored`);
 
-    return res.status(200).send(JSON.stringify(assistantFileResourceIds));
+    return vectorDataId;
 }
 
 interface OpenAIFileUploadResponse {
@@ -71,6 +58,9 @@ const createAssistantFile = async (dataId: string, data: string): Promise<string
     const url = 'https://api.openai.com/v1/files';
 
     const filename = `${dataId}.jsonl`;
+
+    const dataSize = Buffer.byteLength(data, 'utf8');
+    console.log(`createAssistantFile for (${dataSize} bytes): ${filename}`);
 
     const formData = new FormData();
     formData.append('purpose', 'assistants');
