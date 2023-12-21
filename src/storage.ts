@@ -19,12 +19,13 @@ export function convertToSourceType(source: string): SourceType {
 export async function getProjectData(email: string | null, sourceType: SourceType, owner: string, project: string, resourcePath: string, analysisType: string): Promise<any | undefined> {
     const projectPath = `${email ? email : "public"}/${sourceType}/${owner}/${project}`;
     const dataPath = `${resourcePath}/${analysisType}`;
-    console.log(`getProjectData for: ${projectPath}/${dataPath}`);
+
+    console.log(`getProjectData for: ${projectPath}${dataPath}`);
 
     const params = {
         TableName: analysisDatastoreTableName,
         Key: {
-            tableKey: projectPath, // primary key
+            projectPath: projectPath, // primary key
             dataPath: dataPath // secondary/sort key
         }
     };
@@ -48,7 +49,7 @@ export async function storeProjectData(email: string | null, sourceType: SourceT
     const params = {
         TableName: analysisDatastoreTableName,
         Item: {
-            tableKey: projectPath, // primary key
+            projectPath: projectPath, // primary key
             dataPath: dataPath, // secondary/sort key
             data: data
         }

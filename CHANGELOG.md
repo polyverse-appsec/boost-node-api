@@ -3,7 +3,7 @@ Polyverse Boost API on Node.js
 
 # Release Notes
 
-## Version 0.4.0: December 20th, 2023
+## Version 0.4.0: December 21st, 2023
 
 ### New Features
 - (Draft) Added service for creating Project Data for Vector Store per GitHub project
@@ -12,7 +12,8 @@ Polyverse Boost API on Node.js
 - N/A
 
 ### Bug Fixes
-- N/A
+- Fixed issue with Analysis Storage access issues when reading / writing data
+- Fixed issue with the analysis store reads failing (writes worked)
 
 ## Version 0.3.1: December 20th, 2023
 

@@ -57,24 +57,56 @@ app.get('/api/get_vectordata_from_project', async (req: Request, res: Response) 
         stage = parseInt(req.query.stage as string);
     }
 
-    console.log(`get_vectordata_from_project: Request validated uri: {uri} stage: {stage}`);
+    console.log(`get_vectordata_from_project: Request validated uri: ${uri} stage: ${stage}`);
 
-    const vectorData : string = await get_vectordata_from_project(uri, stage, req, res);
-    if (!vectorData) {
-        return res;
+    // Split the pathname by '/' and filter out empty strings
+    const pathSegments = uri.pathname.split('/').filter(segment => segment);
+
+    // The relevant part is the last segment of the path
+    const repoName = pathSegments.pop();
+    const ownerName = pathSegments.pop();
+    if (!repoName || !ownerName) {
+        console.error(`Invalid URI: ${uri}`);
+        return res.status(400).send('Invalid URI');
     }
 
-    console.log(`get_vectordata_from_project: retrieved vectorData`);
-
+    const vectorDataType = 'vectordata';
+    
     try {
-        await store_vectordata_for_project(uri, vectorData, req, res);
+        let vectorDataId = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${vectorDataType}:4:id`);
+        if (vectorDataId) {
+            console.log(`get_vectordata_from_project: found vectorDataId: ${vectorDataId}`);
+            const vectorIds = [];
+            vectorIds.push(vectorDataId);
+            return res.status(200).send(JSON.stringify(vectorIds));
+        }
+        
+        let vectorData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${vectorDataType}:4`);
+        if (!vectorData) {
+            console.log(`get_vectordata_from_project: no vectorData found, generating from GitHub`);
+            vectorData = await get_vectordata_from_project(uri, stage, req, res);
+            if (!vectorData) {
+                return res;
+            }
+        }
+
+        console.log(`get_vectordata_from_project: retrieved vectorData`);
+
+        try {
+            await store_vectordata_for_project(email, uri, vectorData, req, res);
+        } catch (error) {
+            console.error(`Handler Error: get_vectordata_from_project: Unable to store vector data:`, error);
+            console.error(`Error storing vector data:`, error);
+            return res.status(500).send('Internal Server Error');
+        }
     } catch (error) {
-        console.error(`Handler Error: get_vectordata_from_project: Unable to store vector data:`, error);
-        console.error(`Error storing vector data:`, error);
+        console.error(`Handler Error: get_vectordata_from_project: Unable to retrieve vector data:`, error);
         return res.status(500).send('Internal Server Error');
     }
 
     console.log(`store_vectordata_for_project: retrieved id`);
+
+    return res.status(200).send();
 });
 
 app.get('/api/files/:source/:owner/:project/:pathBase64/:analysisType', async (req, res) => {

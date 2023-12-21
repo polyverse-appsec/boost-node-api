@@ -126,5 +126,7 @@ export async function get_vectordata_from_project(uri: URL, stage: number, req: 
         return "";
     }
 
+    console.log(`Writing sample vector data: ${uri}`);
+
     return uri.toString();
 }
