@@ -112,3 +112,19 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
         return res.status(500).send('Internal Server Error');
     }
 }
+
+// stages of of the vectordata are:
+// 0: basic project structure
+// 1: full project structure
+// 2: first 5 files + package.json (if exist)
+// 3: first 5 files + package.json (if exist, and using boostignore and gitignore)
+// 4: all file data (trimmed to ignore files)
+export async function get_vectordata_from_project(uri: URL, stage: number, req: Request, res: Response) : Promise<string> {
+
+    if (stage < 0 || stage > 4) {
+        res.status(400).send('Invalid stage');
+        return "";
+    }
+
+    return uri.toString();
+}

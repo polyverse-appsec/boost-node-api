@@ -2,7 +2,8 @@ import express, { Request, Response } from 'express';
 import serverless from 'serverless-http';
 import { getProjectData, storeProjectData, SourceType, convertToSourceType } from './storage';
 import { validateUser } from './auth';
-import { get_file_from_uri } from './github';
+import { get_file_from_uri, get_vectordata_from_project } from './github';
+import { store_vectordata_for_project } from './openai';
 
 const app = express();
 
@@ -26,6 +27,54 @@ app.get('/api/get_file_from_uri', async (req: Request, res: Response) => {
     }
 
     get_file_from_uri(email, uri, req, res);
+});
+
+app.get('/api/get_vectordata_from_project', async (req: Request, res: Response) => {
+    const email = validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    if (!req.query.uri) {
+        console.error(`URI is required`);
+        return res.status(400).send('URI is required');
+    }
+
+    const uri = new URL(req.query.uri as string);
+    if (uri.protocol !== 'http:' && uri.protocol !== 'https:') {
+        console.error(`Invalid URI: ${uri}`);
+        return res.status(400).send('Invalid URI');
+    }
+
+    // stages of of the vectordata are:
+    // 0: basic project structure
+    // 1: full project structure
+    // 2: first 5 files + package.json (if exist)
+    // 3: first 5 files + package.json (if exist, and using boostignore and gitignore)
+    // 4: all file data (trimmed to ignore files)
+    let stage : number = 0;
+    if (req.query.stage) {
+        stage = parseInt(req.query.stage as string);
+    }
+
+    console.log(`get_vectordata_from_project: Request validated uri: {uri} stage: {stage}`);
+
+    const vectorData : string = await get_vectordata_from_project(uri, stage, req, res);
+    if (!vectorData) {
+        return res;
+    }
+
+    console.log(`get_vectordata_from_project: retrieved vectorData`);
+
+    try {
+        await store_vectordata_for_project(uri, vectorData, req, res);
+    } catch (error) {
+        console.error(`Handler Error: get_vectordata_from_project: Unable to store vector data:`, error);
+        console.error(`Error storing vector data:`, error);
+        return res.status(500).send('Internal Server Error');
+    }
+
+    console.log(`store_vectordata_for_project: retrieved id`);
 });
 
 app.get('/api/files/:source/:owner/:project/:pathBase64/:analysisType', async (req, res) => {
