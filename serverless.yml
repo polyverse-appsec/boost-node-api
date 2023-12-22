@@ -32,6 +32,8 @@ provider:
           Action:
             - secretsmanager:GetSecretValue
           Resource: "arn:aws:secretsmanager:us-west-2:*:secret:*"
+  httpApi:
+    cors: true
 
 functions:
   api:
