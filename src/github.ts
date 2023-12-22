@@ -49,6 +49,7 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
         // Example: 'X-Resource-Access' or public or private
         const fileVisibility = 'public';
         res.set('X-Resource-Access', fileVisibility);
+        res.set('content-type', 'text/plain');
         
         return res.send(fileContent);
 

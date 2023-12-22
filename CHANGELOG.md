@@ -10,9 +10,10 @@ Polyverse Boost API on Node.js
 
 ### Enhancements
 - Added support for encoded and unencoded uri query params when retrieving files from GitHub.com
+- for get_file_from_uri, return file contents as plain-text content type, instead of encapsulated JSON
 
 ### Bug Fixes
-- N/A
+- Restore support for CORS support
 
 ## Version 0.4.1: December 21st, 2023
 
