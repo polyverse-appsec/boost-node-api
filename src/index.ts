@@ -204,6 +204,8 @@ app.get('/api/files/:source/:owner/:project/:pathBase64/:analysisType', async (r
             console.error(`Resource not found: ${source}, ${owner}, ${project}, ${decodedPath}, ${analysisType}`);
             return res.status(404).send('Resource not found');
         }
+
+        return res.status(200).header('Content-Type', 'text/plain').send(data);
     } catch (error) {
         console.error(`Handler Error: /api/files/:source/:owner/:project/:pathBase64/:analysisType`, error);
         return res.status(500).send('Internal Server Error');

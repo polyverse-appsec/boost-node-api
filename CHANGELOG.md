@@ -14,6 +14,7 @@ Polyverse Boost API on Node.js
 
 ### Bug Fixes
 - Restore support for CORS support
+- Fix issue with resource data not being loaded via HTTP GET
 
 ## Version 0.4.1: December 21st, 2023
 
