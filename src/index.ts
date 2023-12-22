@@ -20,7 +20,19 @@ app.get('/api/get_file_from_uri', async (req: Request, res: Response) => {
         return res.status(400).send('URI is required');
     }
 
-    const uri = new URL(req.query.uri as string);
+    let uriString = req.query.uri as string;
+
+    // Check if the URI is encoded, decode it if necessary
+    if (uriString.match(/%[0-9a-f]{2}/i)) {
+        try {
+            uriString = decodeURIComponent(uriString);
+        } catch (error) {
+            console.error(`Invalid encoded URI: ${uriString}`);
+            return res.status(400).send('Invalid encoded URI');
+        }
+    }
+
+    const uri = new URL(uriString as string);
     if (uri.protocol !== 'http:' && uri.protocol !== 'https:') {
         console.error(`Invalid URI: ${uri}`);
         return res.status(400).send('Invalid URI');

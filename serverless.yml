@@ -6,7 +6,7 @@ provider:
   stage: dev
   region: us-west-2
   environment:
-    APP_VERSION: 0.4.0
+    APP_VERSION: 0.4.2
   iamRoleStatements:
     - Effect: Allow
       Action:

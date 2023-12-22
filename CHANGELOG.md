@@ -3,6 +3,17 @@ Polyverse Boost API on Node.js
 
 # Release Notes
 
+## Version 0.4.2: December 22nd, 2023
+
+### New Features
+- N/A
+
+### Enhancements
+- Added support for encoded and unencoded uri query params when retrieving files from GitHub.com
+
+### Bug Fixes
+- N/A
+
 ## Version 0.4.1: December 21st, 2023
 
 ### New Features
