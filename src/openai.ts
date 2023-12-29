@@ -5,7 +5,7 @@ import { getSecrets, getSecret } from './secrets';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 
-export async function store_vectordata_for_project(email: string, uri: URL, dataId: string, dataName: string, vectorData: string, req: Request, res: Response) : Promise<string> {
+export async function store_vectordata_for_project(email: string, uri: URL, dataId: string, dataName: string, vectorData: string, req: Request, res: Response) : Promise<any> {
 
     if (!vectorData) {
         throw new Error('Invalid vector data');
@@ -27,13 +27,21 @@ export async function store_vectordata_for_project(email: string, uri: URL, data
     console.log(`store_vectordata_for_project: proposed AI file resource name: ${dataNameWithGitHubProjectPrefix}`);
     console.log(`store_vectordata_for_project: actual AI file resource name: ${dataName}`);
     const vectorDataId = await createAssistantFile(dataName, vectorData);
-    
+
+    const dataResource = {
+        name: `${dataName}.jsonl`,
+        type: `${dataId}`,
+        id: vectorDataId,
+        // return current time in unix system time format
+        last_updated: Math.floor(Date.now() / 1000)
+    }
+
     // we store the project data under the owner (instead of email) so all users in the org can see the data
     await storeProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${dataId}:4:id`, vectorDataId);
 
     console.log(`store_vectordata_for_project: vectorData stored`);
 
-    return vectorDataId;
+    return dataResource;
 }
 
 function generateFilenameFromGitHubProject(part1: string, part2: string): string {
