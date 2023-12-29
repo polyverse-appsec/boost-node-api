@@ -69,7 +69,7 @@ async function doesPartExist(ownerName: string, repoName: string, vectorDataType
     return partData !== undefined;
 }
 
-app.get('/api/get_vectordata_from_project', async (req: Request, res: Response) => {
+app.get('/api/user_project_data_references', async (req: Request, res: Response) => {
     const email = validateUser(req, res);
     if (!email) {
         return;
