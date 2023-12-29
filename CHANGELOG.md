@@ -6,7 +6,8 @@ Polyverse Boost API on Node.js
 ## Version 0.5.0: December 29th, 2023
 
 ### New Features
-- Stubs for user_project API (GET, POST)
+- Stubs for user_project API (GET, POST) to store and retrieve project data used for AI guidance
+- Stubs for user_project_goals API (GET, POST) to store and retrieve goals used for AI guidance
 
 ### Enhancements
 - renamed get_vectorstore_project_data to user_project_data_references (GET only)

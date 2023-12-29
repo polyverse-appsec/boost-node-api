@@ -108,6 +108,59 @@ app.get(`${api_root_endpoint}/user_project`, async (req: Request, res: Response)
         .send(JSON.stringify(userProjectData));
 });
 
+app.post(`${api_root_endpoint}/user_project_goals`, async (req: Request, res: Response) => {
+    const email = validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    console.log(`user_project_goals: stored data`);
+
+    return res
+        .status(200)
+        .header('Content-Type', 'application/json')
+        .send();
+});
+
+app.get(`${api_root_endpoint}/user_project_goals`, async (req: Request, res: Response) => {
+    const email = validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    console.log(`user_project_goals: retrieved data`);
+
+    const goals = [
+        {
+            goal: 'sample goal 1',
+            tasks: [
+                {name: 'sample task 1'},
+                {name: 'sample task 2'}
+            ]
+        },
+        {
+            goal: 'sample goal 2',
+            tasks: [
+                {name: 'sample task 1'},
+                {name: 'sample task 2'}
+            ]
+        }
+    ];
+
+    // create an object with the project goals
+    const projectGoals = {
+        org : 'sample_user',
+        user: email,
+        project_name : 'sample_project_name',
+        goals : goals,
+    };
+
+    return res
+        .status(200)
+        .header('Content-Type', 'application/json')
+        .send(JSON.stringify(projectGoals));
+});
+
 app.get(`${api_root_endpoint}/user_project_data_references`, async (req: Request, res: Response) => {
     const email = validateUser(req, res);
     if (!email) {
