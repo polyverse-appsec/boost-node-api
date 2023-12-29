@@ -105,6 +105,7 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
         // Example: 'X-Resource-Access' or public or private
         const fileVisibility = 'private';
         res.set('X-Resource-Access', fileVisibility);
+        res.set('content-type', 'text/plain');
 
         return res.send(fileContent);
         
@@ -120,7 +121,7 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
 // 2: first 5 files + package.json (if exist)
 // 3: first 5 files + package.json (if exist, and using boostignore and gitignore)
 // 4: all file data (trimmed to ignore files)
-export async function get_vectordata_from_project(uri: URL, stage: number, req: Request, res: Response) : Promise<string> {
+export async function user_project_data_references(uri: URL, stage: number, req: Request, res: Response) : Promise<string> {
 
     if (stage < 0 || stage > 4) {
         res.status(400).send('Invalid stage');

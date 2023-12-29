@@ -2,14 +2,16 @@ import express, { Request, Response } from 'express';
 import serverless from 'serverless-http';
 import { getProjectData, storeProjectData, SourceType, convertToSourceType } from './storage';
 import { validateUser } from './auth';
-import { get_file_from_uri, get_vectordata_from_project } from './github';
+import { get_file_from_uri, user_project_data_references } from './github';
 import { store_vectordata_for_project } from './openai';
 
 const app = express();
 
 app.use(express.json()); // Make sure to use express.json middleware to parse JSON request body
 
-app.get('/api/get_file_from_uri', async (req: Request, res: Response) => {
+const api_root_endpoint : string = '/api';
+
+app.get(`${api_root_endpoint}/get_file_from_uri`, async (req: Request, res: Response) => {
     const email = validateUser(req, res);
     if (!email) {
         return;
@@ -69,7 +71,44 @@ async function doesPartExist(ownerName: string, repoName: string, vectorDataType
     return partData !== undefined;
 }
 
-app.get('/api/user_project_data_references', async (req: Request, res: Response) => {
+app.post(`${api_root_endpoint}/user_project`, async (req: Request, res: Response) => {
+    const email = validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    console.log(`user_project: stored data`);
+
+    return res
+        .status(200)
+        .header('Content-Type', 'application/json')
+        .send();
+});
+
+app.get(`${api_root_endpoint}/user_project`, async (req: Request, res: Response) => {
+    const email = validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    console.log(`user_project: retrieved data`);
+
+    // create an object with the string fields, org, project_name, guidelines, array of string resources
+    const userProjectData = {
+        org : 'sample_user',
+        user: email,
+        project_name : 'sample_project_name',
+        guidelines : 'sample guidelines',
+        resources : ['https://sample_resource_reference_1', 'https://sample_resource_reference_2']
+    };
+
+    return res
+        .status(200)
+        .header('Content-Type', 'application/json')
+        .send(JSON.stringify(userProjectData));
+});
+
+app.get(`${api_root_endpoint}/user_project_data_references`, async (req: Request, res: Response) => {
     const email = validateUser(req, res);
     if (!email) {
         return;
@@ -97,7 +136,7 @@ app.get('/api/user_project_data_references', async (req: Request, res: Response)
         stage = parseInt(req.query.stage as string);
     }
 
-    console.log(`get_vectordata_from_project: Request validated uri: ${uri} stage: ${stage}`);
+    console.log(`user_project_data_references: Request validated uri: ${uri} stage: ${stage}`);
 
     // Split the pathname by '/' and filter out empty strings
     const pathSegments = uri.pathname.split('/').filter(segment => segment);
@@ -126,38 +165,38 @@ app.get('/api/user_project_data_references', async (req: Request, res: Response)
         for (let i = 0; i < vectorDataTypes.length; i++) {
             let vectorDataId = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${vectorDataTypes[i]}:4:id`);
             if (vectorDataId) {
-                console.log(`get_vectordata_from_project: found File Id for ${vectorDataTypes[i]}: ${vectorDataId}`);
+                console.log(`user_project_data_references: found File Id for ${vectorDataTypes[i]}: ${vectorDataId}`);
                 vectorDataFileIds.push(vectorDataId);
                 continue;
             }
             
             let vectorData = await collectVectorData(ownerName, repoName, vectorDataTypes[i], req, res);
             if (!vectorData) {
-                console.log(`get_vectordata_from_project: no vectorData found, generating from GitHub`);
-                vectorData = await get_vectordata_from_project(uri, stage, req, res);
+                console.log(`user_project_data_references: no vectorData found, generating from GitHub`);
+                vectorData = await user_project_data_references(uri, stage, req, res);
                 if (!vectorData) {
                     return res;
                 }
             }
 
-            console.log(`get_vectordata_from_project: retrieved vectorData`);
+            console.log(`user_project_data_references: retrieved vectorData`);
 
             try {
                 const storedVectorId = await store_vectordata_for_project(email, uri, vectorDataTypes[i], vectorDataNames[i], vectorData, req, res);
-                console.log(`get_vectordata_from_project: found File Id for ${vectorDataTypes[i]} under ${vectorDataNames[i]}: ${storedVectorId}`);
+                console.log(`user_project_data_references: found File Id for ${vectorDataTypes[i]} under ${vectorDataNames[i]}: ${storedVectorId}`);
                 vectorDataFileIds.push(storedVectorId);
             } catch (error) {
-                console.error(`Handler Error: get_vectordata_from_project: Unable to store vector data:`, error);
+                console.error(`Handler Error: user_project_data_references: Unable to store vector data:`, error);
                 console.error(`Error storing vector data:`, error);
                 return res.status(500).send('Internal Server Error');
             }
         }
     } catch (error) {
-        console.error(`Handler Error: get_vectordata_from_project: Unable to retrieve vector data:`, error);
+        console.error(`Handler Error: user_project_data_references: Unable to retrieve vector data:`, error);
         return res.status(500).send('Internal Server Error');
     }
 
-    console.log(`store_vectordata_for_project: retrieved ids`);
+    console.log(`user_project_data_references: retrieved ids`);
 
     // send result as a JSON string in the body
     res.header('Content-Type', 'application/json');
@@ -165,7 +204,7 @@ app.get('/api/user_project_data_references', async (req: Request, res: Response)
     return res.status(200).send(JSON.stringify(vectorDataFileIds));
 });
 
-app.get('/api/files/:source/:owner/:project/:pathBase64/:analysisType', async (req, res) => {
+app.get(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:analysisType`, async (req, res) => {
     try {
         const email = validateUser(req, res);
         if (!email) {
@@ -212,7 +251,7 @@ app.get('/api/files/:source/:owner/:project/:pathBase64/:analysisType', async (r
     }
 });
 
-app.post('/api/files/:source/:owner/:project/:pathBase64/:analysisType', async (req, res) => {
+app.post(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:analysisType`, async (req, res) => {
     try {
         const email = validateUser(req, res);
         if (!email) {
