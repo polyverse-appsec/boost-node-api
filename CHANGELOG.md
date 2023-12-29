@@ -3,6 +3,17 @@ Polyverse Boost API on Node.js
 
 # Release Notes
 
+## Version 0.5.0: December 29th, 2023
+
+### New Features
+- Stubs for user_project API (GET, POST)
+
+### Enhancements
+- renamed get_vectorstore_project_data to user_project_data_references (GET only)
+
+### Bug Fixes
+- N/A
+
 ## Version 0.4.2: December 22nd, 2023
 
 ### New Features
@@ -22,7 +33,7 @@ Polyverse Boost API on Node.js
 - N/A
 
 ### Enhancements
-- get_vectordata_from_project returns file ids for combined raw project data, aispec and blueprint files
+- user_project_data_references returns file ids for combined raw project data, aispec and blueprint files
 - AI file resources are prefixed with project org and name
 
 ### Bug Fixes
