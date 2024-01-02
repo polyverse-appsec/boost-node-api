@@ -11,7 +11,9 @@ Polyverse Boost API on Node.js
 - Renamed API from get_file_from_uri to user_project_file (GET)
 - Renamed API from /user_project/ to /user_project/:org/:project
 - Renamed API from /user_project_goals/ to /user_project/:org/:project/goals
+- Renamed API from /user_project_data_references/ to /user_project/:org/:project/data_references
 - Project Data and Project Goals are persisted
+- Project Data References can be retrieved by project name
 
 ### Bug Fixes
 - N/A

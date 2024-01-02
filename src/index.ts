@@ -196,21 +196,37 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Req
         .send(JSON.stringify(projectGoals));
 });
 
-app.get(`${api_root_endpoint}/user_project_data_references`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}/user_project/:org/:project/data_references`, async (req: Request, res: Response) => {
     const email = validateUser(req, res);
     if (!email) {
         return;
     }
 
-    if (!req.query.uri) {
-        console.error(`URI is required`);
-        return res.status(400).send('URI is required');
+    const { org, project } = req.params;
+
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+        return res.status(400).send('Invalid resource path');
     }
 
-    const uri = new URL(req.query.uri as string);
-    if (uri.protocol !== 'http:' && uri.protocol !== 'https:') {
-        console.error(`Invalid URI: ${uri}`);
-        return res.status(400).send('Invalid URI');
+    let uri = undefined;
+    if (req.query.uri) {
+        uri = new URL(req.query.uri as string);
+        if (uri.protocol !== 'http:' && uri.protocol !== 'https:') {
+            console.error(`Invalid URI: ${uri}`);
+            return res.status(400).send('Invalid URI');
+        }
+    } else {
+        const projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+        if (!projectData.resources || projectData.resources.length === 0) {
+            console.error(`No resources found in project: ${org}/${project}`);
+            return res.status(400).send('No resources found in project');
+        }
+        uri = new URL(projectData.resources[0] as string);
     }
 
     // stages of of the vectordata are:
