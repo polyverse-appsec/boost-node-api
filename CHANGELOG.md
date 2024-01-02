@@ -3,6 +3,16 @@ Polyverse Boost API on Node.js
 
 # Release Notes
 
+## Version 0.5.1: January 2nd, 2024
+### New Features
+- N/A
+
+### Enhancements
+- Renamed API from get_file_from_uri to user_project_file (GET)
+
+### Bug Fixes
+- N/A
+
 ## Version 0.5.0: December 29th, 2023
 
 ### New Features

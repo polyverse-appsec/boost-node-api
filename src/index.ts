@@ -5,13 +5,13 @@ import { validateUser } from './auth';
 import { get_file_from_uri, user_project_data_references } from './github';
 import { store_vectordata_for_project } from './openai';
 
-const app = express();
+export const app = express();
 
 app.use(express.json()); // Make sure to use express.json middleware to parse JSON request body
 
 const api_root_endpoint : string = '/api';
 
-app.get(`${api_root_endpoint}/get_file_from_uri`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}/user_project_file`, async (req: Request, res: Response) => {
     const email = validateUser(req, res);
     if (!email) {
         return;
