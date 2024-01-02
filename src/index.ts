@@ -71,11 +71,24 @@ async function doesPartExist(ownerName: string, repoName: string, vectorDataType
     return partData !== undefined;
 }
 
-app.post(`${api_root_endpoint}/user_project`, async (req: Request, res: Response) => {
+app.post(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, res: Response) => {
     const email = validateUser(req, res);
     if (!email) {
         return;
     }
+
+    const { org, project } = req.params;
+
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+        return res.status(400).send('Invalid resource path');
+    }
+
+    await storeProjectData(email, SourceType.General, org, project, '', 'project', req.body);
 
     console.log(`user_project: stored data`);
 
@@ -85,21 +98,34 @@ app.post(`${api_root_endpoint}/user_project`, async (req: Request, res: Response
         .send();
 });
 
-app.get(`${api_root_endpoint}/user_project`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, res: Response) => {
     const email = validateUser(req, res);
     if (!email) {
         return;
     }
 
+    const { org, project } = req.params;
+
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+        return res.status(400).send('Invalid resource path');
+    }
+
+    const projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+
     console.log(`user_project: retrieved data`);
 
     // create an object with the string fields, org, project_name, guidelines, array of string resources
     const userProjectData = {
-        org : 'sample_user',
+        org : org,
         user: email,
-        project_name : 'sample_project_name',
-        guidelines : 'sample guidelines',
-        resources : ['https://sample_resource_reference_1', 'https://sample_resource_reference_2']
+        project_name : project,
+        guidelines : projectData.guidelines? projectData.guidelines : '',
+        resources : projectData.resources? projectData.resources : [],
     };
 
     return res
@@ -108,11 +134,24 @@ app.get(`${api_root_endpoint}/user_project`, async (req: Request, res: Response)
         .send(JSON.stringify(userProjectData));
 });
 
-app.post(`${api_root_endpoint}/user_project_goals`, async (req: Request, res: Response) => {
+app.post(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Request, res: Response) => {
     const email = validateUser(req, res);
     if (!email) {
         return;
     }
+
+    const { org, project } = req.params;
+
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+        return res.status(400).send('Invalid resource path');
+    }
+
+    await storeProjectData(email, SourceType.General, org, project, '', 'goals', req.body);
 
     console.log(`user_project_goals: stored data`);
 
@@ -122,37 +161,33 @@ app.post(`${api_root_endpoint}/user_project_goals`, async (req: Request, res: Re
         .send();
 });
 
-app.get(`${api_root_endpoint}/user_project_goals`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Request, res: Response) => {
     const email = validateUser(req, res);
     if (!email) {
         return;
     }
 
-    console.log(`user_project_goals: retrieved data`);
+    const { org, project } = req.params;
 
-    const goals = [
-        {
-            goal: 'sample goal 1',
-            tasks: [
-                {name: 'sample task 1'},
-                {name: 'sample task 2'}
-            ]
-        },
-        {
-            goal: 'sample goal 2',
-            tasks: [
-                {name: 'sample task 1'},
-                {name: 'sample task 2'}
-            ]
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
         }
-    ];
+        return res.status(400).send('Invalid resource path');
+    }
+
+    const projectGoalsRaw = await getProjectData(email, SourceType.General, org, project, '', 'goals');
+
+    console.log(`user_project_goals: retrieved data`);
 
     // create an object with the project goals
     const projectGoals = {
-        org : 'sample_user',
+        org : org,
         user: email,
-        project_name : 'sample_project_name',
-        goals : goals,
+        project_name : project,
+        goals : projectGoalsRaw,
     };
 
     return res

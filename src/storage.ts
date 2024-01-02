@@ -52,6 +52,7 @@ export async function getProjectData(email: string | null, sourceType: SourceTyp
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+
 export async function storeProjectData(email: string | null, sourceType: SourceType, owner: string, project: string, resourcePath: string, analysisType: string, data: any): Promise<void> {
     const projectPath = `${email ? email : "public"}/${sourceType}/${owner}/${project}`;
     const dataPath = `${resourcePath}/${analysisType}`;
