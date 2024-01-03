@@ -19,7 +19,7 @@ Polyverse Boost API on Node.js
     - pass the JWT via the x-signed-identity header
     - specify the public key via environment variable JWT_PUBLIC_KEY or AWS Secret Manager
     - specify the JWT signing algorithm via x-signing-algorithm
-- User Account can be passed via x-user-account header (for local testing only)
+- User Account can be passed via x-user-account header (for local testing only - set environment var ENABLE_UNSIGNED_AUTHN )
 
 ### Bug Fixes
 - N/A

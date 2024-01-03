@@ -10,7 +10,6 @@ import {
 import { validateUser } from './auth';
 import { get_file_from_uri, user_project_data_references } from './github';
 import { store_vectordata_for_project } from './openai';
-import { ProjectDataReference } from './types/ProjectDataReference';
 
 export const app = express();
 
