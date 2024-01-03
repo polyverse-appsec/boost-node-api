@@ -15,6 +15,11 @@ Polyverse Boost API on Node.js
 - Renamed API from /user_project_data_references/ to /user_project/:org/:project/data_references
 - Project Data and Project Goals are persisted
 - Project Data References can be retrieved by project name
+- JWT-based Identity AuthN is now supported for all REST APIs:
+    - pass the JWT via the x-signed-identity header
+    - specify the public key via environment variable JWT_PUBLIC_KEY or AWS Secret Manager
+    - specify the JWT signing algorithm via x-signing-algorithm
+- User Account can be passed via x-user-account header (for local testing only)
 
 ### Bug Fixes
 - N/A
