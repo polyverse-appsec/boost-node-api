@@ -58,7 +58,7 @@ export function validateUser(req: Request, res: Response): string | undefined {
         }
     }
 
-    // if no query param, then extract the X-User-Account from the header
+    // if no signed identity then extract the X-User-Account from the header
     if (!email) {
         if (!req.headers['x-user-account']) {
             console.error(`Unauthorized: Email is required`);
@@ -66,8 +66,8 @@ export function validateUser(req: Request, res: Response): string | undefined {
             return undefined;
         }
         // only support this header if we are running locally and not in AWS / Cloud
-        if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
-            console.error(`Unauthorized: Lambda function name is required`);
+        if (!process.env.ENABLE_UNSIGNED_AUTHN) {
+            console.error(`Unauthorized: UNSIGNED_AUTHN is not enabled; set ENABLE_UNSIGNED_AUTHN=true to enable`);
             res.status(401).send('Unauthorized');
             return undefined;
         }
