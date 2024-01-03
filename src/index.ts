@@ -1,6 +1,12 @@
 import express, { Request, Response } from 'express';
 import serverless from 'serverless-http';
-import { getProjectData, storeProjectData, SourceType, convertToSourceType } from './storage';
+import {
+    getProjectData,
+    storeProjectData,
+    SourceType,
+    convertToSourceType,
+    deleteProjectData
+} from './storage';
 import { validateUser } from './auth';
 import { get_file_from_uri, user_project_data_references } from './github';
 import { store_vectordata_for_project } from './openai';
@@ -117,6 +123,11 @@ app.get(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, 
 
     const projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
 
+    if (!projectData) {
+        console.error(`Project not found: ${org}/${project}`);
+        return res.status(404).send('Project not found');
+    }
+
     console.log(`user_project: retrieved data`);
 
     // create an object with the string fields, org, project_name, guidelines, array of string resources
@@ -132,6 +143,37 @@ app.get(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, 
         .status(200)
         .header('Content-Type', 'application/json')
         .send(JSON.stringify(userProjectData));
+});
+
+app.delete(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, res: Response) => {
+    const email = validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    const { org, project } = req.params;
+
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+        return res.status(400).send('Invalid resource path');
+    }
+
+    try {
+        await deleteProjectData(email, SourceType.General, org, project, '', 'project');
+        console.log(`user_project: deleted data`);
+    } finally {
+        await deleteProjectData(email, SourceType.General, org, project, '', 'goals');
+        console.log(`user_project_goals: deleted data`);
+    }
+
+    return res
+        .status(200)
+        .header('Content-Type', 'application/json')
+        .send();
 });
 
 app.post(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Request, res: Response) => {

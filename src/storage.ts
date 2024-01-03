@@ -1,5 +1,5 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { DeleteCommand, DeleteCommandInput, DynamoDBDocumentClient, GetCommand, GetCommandInput, PutCommand, PutCommandInput } from "@aws-sdk/lib-dynamodb";
 
 const client = new DynamoDBClient({ region: "us-west-2" });
 const dynamoDB = DynamoDBDocumentClient.from(client);
@@ -22,7 +22,7 @@ export async function getProjectData(email: string | null, sourceType: SourceTyp
 
     console.log(`getProjectData for: ${projectPath}${dataPath}`);
 
-    const params = {
+    const params : GetCommandInput = {
         TableName: analysisDatastoreTableName,
         Key: {
             projectPath: projectPath, // primary key
@@ -60,7 +60,7 @@ export async function storeProjectData(email: string | null, sourceType: SourceT
     const dataSize = Buffer.byteLength(JSON.stringify(data), 'utf8');
     console.log(`storeProjectData for (${dataSize} bytes): ${projectPath}${dataPath}`);
 
-    const params = {
+    const params : PutCommandInput = {
         TableName: analysisDatastoreTableName,
         Item: {
             projectPath: projectPath, // primary key
@@ -73,6 +73,26 @@ export async function storeProjectData(email: string | null, sourceType: SourceT
         await dynamoDB.send(new PutCommand(params));
     } catch (error) {
         console.error(`Error storing project data: ${error}`);
+        throw error;
+    }
+}
+
+export async function deleteProjectData(email: string | null, sourceType: SourceType, owner: string, project: string, resourcePath: string, analysisType: string): Promise<void> {
+    const projectPath = `${email ? email : "public"}/${sourceType}/${owner}/${project}`;
+    const dataPath = `${resourcePath}/${analysisType}`;
+
+    const params : DeleteCommandInput = {
+        TableName: analysisDatastoreTableName,
+        Key: {
+            projectPath: projectPath, // primary key
+            dataPath: dataPath, // secondary/sort key
+        }
+    };
+
+    try {
+        await dynamoDB.send(new DeleteCommand(params));
+    } catch (error) {
+        console.error(`Error deleting project data: ${error}`);
         throw error;
     }
 }
