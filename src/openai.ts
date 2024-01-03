@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { SourceType, storeProjectData } from './storage';
-import { getSecrets, getSecret } from './secrets';
+import { getSecret } from './secrets';
+import { ProjectDataReference } from './types/ProjectDataReference';
 
 import fetch from 'node-fetch';
 import FormData from 'form-data';
@@ -28,7 +29,7 @@ export async function store_vectordata_for_project(email: string, uri: URL, data
     console.log(`store_vectordata_for_project: actual AI file resource name: ${dataName}`);
     const vectorDataId = await createAssistantFile(dataName, vectorData);
 
-    const dataResource = {
+    const dataResource : ProjectDataReference = {
         name: `${dataName}.jsonl`,
         type: `${dataId}`,
         id: vectorDataId,

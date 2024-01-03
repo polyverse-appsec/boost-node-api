@@ -10,6 +10,7 @@ import {
 import { validateUser } from './auth';
 import { get_file_from_uri, user_project_data_references } from './github';
 import { store_vectordata_for_project } from './openai';
+import { ProjectDataReference } from './types/ProjectDataReference';
 
 export const app = express();
 
@@ -238,7 +239,7 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Req
         .send(JSON.stringify(projectGoals));
 });
 
-app.get(`${api_root_endpoint}/user_project/:org/:project/data_references`, async (req: Request, res: Response) => {
+app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, async (req: Request, res: Response) => {
     const email = validateUser(req, res);
     if (!email) {
         return;
@@ -255,22 +256,6 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/data_references`, async
         return res.status(400).send('Invalid resource path');
     }
 
-    let uri = undefined;
-    if (req.query.uri) {
-        uri = new URL(req.query.uri as string);
-        if (uri.protocol !== 'http:' && uri.protocol !== 'https:') {
-            console.error(`Invalid URI: ${uri}`);
-            return res.status(400).send('Invalid URI');
-        }
-    } else {
-        const projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
-        if (!projectData.resources || projectData.resources.length === 0) {
-            console.error(`No resources found in project: ${org}/${project}`);
-            return res.status(400).send('No resources found in project');
-        }
-        uri = new URL(projectData.resources[0] as string);
-    }
-
     // stages of of the vectordata are:
     // 0: basic project structure
     // 1: full project structure
@@ -281,6 +266,13 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/data_references`, async
     if (req.query.stage) {
         stage = parseInt(req.query.stage as string);
     }
+
+    const projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    if (!projectData.resources || projectData.resources.length === 0) {
+        console.error(`No resources found in project: ${org}/${project}`);
+        return res.status(400).send('No resources found in project');
+    }
+    const uri = new URL(projectData.resources[0] as string);
 
     console.log(`user_project_data_references: Request validated uri: ${uri} stage: ${stage}`);
 
@@ -328,7 +320,7 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/data_references`, async
             console.log(`user_project_data_references: retrieved vectorData`);
 
             try {
-                const storedVectorId = await store_vectordata_for_project(email, uri, vectorDataTypes[i], vectorDataNames[i], vectorData, req, res);
+                const storedVectorId : any[] = await store_vectordata_for_project(email, uri, vectorDataTypes[i], vectorDataNames[i], vectorData, req, res);
                 console.log(`user_project_data_references: found File Id for ${vectorDataTypes[i]} under ${vectorDataNames[i]}: ${storedVectorId}`);
                 vectorDataFileIds.push(storedVectorId);
             } catch (error) {
@@ -342,12 +334,50 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/data_references`, async
         return res.status(500).send('Internal Server Error');
     }
 
+    await storeProjectData(email, SourceType.General, org, project, '', 'data_references', vectorDataFileIds);
+
+    console.log(`user_project_data_references: stored data`);
+
+    return res.status(200).send();
+});
+
+app.get(`${api_root_endpoint}/user_project/:org/:project/data_references`, async (req: Request, res: Response) => {
+    const email = validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    const { org, project } = req.params;
+
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+        return res.status(400).send('Invalid resource path');
+    }
+
+    const projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    if (!projectData.resources || projectData.resources.length === 0) {
+        console.error(`No resources found in project: ${org}/${project}`);
+        return res.status(400).send('No resources found in project');
+    }
+    const uri = new URL(projectData.resources[0] as string);
+
+    const dataReferences : any[] = await getProjectData(email, SourceType.General, org, project, '', 'data_references');
+    if (!dataReferences) {
+        console.error(`No resources found in project: ${org}/${project}`);
+        return res.status(400).send('No data references found for project');
+    }
+
     console.log(`user_project_data_references: retrieved ids`);
 
     // send result as a JSON string in the body
     res.header('Content-Type', 'application/json');
 
-    return res.status(200).send(JSON.stringify(vectorDataFileIds));
+    return res.status(200).send(JSON.stringify(dataReferences));
+
 });
 
 app.get(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:analysisType`, async (req, res) => {

@@ -6,6 +6,7 @@ Polyverse Boost API on Node.js
 ## Version 0.5.1: January 2nd, 2024
 ### New Features
 - Added API /user_project/:org/:project (DELETE) to delete user project data
+- Added placeholder API /user_project/:org/:project/data_references (POST) to create/upload user data
 
 ### Enhancements
 - Renamed API from get_file_from_uri to user_project_file (GET)
