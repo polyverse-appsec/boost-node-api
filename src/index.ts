@@ -301,11 +301,42 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async 
 
     // we store the project data under the owner (instead of email) so all users in the org can see the data
     // NOTE - we are storing the data for ONLY the first resource in the project (references are not included yet)
+
+
     const resourceData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${resource}`);
 
     console.log(`user_project_data: retrieved data`);
     return res.status(200).send(resourceData);
 });
+
+async function splitAndStoreData(
+    ownerName: string,
+    sourceType: SourceType,
+    repoName: string,
+    resource: string,
+    body: any
+): Promise<void> {
+
+    const MAX_SIZE = 300 * 1024; // 300 KB
+    const dataString = JSON.stringify(body);
+    const dataSize = Buffer.byteLength(dataString, 'utf-8');
+
+    if (dataSize <= MAX_SIZE) {
+        // If data is smaller than MAX_SIZE, store it directly
+        await storeProjectData(ownerName, sourceType, ownerName, repoName, '', `${resource}`, body);
+    } else {
+        // If data is larger, split and store in parts
+        let partNumber = 0;
+        for (let offset = 0; offset < dataString.length; offset += MAX_SIZE) {
+            partNumber++;
+            const endOffset = offset + MAX_SIZE < dataString.length ? offset + MAX_SIZE : dataString.length;
+            const partData = dataString.substring(offset, endOffset);
+
+            // Call the store function for the part
+            await storeProjectData(ownerName, sourceType, ownerName, repoName, '', `${resource}_part${partNumber}`, partData);
+        }
+    }
+}
 
 app.post(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async (req: Request, res: Response) => {
     const email = validateUser(req, res);
@@ -347,7 +378,12 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async
 
     // we store the project data under the owner (instead of email) so all users in the org can see the data
     // NOTE - we are storing the data for ONLY the first resource in the project (references are not included yet)
-    await storeProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${resource}`, req.body);
+    // if req body is not a string, then we need to convert back into a normal string
+    let body = req.body;
+    if (typeof body !== 'string') {
+        body = Buffer.from(body).toString('utf8');
+    }
+    await storeProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${resource}`, body);
 
     console.log(`user_project_data: stored data`);
     return res.status(200).send();
