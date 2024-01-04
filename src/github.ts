@@ -17,7 +17,7 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
 
     const filePath = path.join('/');
 
-    const filePathWithoutBranch = filePath.replace(/^blob\/main\//, '');
+    const filePathWithoutBranch = filePath.replace(/^blob\/(main|master)\//, '');
 
     const payload = {
         headers: req.headers,

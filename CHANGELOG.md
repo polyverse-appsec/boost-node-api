@@ -24,6 +24,7 @@ Polyverse Boost API on Node.js
 ### Bug Fixes
 - Enable access to public source code without installing the GitHub App for Boost Sara
 - Return invalid resource type if file is not foumd, but not a single file (e.g. a directory)
+- Fix Git file retrieval based on master branch (instead of main)
 
 ## Version 0.5.0: December 29th, 2023
 
