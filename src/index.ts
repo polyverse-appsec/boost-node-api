@@ -9,7 +9,7 @@ import {
 } from './storage';
 import { validateUser } from './auth';
 import { get_file_from_uri, user_project_data_references } from './github';
-import { store_vectordata_for_project } from './openai';
+import { store_data_for_project } from './openai';
 
 export const app = express();
 
@@ -49,31 +49,31 @@ app.get(`${api_root_endpoint}/user_project_file`, async (req: Request, res: Resp
     get_file_from_uri(email, uri, req, res);
 });
 
-async function collectVectorData(ownerName: string, repoName: string, vectorDataType: string, req: any, res: any): Promise<string | undefined> {
+async function collectProjectData(ownerName: string, repoName: string, projectDataType: string, req: any, res: any): Promise<string | undefined> {
     let partNumber = 1;
-    let vectorData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${vectorDataType}:4`);
+    let projectData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${projectDataType}:4`);
     
-    if (vectorData) {
-        return vectorData;
+    if (projectData) {
+        return projectData;
     }
 
-    if (await doesPartExist(ownerName, repoName, vectorDataType, 1)) {
+    if (await doesPartExist(ownerName, repoName, projectDataType, 1)) {
         let allData = '';
         while (true) {
-            const partData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${vectorDataType}:4_part${partNumber}`);
+            const partData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${projectDataType}:4_part${partNumber}`);
             if (!partData) break;
             allData += partData;
             partNumber++;
         }
-        vectorData = allData;
+        projectData = allData;
     }
 
-    return vectorData;
+    return projectData;
 }
 
 // Helper function to check if a specific part exists
-async function doesPartExist(ownerName: string, repoName: string, vectorDataType: string, partNumber: number): Promise<boolean> {
-    const partData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${vectorDataType}:4_part${partNumber}`);
+async function doesPartExist(ownerName: string, repoName: string, projectDataType: string, partNumber: number): Promise<boolean> {
+    const partData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${projectDataType}:4_part${partNumber}`);
     return partData !== undefined;
 }
 
@@ -255,7 +255,7 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, asyn
         return res.status(400).send('Invalid resource path');
     }
 
-    // stages of of the vectordata are:
+    // stages of processing data are:
     // 0: basic project structure
     // 1: full project structure
     // 2: first 5 files + package.json (if exist)
@@ -286,54 +286,54 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, asyn
         return res.status(400).send('Invalid URI');
     }
 
-    const vectorDataFileIds = [];
+    const projectDataFileIds = [];
 
-    const vectorDataTypes = [];
-    vectorDataTypes.push('vectordata');
-    vectorDataTypes.push('aispec');
-    vectorDataTypes.push('blueprint');
+    const projectDataTypes = [];
+    projectDataTypes.push('projectdata');
+    projectDataTypes.push('aispec');
+    projectDataTypes.push('blueprint');
 
-    const vectorDataNames = [];
-    vectorDataNames.push(`allfiles_concat.md`);
-    vectorDataNames.push(`aispec.md`);
-    vectorDataNames.push('blueprint.md');
+    const projectDataNames = [];
+    projectDataNames.push(`allfiles_combined.md`);
+    projectDataNames.push(`aispec.md`);
+    projectDataNames.push('blueprint.md');
 
     try {
-        for (let i = 0; i < vectorDataTypes.length; i++) {
-            let vectorDataId = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${vectorDataTypes[i]}:4:id`);
-            if (vectorDataId) {
-                console.log(`user_project_data_references: found File Id for ${vectorDataTypes[i]}: ${vectorDataId}`);
-                vectorDataFileIds.push(vectorDataId);
+        for (let i = 0; i < projectDataTypes.length; i++) {
+            let projectDataId = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${projectDataTypes[i]}:id`);
+            if (projectDataId) {
+                console.log(`user_project_data_references: found File Id for ${projectDataTypes[i]}: ${projectDataId}`);
+                projectDataFileIds.push(projectDataId);
                 continue;
             }
             
-            let vectorData = await collectVectorData(ownerName, repoName, vectorDataTypes[i], req, res);
-            if (!vectorData) {
-                console.log(`user_project_data_references: no vectorData found, generating from GitHub`);
-                vectorData = await user_project_data_references(uri, stage, req, res);
-                if (!vectorData) {
-                    return res;
+            let projectData = await collectProjectData(ownerName, repoName, projectDataTypes[i], req, res);
+            if (!projectData) {
+                console.log(`user_project_data_references: no data found for ${projectDataTypes[i]}`);
+                projectData = await user_project_data_references(uri, stage, req, res);
+                if (!projectData) {
+                    return res.status(400).send(`No data found for ${projectDataTypes[i]}`);
                 }
             }
 
-            console.log(`user_project_data_references: retrieved vectorData`);
+            console.log(`user_project_data_references: retrieved project data for ${projectDataTypes[i]}`);
 
             try {
-                const storedVectorId : any[] = await store_vectordata_for_project(email, uri, vectorDataTypes[i], vectorDataNames[i], vectorData, req, res);
-                console.log(`user_project_data_references: found File Id for ${vectorDataTypes[i]} under ${vectorDataNames[i]}: ${storedVectorId}`);
-                vectorDataFileIds.push(storedVectorId);
+                const storedProjectDataId : any[] = await store_data_for_project(email, uri, projectDataTypes[i], projectDataNames[i], projectData, req, res);
+                console.log(`user_project_data_references: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${storedProjectDataId}`);
+                projectDataFileIds.push(storedProjectDataId);
             } catch (error) {
-                console.error(`Handler Error: user_project_data_references: Unable to store vector data:`, error);
-                console.error(`Error storing vector data:`, error);
+                console.error(`Handler Error: user_project_data_references: Unable to store project data:`, error);
+                console.error(`Error storing project data:`, error);
                 return res.status(500).send('Internal Server Error');
             }
         }
     } catch (error) {
-        console.error(`Handler Error: user_project_data_references: Unable to retrieve vector data:`, error);
+        console.error(`Handler Error: user_project_data_references: Unable to retrieve project data:`, error);
         return res.status(500).send('Internal Server Error');
     }
 
-    await storeProjectData(email, SourceType.General, org, project, '', 'data_references', vectorDataFileIds);
+    await storeProjectData(email, SourceType.General, org, project, '', 'data_references', projectDataFileIds);
 
     console.log(`user_project_data_references: stored data`);
 

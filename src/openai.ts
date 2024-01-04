@@ -6,13 +6,13 @@ import { ProjectDataReference } from './types/ProjectDataReference';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 
-export async function store_vectordata_for_project(email: string, uri: URL, dataId: string, dataName: string, vectorData: string, req: Request, res: Response) : Promise<any> {
+export async function store_data_for_project(email: string, uri: URL, dataId: string, dataName: string, projectData: string, req: Request, res: Response) : Promise<any> {
 
-    if (!vectorData) {
-        throw new Error('Invalid vector data');
+    if (!projectData) {
+        throw new Error('Invalid project data');
     }
 
-    console.log(`store_vectordata_for_project: vectorData received`);
+    console.log(`store_data_for_project: projectData received`);
 
     // Split the pathname by '/' and filter out empty strings
     const pathSegments = uri.pathname.split('/').filter(segment => segment);
@@ -25,22 +25,22 @@ export async function store_vectordata_for_project(email: string, uri: URL, data
     }
 
     const dataNameWithGitHubProjectPrefix = `${generateFilenameFromGitHubProject(ownerName, repoName)}_${dataName}`;
-    console.log(`store_vectordata_for_project: proposed AI file resource name: ${dataNameWithGitHubProjectPrefix}`);
-    console.log(`store_vectordata_for_project: actual AI file resource name: ${dataName}`);
-    const vectorDataId = await createAssistantFile(dataName, vectorData);
+    console.log(`store_data_for_project: proposed AI file resource name: ${dataNameWithGitHubProjectPrefix}`);
+    console.log(`store_data_for_project: actual AI file resource name: ${dataName}`);
+    const projectDataId = await createAssistantFile(dataName, projectData);
 
     const dataResource : ProjectDataReference = {
         name: `${dataName}.jsonl`,
         type: `${dataId}`,
-        id: vectorDataId,
+        id: projectDataId,
         // return current time in unix system time format
         last_updated: Math.floor(Date.now() / 1000)
     }
 
     // we store the project data under the owner (instead of email) so all users in the org can see the data
-    await storeProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${dataId}:4:id`, vectorDataId);
+    await storeProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${dataId}:4:id`, projectDataId);
 
-    console.log(`store_vectordata_for_project: vectorData stored`);
+    console.log(`store_data_for_project: projectData stored`);
 
     return dataResource;
 }

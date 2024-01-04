@@ -129,7 +129,7 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
     }
 }
 
-// stages of of the vectordata are:
+// stages of building project data are:
 // 0: basic project structure
 // 1: full project structure
 // 2: first 5 files + package.json (if exist)
@@ -142,7 +142,7 @@ export async function user_project_data_references(uri: URL, stage: number, req:
         return "";
     }
 
-    console.log(`Writing sample vector data: ${uri}`);
+    console.log(`Writing sample project data: ${uri}`);
 
     return uri.toString();
 }
