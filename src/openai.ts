@@ -36,11 +36,6 @@ export async function uploadProjectDataForAIAssistant(projectName: string, uri: 
         last_updated: Math.floor(Date.now() / 1000)
     }
 
-    // we store the project data under the owner (instead of email) so all users in the org can see the data
-    await storeProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${dataTypeId}`, openAiFileId);
-
-    console.log(`store_data_for_project: projectData stored`);
-
     return dataResource;
 }
 
