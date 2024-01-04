@@ -450,7 +450,7 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, asyn
             console.log(`user_project_data_references: retrieved project data for ${projectDataTypes[i]}`);
 
             try {
-                const storedProjectDataId : any[] = await uploadProjectDataForAIAssistant(email, uri, projectDataTypes[i], projectDataNames[i], projectData, req, res);
+                const storedProjectDataId : any[] = await uploadProjectDataForAIAssistant(`${org}_${project}`, uri, projectDataTypes[i], projectDataNames[i], projectData, req, res);
                 console.log(`user_project_data_references: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${storedProjectDataId}`);
                 projectDataFileIds.push(storedProjectDataId);
             } catch (error) {
