@@ -6,7 +6,7 @@ import { ProjectDataReference } from './types/ProjectDataReference';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 
-export async function store_data_for_project(email: string, uri: URL, dataId: string, dataName: string, projectData: string, req: Request, res: Response) : Promise<any> {
+export async function uploadProjectDataForAIAssistant(projectName: string, uri: URL, dataTypeId: string, dataName: string, projectData: string, req: Request, res: Response) : Promise<any> {
 
     if (!projectData) {
         throw new Error('Invalid project data');
@@ -24,21 +24,21 @@ export async function store_data_for_project(email: string, uri: URL, dataId: st
         throw new Error(`Invalid URI: ${uri}`);
     }
 
-    const dataNameWithGitHubProjectPrefix = `${generateFilenameFromGitHubProject(ownerName, repoName)}_${dataName}`;
+    const dataNameWithGitHubProjectPrefix = `${projectName}_${generateFilenameFromGitHubProject(ownerName, repoName)}_${dataName}`;
     console.log(`store_data_for_project: proposed AI file resource name: ${dataNameWithGitHubProjectPrefix}`);
     console.log(`store_data_for_project: actual AI file resource name: ${dataName}`);
-    const projectDataId = await createAssistantFile(dataName, projectData);
+    const openAiFileId = await createAssistantFile(dataNameWithGitHubProjectPrefix, projectData);
 
     const dataResource : ProjectDataReference = {
-        name: `${dataName}.jsonl`,
-        type: `${dataId}`,
-        id: projectDataId,
+        name: `${dataNameWithGitHubProjectPrefix}`,
+        type: `${dataTypeId}`,
+        id: openAiFileId,
         // return current time in unix system time format
         last_updated: Math.floor(Date.now() / 1000)
     }
 
     // we store the project data under the owner (instead of email) so all users in the org can see the data
-    await storeProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${dataId}:4:id`, projectDataId);
+    await storeProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${dataTypeId}:4:id`, openAiFileId);
 
     console.log(`store_data_for_project: projectData stored`);
 
@@ -67,7 +67,7 @@ interface ErrorResponse {
     message: string;
 }
 
-const createAssistantFile = async (dataId: string, data: string): Promise<string> => {
+const createAssistantFile = async (dataFilename: string, data: string): Promise<string> => {
     const secretData : any = getSecret('exetokendev');
     console.log(`secrets: ${JSON.stringify(secretData)}`)
     let openAiKey = secretData['openai-personal']?secretData['openai-personal']:'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';
@@ -78,14 +78,12 @@ const createAssistantFile = async (dataId: string, data: string): Promise<string
 
     const url = 'https://api.openai.com/v1/files';
 
-    const filename = `${dataId}.jsonl`;
-
     const dataSize = Buffer.byteLength(data, 'utf8');
-    console.log(`createAssistantFile for (${dataSize} bytes): ${filename}`);
+    console.log(`createAssistantFile for (${dataSize} bytes): ${dataFilename}`);
 
     const formData = new FormData();
     formData.append('purpose', 'assistants');
-    formData.append('file', Buffer.from(data), filename);
+    formData.append('file', Buffer.from(data), { filename: dataFilename} as FormData.AppendOptions);
 
     const response = await fetch(url, {
         method: 'POST',
