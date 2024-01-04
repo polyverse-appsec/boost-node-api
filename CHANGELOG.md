@@ -22,7 +22,7 @@ Polyverse Boost API on Node.js
 - User Account can be passed via x-user-account header (for local testing only - set environment var ENABLE_UNSIGNED_AUTHN )
 
 ### Bug Fixes
-- N/A
+- Enable access to public source code without installing the GitHub App for Boost Sara
 
 ## Version 0.5.0: December 29th, 2023
 

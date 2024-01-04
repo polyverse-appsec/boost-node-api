@@ -21,14 +21,8 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
 
     console.log(`Inboumd Request: ${JSON.stringify(payload)}`);
 
-    const user = await getUser(email);
-    const installationId = user?.installationId;
-    if (!installationId) {
-        console.error(`Error: Git User not found or no installationId - ensure GitHub App is installed: ${email}`);
-        return res.status(401).send('Unauthorized');
-    }
-
     // try to get the file from GitHub via public path without authentication
+    console.log(`Attempting to retrieve file via public access: Owner: ${owner}, Repo: ${repo}, Path: ${filePathWithoutBranch}`);
     try {
         const octokit = new Octokit();
         const response = await octokit.rest.repos.getContent({
@@ -64,6 +58,16 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
         }
     }
 
+
+    const user = await getUser(email);
+    const installationId = user?.installationId;
+    if (!installationId) {
+        console.error(`Error: Git User not found or no installationId - ensure GitHub App is installed to access private source code: ${email}`);
+        return res.status(401).send('Unauthorized');
+    }
+
+    // try to get the file from GitHub via private path with authentication
+    console.log(`Attempting to retrieve file via private access: Owner: ${owner}, Repo: ${repo}, Path: ${filePathWithoutBranch}`);
     try {
 
         const secretStore = 'boost/GitHubApp';
