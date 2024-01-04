@@ -98,7 +98,11 @@ app.post(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request,
     // if req body is not a string, then we need to convert back into a normal string
     let body = req.body;
     if (typeof body !== 'string') {
-        body = Buffer.from(body).toString('utf8');
+        if (Array.isArray(body)) {
+            body = Buffer.from(body).toString('utf8');
+        } else {
+            body = JSON.stringify(body);
+        }
     }
     await storeProjectData(email, SourceType.General, org, project, '', 'project', body);
 
@@ -224,7 +228,11 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Re
     // if req body is not a string, then we need to convert back into a normal string
     let body = req.body;
     if (typeof body !== 'string') {
-        body = Buffer.from(body).toString('utf8');
+        if (Array.isArray(body)) {
+            body = Buffer.from(body).toString('utf8');
+        } else {
+            body = JSON.stringify(body);
+        }
     }
     await storeProjectData(email, SourceType.General, org, project, '', 'goals', body);
 

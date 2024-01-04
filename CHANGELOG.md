@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.6.2: January 5th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Enable post of project and goals with an HTTP body that is a JSON object (instead of a JSON string)
+
+### Bug Fixes
+- N/A
+
 ## Version 0.6.1: January 4th, 2024
 
 ### New Features

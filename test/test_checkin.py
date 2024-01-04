@@ -1,6 +1,7 @@
 import unittest
 import requests
 
+
 class TestServerEndpoints(unittest.TestCase):
     BASE_URL = "http://localhost:3000"  # Update with your server's URL
     EMAIL = "aaron@polyverse.com"  # Replace with the actual email
