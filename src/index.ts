@@ -104,7 +104,16 @@ app.post(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request,
             body = JSON.stringify(body);
         }
     }
-    await storeProjectData(email, SourceType.General, org, project, '', 'project', body);
+    const updatedProject : UserProjectData = JSON.parse(body);
+    const storedProject : UserProjectData = {
+        org : org,
+        user: email,
+        project_name : project,
+        guidelines : updatedProject.guidelines? updatedProject.guidelines : '',
+        resources : updatedProject.resources? updatedProject.resources : [],
+    };
+
+    await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProject);
 
     console.log(`user_project: stored data`);
 

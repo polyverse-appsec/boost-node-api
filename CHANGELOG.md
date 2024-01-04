@@ -10,6 +10,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Enable post of project and goals with an HTTP body that is a JSON object (instead of a JSON string)
+- Ensure project creation doesn't store arbitrary data (e.g. only store project guidelines and resources)
 
 ### Bug Fixes
 - N/A

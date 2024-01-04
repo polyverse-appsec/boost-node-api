@@ -3,5 +3,5 @@ export interface UserProjectData {
     user: string,
     project_name : string,
     guidelines : string,
-    resources : string,
+    resources : string[],
 }
