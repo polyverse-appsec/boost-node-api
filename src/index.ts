@@ -162,13 +162,34 @@ app.delete(`${api_root_endpoint}/user_project/:org/:project`, async (req: Reques
         return res.status(400).send('Invalid resource path');
     }
 
-    try {
-        await deleteProjectData(email, SourceType.General, org, project, '', 'project');
-        console.log(`user_project: deleted data`);
-    } finally {
-        await deleteProjectData(email, SourceType.General, org, project, '', 'goals');
-        console.log(`user_project_goals: deleted data`);
+    await deleteProjectData(email, SourceType.General, org, project, '', 'project');
+    console.log(`user_project: deleted data`);
+
+    return res
+        .status(200)
+        .header('Content-Type', 'application/json')
+        .send();
+});
+
+app.delete(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Request, res: Response) => {
+    const email = validateUser(req, res);
+    if (!email) {
+        return;
     }
+
+    const { org, project } = req.params;
+
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+        return res.status(400).send('Invalid resource path');
+    }
+
+    await deleteProjectData(email, SourceType.General, org, project, '', 'goals');
+    console.log(`user_project_goals: deleted data`);
 
     return res
         .status(200)
@@ -377,6 +398,81 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/data_references`, async
 
     return res.status(200).send(JSON.stringify(dataReferences));
 
+});
+
+app.delete(`${api_root_endpoint}/user_project/:org/:project/data_references`, async (req: Request, res: Response) => {
+    const email = validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    const { org, project } = req.params;
+
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+        return res.status(400).send('Invalid resource path');
+    }
+
+    await deleteProjectData(email, SourceType.General, org, project, '', 'data_references');
+    console.log(`user_project_data_references: deleted data`);
+
+    return res
+        .status(200)
+        .header('Content-Type', 'application/json')
+        .send();
+});
+
+app.delete(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:analysisType`, async (req, res) => {
+    try {
+        const email = validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const { source, owner, project, pathBase64, analysisType } = req.params;
+
+        if (!source || !owner || !project || !pathBase64 || !analysisType) {
+            if (!source) {
+                console.error(`Source is required`);
+            } else if (!owner) {
+                console.error(`Owner is required`);
+            } else if (!project) {
+                console.error(`Project is required`);
+            }
+            else if (!pathBase64) {
+                console.error(`Path is required`);
+            }
+            else if (!analysisType) {
+                console.error(`Analysis type is required`);
+            }
+            return res.status(400).send('Invalid resource path');
+        }
+
+        let decodedPath;
+        try {
+            decodedPath = Buffer.from(pathBase64, 'base64').toString('utf8');
+        } catch (error) {
+            console.error(`Error decoding path: ${pathBase64}`, error);
+            return res.status(400).send(`Invalid resource path`);
+        }
+
+        await deleteProjectData(email, convertToSourceType(source), owner, project, decodedPath, analysisType);
+
+        console.log(`analysis data: deleted data`);
+
+        return res
+            .status(200)
+            .header('Content-Type', 'application/json')
+            .send();
+
+    } catch (error) {
+        console.error(`Handler Error: /api/files/:source/:owner/:project/:pathBase64/:analysisType`, error);
+        return res.status(500).send('Internal Server Error');
+    }
 });
 
 app.get(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:analysisType`, async (req, res) => {
