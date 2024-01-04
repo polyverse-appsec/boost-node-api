@@ -6,7 +6,7 @@ import { ProjectDataReference } from './types/ProjectDataReference';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 
-export async function uploadProjectDataForAIAssistant(projectName: string, uri: URL, dataTypeId: string, dataName: string, projectData: string, req: Request, res: Response) : Promise<any> {
+export async function uploadProjectDataForAIAssistant(projectName: string, uri: URL, dataTypeId: string, simpleFilename: string, projectData: string, req: Request, res: Response) : Promise<any> {
 
     if (!projectData) {
         throw new Error('Invalid project data');
@@ -24,13 +24,12 @@ export async function uploadProjectDataForAIAssistant(projectName: string, uri: 
         throw new Error(`Invalid URI: ${uri}`);
     }
 
-    const dataNameWithGitHubProjectPrefix = `${projectName}_${generateFilenameFromGitHubProject(ownerName, repoName)}_${dataName}`;
-    console.log(`store_data_for_project: proposed AI file resource name: ${dataNameWithGitHubProjectPrefix}`);
-    console.log(`store_data_for_project: actual AI file resource name: ${dataName}`);
-    const openAiFileId = await createAssistantFile(dataNameWithGitHubProjectPrefix, projectData);
+    const projectQualifiedFullFilename = `${projectName}_${generateFilenameFromGitHubProject(ownerName, repoName)}_${simpleFilename}`;
+    console.log(`store_data_for_project: AI file resource name: ${projectQualifiedFullFilename}`);
+    const openAiFileId = await createAssistantFile(projectQualifiedFullFilename, projectData);
 
     const dataResource : ProjectDataReference = {
-        name: `${dataNameWithGitHubProjectPrefix}`,
+        name: `${projectQualifiedFullFilename}`,
         type: `${dataTypeId}`,
         id: openAiFileId,
         // return current time in unix system time format
@@ -38,7 +37,7 @@ export async function uploadProjectDataForAIAssistant(projectName: string, uri: 
     }
 
     // we store the project data under the owner (instead of email) so all users in the org can see the data
-    await storeProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${dataTypeId}:4:id`, openAiFileId);
+    await storeProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${dataTypeId}`, openAiFileId);
 
     console.log(`store_data_for_project: projectData stored`);
 
