@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.5.1: January 4th, 2024
+## Version 0.6.0: January 4th, 2024
 
 ### New Features
 - Added APIs /user_project/:org/:project goals, analysis and data_references to delete user project data (DELETE)
