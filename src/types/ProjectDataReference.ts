@@ -1,6 +1,6 @@
 export interface ProjectDataReference {
     name: string,
     type: string,
-    id: String,
+    id: string,
     last_updated: number
 }

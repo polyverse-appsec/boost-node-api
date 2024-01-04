@@ -1,12 +1,24 @@
-Polyverse Boost API on Node.js
+Polyverse Boost ReST API (Backend)
 ======================
 
 # Release Notes
 
-## Version 0.5.1: January 2nd, 2024
+## Version 0.6.1: January 4th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- N/A
+
+### Bug Fixes
+- Ensure data_references and project data are returmed by GET in object form
+
+## Version 0.6.0: January 4th, 2024
+
 ### New Features
 - Added APIs /user_project/:org/:project goals, analysis and data_references to delete user project data (DELETE)
-- Added placeholder API /user_project/:org/:project/data_references (POST) to create/upload user data
+- Added API /user_project/:org/:project/data (GET/POST) to create/upload user data (e.g. project data, aispec, blueprint, etc)
 
 ### Enhancements
 - Renamed API from get_file_from_uri to user_project_file (GET)
@@ -20,6 +32,7 @@ Polyverse Boost API on Node.js
     - specify the public key via environment variable JWT_PUBLIC_KEY or AWS Secret Manager
     - specify the JWT signing algorithm via x-signing-algorithm
 - User Account can be passed via x-user-account header (for local testing only - set environment var ENABLE_UNSIGNED_AUTHN )
+- Data Resources for a project GET/POST are supported over 300k (e.g. all source code combined)
 
 ### Bug Fixes
 - Enable access to public source code without installing the GitHub App for Boost Sara

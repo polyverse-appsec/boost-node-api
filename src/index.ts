@@ -8,8 +8,9 @@ import {
     deleteProjectData
 } from './storage';
 import { validateUser } from './auth';
-import { get_file_from_uri, user_project_data_references } from './github';
-import { store_data_for_project } from './openai';
+import { get_file_from_uri } from './github';
+import { uploadProjectDataForAIAssistant } from './openai';
+import { UserProjectData } from './types/UserProjectData';
 
 export const app = express();
 
@@ -49,18 +50,18 @@ app.get(`${api_root_endpoint}/user_project_file`, async (req: Request, res: Resp
     get_file_from_uri(email, uri, req, res);
 });
 
-async function collectProjectData(ownerName: string, repoName: string, projectDataType: string, req: any, res: any): Promise<string | undefined> {
+async function getCachedProjectData(ownerName: string, sourceType: SourceType, repoName: string, resourcePath: string, projectDataType: string): Promise<string | undefined> {
     let partNumber = 1;
-    let projectData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${projectDataType}:4`);
+    let projectData = await getProjectData(ownerName, sourceType, ownerName, repoName, resourcePath, projectDataType);
     
     if (projectData) {
         return projectData;
     }
 
-    if (await doesPartExist(ownerName, repoName, projectDataType, 1)) {
+    if (await doesPartExist(ownerName, repoName, resourcePath, projectDataType, 1)) {
         let allData = '';
         while (true) {
-            const partData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${projectDataType}:4_part${partNumber}`);
+            const partData = await getProjectData(ownerName, sourceType, ownerName, repoName, resourcePath, `${projectDataType}:part-${partNumber}`);
             if (!partData) break;
             allData += partData;
             partNumber++;
@@ -72,8 +73,8 @@ async function collectProjectData(ownerName: string, repoName: string, projectDa
 }
 
 // Helper function to check if a specific part exists
-async function doesPartExist(ownerName: string, repoName: string, projectDataType: string, partNumber: number): Promise<boolean> {
-    const partData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${projectDataType}:4_part${partNumber}`);
+async function doesPartExist(ownerName: string, repoName: string, resourcePath: string, projectDataType: string, partNumber: number): Promise<boolean> {
+    const partData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, resourcePath, `${projectDataType}:part-${partNumber}`);
     return partData !== undefined;
 }
 
@@ -94,7 +95,12 @@ app.post(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request,
         return res.status(400).send('Invalid resource path');
     }
 
-    await storeProjectData(email, SourceType.General, org, project, '', 'project', req.body);
+    // if req body is not a string, then we need to convert back into a normal string
+    let body = req.body;
+    if (typeof body !== 'string') {
+        body = Buffer.from(body).toString('utf8');
+    }
+    await storeProjectData(email, SourceType.General, org, project, '', 'project', body);
 
     console.log(`user_project: stored data`);
 
@@ -121,17 +127,18 @@ app.get(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, 
         return res.status(400).send('Invalid resource path');
     }
 
-    const projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
 
     if (!projectData) {
         console.error(`Project not found: ${org}/${project}`);
         return res.status(404).send('Project not found');
     }
+    projectData = JSON.parse(projectData);
 
     console.log(`user_project: retrieved data`);
 
     // create an object with the string fields, org, project_name, guidelines, array of string resources
-    const userProjectData = {
+    const userProjectData : UserProjectData = {
         org : org,
         user: email,
         project_name : project,
@@ -214,7 +221,12 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Re
         return res.status(400).send('Invalid resource path');
     }
 
-    await storeProjectData(email, SourceType.General, org, project, '', 'goals', req.body);
+    // if req body is not a string, then we need to convert back into a normal string
+    let body = req.body;
+    if (typeof body !== 'string') {
+        body = Buffer.from(body).toString('utf8');
+    }
+    await storeProjectData(email, SourceType.General, org, project, '', 'goals', body);
 
     console.log(`user_project_goals: stored data`);
 
@@ -259,6 +271,138 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Req
         .send(JSON.stringify(projectGoals));
 });
 
+app.get(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async (req: Request, res: Response) => {
+    const email = validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    const { org, project, resource } = req.params;
+
+    if (!org || !project || !resource) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        } else if (!resource) {
+            console.error(`Resource is required`);
+        }
+
+        return res.status(400).send('Invalid resource path');
+    }
+
+    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    if (!projectData) {
+        console.error(`Project not found: ${org}/${project}`);
+        return res.status(404).send('Project not found');
+    }
+    projectData = JSON.parse(projectData) as UserProjectData;
+    console.log(`user_project: retrieved data`);
+
+    const uri = new URL(projectData.resources[0] as string);
+
+    // Split the pathname by '/' and filter out empty strings
+    const pathSegments = uri.pathname.split('/').filter(segment => segment);
+
+    // The relevant part is the last segment of the path
+    const repoName = pathSegments.pop();
+    const ownerName = pathSegments.pop();
+    if (!repoName || !ownerName) {
+        throw new Error(`Invalid URI: ${uri}`);
+    }
+
+    // we store the project data under the owner (instead of email) so all users in the org can see the data
+    // NOTE - we are storing the data for ONLY the first resource in the project (references are not included yet)
+
+    const resourceData = await getCachedProjectData(ownerName, SourceType.GitHub, repoName, '', resource);
+
+    console.log(`user_project_data: retrieved data`);
+    return res.status(200).send(resourceData);
+});
+
+async function splitAndStoreData(
+    email: string,
+    sourceType: SourceType,
+    ownerName: string,
+    repoName: string,
+    resourcePath: string,
+    analysisType: string,
+    body: any
+): Promise<void> {
+
+    const MAX_SIZE = 300 * 1024; // 300 KB
+    const dataString = JSON.stringify(body);
+    const dataSize = Buffer.byteLength(dataString, 'utf-8');
+
+    if (dataSize <= MAX_SIZE) {
+        // If data is smaller than MAX_SIZE, store it directly
+        await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, analysisType, body);
+    } else {
+        // If data is larger, split and store in parts
+        let partNumber = 0;
+        for (let offset = 0; offset < dataString.length; offset += MAX_SIZE) {
+            partNumber++;
+            const endOffset = offset + MAX_SIZE < dataString.length ? offset + MAX_SIZE : dataString.length;
+            const partData = dataString.substring(offset, endOffset);
+
+            // Call the store function for the part
+            await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, `${analysisType}:part-${partNumber}`, partData);
+        }
+    }
+}
+
+app.post(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async (req: Request, res: Response) => {
+    const email = validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    const { org, project, resource } = req.params;
+
+    if (!org || !project || !resource) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        } else if (!resource) {
+            console.error(`Resource is required`);
+        }
+
+        return res.status(400).send('Invalid resource path');
+    }
+
+    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    if (!projectData) {
+        console.error(`Project not found: ${org}/${project}`);
+        return res.status(404).send('Project not found');
+    }
+    projectData = JSON.parse(projectData) as UserProjectData;
+    console.log(`user_project: retrieved data`);
+
+    const uri = new URL(projectData.resources[0] as string);
+    // Split the pathname by '/' and filter out empty strings
+    const pathSegments = uri.pathname.split('/').filter(segment => segment);
+
+    // The relevant part is the last segment of the path
+    const repoName = pathSegments.pop();
+    const ownerName = pathSegments.pop();
+    if (!repoName || !ownerName) {
+        throw new Error(`Invalid URI: ${uri}`);
+    }
+
+    // we store the project data under the owner (instead of email) so all users in the org can see the data
+    // NOTE - we are storing the data for ONLY the first resource in the project (references are not included yet)
+    // if req body is not a string, then we need to convert back into a normal string
+    let body = req.body;
+    if (typeof body !== 'string') {
+        body = Buffer.from(body).toString('utf8');
+    }
+    await splitAndStoreData(ownerName, SourceType.GitHub, ownerName, repoName, '', resource, body);
+
+    console.log(`user_project_data: stored data`);
+    return res.status(200).send();
+});
+
 app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, async (req: Request, res: Response) => {
     const email = validateUser(req, res);
     if (!email) {
@@ -276,25 +420,17 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, asyn
         return res.status(400).send('Invalid resource path');
     }
 
-    // stages of processing data are:
-    // 0: basic project structure
-    // 1: full project structure
-    // 2: first 5 files + package.json (if exist)
-    // 3: first 5 files + package.json (if exist, and using boostignore and gitignore)
-    // 4: all file data (trimmed to ignore files)
-    let stage : number = 0;
-    if (req.query.stage) {
-        stage = parseInt(req.query.stage as string);
+    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    if (projectData) {
+        projectData = JSON.parse(projectData) as UserProjectData;
     }
-
-    const projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
     if (!projectData.resources || projectData.resources.length === 0) {
         console.error(`No resources found in project: ${org}/${project}`);
         return res.status(400).send('No resources found in project');
     }
     const uri = new URL(projectData.resources[0] as string);
 
-    console.log(`user_project_data_references: Request validated uri: ${uri} stage: ${stage}`);
+    console.log(`user_project_data_references: Request validated uri: ${uri}`);
 
     // Split the pathname by '/' and filter out empty strings
     const pathSegments = uri.pathname.split('/').filter(segment => segment);
@@ -310,7 +446,7 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, asyn
     const projectDataFileIds = [];
 
     const projectDataTypes = [];
-    projectDataTypes.push('projectdata');
+    projectDataTypes.push('projectsource');
     projectDataTypes.push('aispec');
     projectDataTypes.push('blueprint');
 
@@ -321,26 +457,17 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, asyn
 
     try {
         for (let i = 0; i < projectDataTypes.length; i++) {
-            let projectDataId = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${projectDataTypes[i]}:id`);
-            if (projectDataId) {
-                console.log(`user_project_data_references: found File Id for ${projectDataTypes[i]}: ${projectDataId}`);
-                projectDataFileIds.push(projectDataId);
-                continue;
-            }
-            
-            let projectData = await collectProjectData(ownerName, repoName, projectDataTypes[i], req, res);
+            let projectData = await getCachedProjectData(ownerName, SourceType.GitHub, repoName, "", projectDataTypes[i]);
             if (!projectData) {
+                // data not found in KV cache - must be manually uploaded for now per project
                 console.log(`user_project_data_references: no data found for ${projectDataTypes[i]}`);
-                projectData = await user_project_data_references(uri, stage, req, res);
-                if (!projectData) {
-                    return res.status(400).send(`No data found for ${projectDataTypes[i]}`);
-                }
+                return res.status(400).send(`No data found for ${projectDataTypes[i]}`);
             }
 
             console.log(`user_project_data_references: retrieved project data for ${projectDataTypes[i]}`);
 
             try {
-                const storedProjectDataId : any[] = await store_data_for_project(email, uri, projectDataTypes[i], projectDataNames[i], projectData, req, res);
+                const storedProjectDataId : any[] = await uploadProjectDataForAIAssistant(`${org}_${project}`, uri, projectDataTypes[i], projectDataNames[i], projectData, req, res);
                 console.log(`user_project_data_references: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${storedProjectDataId}`);
                 projectDataFileIds.push(storedProjectDataId);
             } catch (error) {
@@ -378,7 +505,10 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/data_references`, async
         return res.status(400).send('Invalid resource path');
     }
 
-    const projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    if (projectData) {
+        projectData = JSON.parse(projectData) as UserProjectData;
+    }
     if (!projectData.resources || projectData.resources.length === 0) {
         console.error(`No resources found in project: ${org}/${project}`);
         return res.status(400).send('No resources found in project');
