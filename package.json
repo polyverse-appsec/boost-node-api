@@ -4,7 +4,6 @@
   "main": "build/index.js",
   "scripts": {
     "test": "jest",
-    "coverage": "jest --coverage",
     "build": "tsc"
   },
   "keywords": [],
