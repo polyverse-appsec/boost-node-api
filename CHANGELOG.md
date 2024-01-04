@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.6.1: January 4th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- N/A
+
+### Bug Fixes
+- Ensure data_references and project data are returmed by GET in object form
+
 ## Version 0.6.0: January 4th, 2024
 
 ### New Features

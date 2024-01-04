@@ -95,7 +95,12 @@ app.post(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request,
         return res.status(400).send('Invalid resource path');
     }
 
-    await storeProjectData(email, SourceType.General, org, project, '', 'project', req.body);
+    // if req body is not a string, then we need to convert back into a normal string
+    let body = req.body;
+    if (typeof body !== 'string') {
+        body = Buffer.from(body).toString('utf8');
+    }
+    await storeProjectData(email, SourceType.General, org, project, '', 'project', body);
 
     console.log(`user_project: stored data`);
 
@@ -122,12 +127,13 @@ app.get(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, 
         return res.status(400).send('Invalid resource path');
     }
 
-    const projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
 
     if (!projectData) {
         console.error(`Project not found: ${org}/${project}`);
         return res.status(404).send('Project not found');
     }
+    projectData = JSON.parse(projectData);
 
     console.log(`user_project: retrieved data`);
 
@@ -215,7 +221,12 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Re
         return res.status(400).send('Invalid resource path');
     }
 
-    await storeProjectData(email, SourceType.General, org, project, '', 'goals', req.body);
+    // if req body is not a string, then we need to convert back into a normal string
+    let body = req.body;
+    if (typeof body !== 'string') {
+        body = Buffer.from(body).toString('utf8');
+    }
+    await storeProjectData(email, SourceType.General, org, project, '', 'goals', body);
 
     console.log(`user_project_goals: stored data`);
 
@@ -280,11 +291,12 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async 
         return res.status(400).send('Invalid resource path');
     }
 
-    const projectData : UserProjectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
     if (!projectData) {
         console.error(`Project not found: ${org}/${project}`);
         return res.status(404).send('Project not found');
     }
+    projectData = JSON.parse(projectData) as UserProjectData;
     console.log(`user_project: retrieved data`);
 
     const uri = new URL(projectData.resources[0] as string);
@@ -359,11 +371,12 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async
         return res.status(400).send('Invalid resource path');
     }
 
-    const projectData : UserProjectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
     if (!projectData) {
         console.error(`Project not found: ${org}/${project}`);
         return res.status(404).send('Project not found');
     }
+    projectData = JSON.parse(projectData) as UserProjectData;
     console.log(`user_project: retrieved data`);
 
     const uri = new URL(projectData.resources[0] as string);
@@ -407,7 +420,10 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, asyn
         return res.status(400).send('Invalid resource path');
     }
 
-    const projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    if (projectData) {
+        projectData = JSON.parse(projectData) as UserProjectData;
+    }
     if (!projectData.resources || projectData.resources.length === 0) {
         console.error(`No resources found in project: ${org}/${project}`);
         return res.status(400).send('No resources found in project');
@@ -489,7 +505,10 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/data_references`, async
         return res.status(400).send('Invalid resource path');
     }
 
-    const projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    if (projectData) {
+        projectData = JSON.parse(projectData) as UserProjectData;
+    }
     if (!projectData.resources || projectData.resources.length === 0) {
         console.error(`No resources found in project: ${org}/${project}`);
         return res.status(400).send('No resources found in project');
