@@ -24,6 +24,7 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
     const user = await getUser(email);
     const installationId = user?.installationId;
     if (!installationId) {
+        console.error(`Error: Git User not found or no installationId - ensure GitHub App is installed: ${email}`);
         return res.status(401).send('Unauthorized');
     }
 
