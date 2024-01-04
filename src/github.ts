@@ -9,6 +9,12 @@ const BoostGitHubAppId = "472802";
 
 export async function get_file_from_uri(email: string, uri: URL, req: Request, res: Response) {
     const [, owner, repo, ...path] = uri.pathname.split('/');
+
+    if (!owner || !repo || !path) {
+        console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
+        return res.status(400).send('Invalid URI');
+    }
+
     const filePath = path.join('/');
 
     const filePathWithoutBranch = filePath.replace(/^blob\/main\//, '');
@@ -36,6 +42,9 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
         // Check if response is for a single file and has content
         if ("content" in response.data && typeof response.data.content === 'string') {
             fileContent = Buffer.from(response.data.content, 'base64').toString('utf8');
+        } else if (Array.isArray(response.data)) {
+            console.error(`Error: Content retrieved from uri is not a string: ${uri}`);
+            return res.status(400).send('Invalid URI');
         } else {
             throw new Error('Content not found or not a file');
         }
