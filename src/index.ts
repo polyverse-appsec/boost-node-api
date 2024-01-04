@@ -50,18 +50,18 @@ app.get(`${api_root_endpoint}/user_project_file`, async (req: Request, res: Resp
     get_file_from_uri(email, uri, req, res);
 });
 
-async function get_cached_project_data(ownerName: string, repoName: string, projectDataType: string, req: any, res: any): Promise<string | undefined> {
+async function getCachedProjectData(ownerName: string, sourceType: SourceType, repoName: string, resourcePath: string, projectDataType: string): Promise<string | undefined> {
     let partNumber = 1;
-    let projectData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${projectDataType}`);
+    let projectData = await getProjectData(ownerName, sourceType, ownerName, repoName, resourcePath, projectDataType);
     
     if (projectData) {
         return projectData;
     }
 
-    if (await doesPartExist(ownerName, repoName, projectDataType, 1)) {
+    if (await doesPartExist(ownerName, repoName, resourcePath, projectDataType, 1)) {
         let allData = '';
         while (true) {
-            const partData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${projectDataType}:part${partNumber}`);
+            const partData = await getProjectData(ownerName, sourceType, ownerName, repoName, resourcePath, `${projectDataType}:part-${partNumber}`);
             if (!partData) break;
             allData += partData;
             partNumber++;
@@ -73,8 +73,8 @@ async function get_cached_project_data(ownerName: string, repoName: string, proj
 }
 
 // Helper function to check if a specific part exists
-async function doesPartExist(ownerName: string, repoName: string, projectDataType: string, partNumber: number): Promise<boolean> {
-    const partData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${projectDataType}:part${partNumber}`);
+async function doesPartExist(ownerName: string, repoName: string, resourcePath: string, projectDataType: string, partNumber: number): Promise<boolean> {
+    const partData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, resourcePath, `${projectDataType}:part-${partNumber}`);
     return partData !== undefined;
 }
 
@@ -302,18 +302,19 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async 
     // we store the project data under the owner (instead of email) so all users in the org can see the data
     // NOTE - we are storing the data for ONLY the first resource in the project (references are not included yet)
 
-
-    const resourceData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${resource}`);
+    const resourceData = await getCachedProjectData(ownerName, SourceType.GitHub, repoName, '', resource);
 
     console.log(`user_project_data: retrieved data`);
     return res.status(200).send(resourceData);
 });
 
 async function splitAndStoreData(
-    ownerName: string,
+    email: string,
     sourceType: SourceType,
+    ownerName: string,
     repoName: string,
-    resource: string,
+    resourcePath: string,
+    analysisType: string,
     body: any
 ): Promise<void> {
 
@@ -323,7 +324,7 @@ async function splitAndStoreData(
 
     if (dataSize <= MAX_SIZE) {
         // If data is smaller than MAX_SIZE, store it directly
-        await storeProjectData(ownerName, sourceType, ownerName, repoName, '', `${resource}`, body);
+        await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, analysisType, body);
     } else {
         // If data is larger, split and store in parts
         let partNumber = 0;
@@ -333,7 +334,7 @@ async function splitAndStoreData(
             const partData = dataString.substring(offset, endOffset);
 
             // Call the store function for the part
-            await storeProjectData(ownerName, sourceType, ownerName, repoName, '', `${resource}_part${partNumber}`, partData);
+            await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, `${analysisType}:part-${partNumber}`, partData);
         }
     }
 }
@@ -383,7 +384,7 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async
     if (typeof body !== 'string') {
         body = Buffer.from(body).toString('utf8');
     }
-    await storeProjectData(ownerName, SourceType.GitHub, ownerName, repoName, '', `${resource}`, body);
+    await splitAndStoreData(ownerName, SourceType.GitHub, ownerName, repoName, '', resource, body);
 
     console.log(`user_project_data: stored data`);
     return res.status(200).send();
@@ -440,7 +441,7 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, asyn
 
     try {
         for (let i = 0; i < projectDataTypes.length; i++) {
-            let projectData = await get_cached_project_data(ownerName, repoName, projectDataTypes[i], req, res);
+            let projectData = await getCachedProjectData(ownerName, SourceType.GitHub, repoName, "", projectDataTypes[i]);
             if (!projectData) {
                 // data not found in KV cache - must be manually uploaded for now per project
                 console.log(`user_project_data_references: no data found for ${projectDataTypes[i]}`);

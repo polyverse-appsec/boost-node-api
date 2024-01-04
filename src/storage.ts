@@ -69,11 +69,26 @@ export async function storeProjectData(email: string | null, sourceType: SourceT
         }
     };
 
-    try {
-        await dynamoDB.send(new PutCommand(params));
-    } catch (error) {
-        console.error(`Error storing project data: ${error}`);
-        throw error;
+    // we're going to throttle waits for DynamoDB throughput exceeded errors
+    //    and then we can tune table capacity
+    let retries = 0;
+    const maximumRetries = 8;
+
+    while (retries < maximumRetries) {
+        try {
+            await dynamoDB.send(new PutCommand(params));
+            return;
+        } catch (error: any) {
+            if (error.name === 'ProvisionedThroughputExceededException') {
+                const waitTime = (2 ** retries) + (Math.random() * (10000 - 3000) + 3000) / 1000;
+                console.log(`Waiting for ${waitTime.toFixed(3)} seconds... due to DynamoDB throughput exceeded`);
+                await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
+                retries++;
+            } else {
+                console.error(`Error writing to DynamoDB: ${error}`);
+                throw error;
+            }
+        }
     }
 }
 
