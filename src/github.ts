@@ -53,7 +53,7 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
         // Example: 'X-Resource-Access' or public or private
         const fileVisibility = 'public';
         
-        res
+        return res
             .status(200)
             .set('X-Resource-Access', fileVisibility)
             .set('content-type', 'text/plain')
@@ -121,7 +121,7 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
         // Example: 'X-Resource-Access' or public or private
         const fileVisibility = 'private';
 
-        res
+        return res
             .status(200)
             .set('X-Resource-Access', fileVisibility)
             .set('content-type', 'text/plain')
