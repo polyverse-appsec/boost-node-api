@@ -31,6 +31,10 @@ class TestServerEndpoints(unittest.TestCase):
 
     def test_retrieve_data_from_project(self):
         print("Running test: Retrieve data from the user's project")
+
+        response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456", json={}, headers=self.HEADERS)
+        self.assertEqual(response.status_code, 200)
+
         response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456", headers=self.HEADERS)
         self.assertEqual(response.status_code, 200)
 
