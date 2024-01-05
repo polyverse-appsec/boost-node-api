@@ -8,7 +8,7 @@ import {
     deleteProjectData
 } from './storage';
 import { validateUser } from './auth';
-import { getFolderPathsFromRepo, get_file_from_uri as getFileFromRepo } from './github';
+import { getFolderPathsFromRepo, getFileFromRepo } from './github';
 import { uploadProjectDataForAIAssistant } from './openai';
 import { UserProjectData } from './types/UserProjectData';
 
