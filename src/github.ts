@@ -52,10 +52,12 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
         // Set the custom header
         // Example: 'X-Resource-Access' or public or private
         const fileVisibility = 'public';
-        res.set('X-Resource-Access', fileVisibility);
-        res.set('content-type', 'text/plain');
         
-        return res.send(fileContent);
+        res
+            .status(200)
+            .set('X-Resource-Access', fileVisibility)
+            .set('content-type', 'text/plain')
+            .send(fileContent);
 
     } catch (error: any) {
         if (error.status !== 404) {
@@ -118,10 +120,12 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
         // Set the custom header
         // Example: 'X-Resource-Access' or public or private
         const fileVisibility = 'private';
-        res.set('X-Resource-Access', fileVisibility);
-        res.set('content-type', 'text/plain');
 
-        return res.send(fileContent);
+        res
+            .status(200)
+            .set('X-Resource-Access', fileVisibility)
+            .set('content-type', 'text/plain')
+            .send(fileContent);
         
     } catch (error) {
         console.error(`Error:`, error);
