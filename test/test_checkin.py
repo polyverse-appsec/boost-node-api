@@ -3,9 +3,10 @@ import requests
 
 
 class TestServerEndpoints(unittest.TestCase):
-    BASE_URL = "http://localhost:3000"  # Update with your server's URL
-    EMAIL = "aaron@polyverse.com"  # Replace with the actual email
-    HEADERS = {'x-user-account': EMAIL}
+    BASE_URL = "http://localhost:3000"  # Local Test Server
+    CLOUD_URL = "https://pt5sl5vwfjn6lsr2k6szuvfhnq0vaxhl.lambda-url.us-west-2.on.aws"  # AWS Lambda URL
+    EMAIL = "unittest@polytest.ai"
+    HEADERS = {'x-user-account': EMAIL}  # need to replace with strong private key signed test
 
     def test_retrieve_file(self):
         print("Running test: Retrieve a file from the user's project")
