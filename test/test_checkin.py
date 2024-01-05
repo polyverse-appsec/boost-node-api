@@ -2,7 +2,7 @@ import unittest
 import requests
 
 
-class TestServerEndpoints(unittest.TestCase):
+class BoostBackendCheckinSuite(unittest.TestCase):
     BASE_URL = "http://localhost:3000"  # Local Test Server
     CLOUD_URL = "https://pt5sl5vwfjn6lsr2k6szuvfhnq0vaxhl.lambda-url.us-west-2.on.aws"  # AWS Lambda URL
     EMAIL = "unittest@polytest.ai"
