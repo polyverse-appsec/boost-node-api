@@ -12,9 +12,19 @@ class TestServerEndpoints(unittest.TestCase):
         response = requests.get(f"{self.BASE_URL}/api/user_project_file?uri=https://github.com/public-apis/public-apis/blob/master/scripts/validate/links.py", headers=self.HEADERS)
         self.assertEqual(response.status_code, 200)
 
+    def test_retrieve_invalid_uri(self):
+        print("Running test: Retrieve a file from the user's project")
+        response = requests.get(f"{self.BASE_URL}/api/user_project_file?uri=example.com", headers=self.HEADERS)
+        self.assertEqual(response.status_code, 400)
+    
+    def test_retrieve_github_repo(self):
+        print("Running test: Retrieve a file from the user's project")
+        response = requests.get(f"{self.BASE_URL}/api/user_project_file?uri=https://github.com/public-apis/public-apis", headers=self.HEADERS)
+        self.assertEqual(response.status_code, 400)
+
     def test_store_data_in_project(self):
         print("Running test: Store data in the user's project")
-        data = {"org": "myorg", "project": "myproject"}
+        data = {"resources": ["resource1", "resource2"]}
         response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456", json=data, headers=self.HEADERS)
         self.assertEqual(response.status_code, 200)
 
@@ -33,3 +43,15 @@ class TestServerEndpoints(unittest.TestCase):
         print("Running test: Retrieve goals data from the user's project")
         response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/goals", headers=self.HEADERS)
         self.assertEqual(response.status_code, 200)
+
+    # def test_store_resource_in_project(self):
+    #     print("Running test: Store resource in project")
+    #     data = {"resource data": "data value for resource"}
+    #     response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456/data/files", json=data, headers=self.HEADERS)
+    #     self.assertEqual(response.status_code, 200)
+    
+    # def test_retrieve_resource_from_project(self):
+    #     print("Running test: Retrieving resource from project")
+    #     response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/data/files", headers=self.HEADERS)
+    #     self.assertEqual(response.status_code, 200)
+

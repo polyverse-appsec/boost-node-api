@@ -3,7 +3,7 @@
   "summary": {
     "projectName": "boost-node-api",
     "summaryUrl": ".boost/boost-node-api.summary.boost-notebook",
-    "filesToAnalyze": 20,
+    "filesToAnalyze": 21,
     "filesAnalyzed": 0,
     "issues": [
       "No summary file found at .boost/boost-node-api.summary.boost-notebook"
@@ -21,15 +21,6 @@
     }
   },
   "files": {
-    ".vscode/launch.json": {
-      "sourceRelFile": ".vscode/launch.json",
-      "notebookRelFile": ".boost/.vscode/launch.json.boost-notebook",
-      "totalCells": 0,
-      "completedCells": 0,
-      "errorCells": 0,
-      "issueCells": 0,
-      "sections": {}
-    },
     "package.json": {
       "sourceRelFile": "package.json",
       "notebookRelFile": ".boost/package.json.boost-notebook",
@@ -84,44 +75,17 @@
       "issueCells": 0,
       "sections": {}
     },
-    "src/auth.ts": {
-      "sourceRelFile": "src/auth.ts",
-      "notebookRelFile": ".boost/src/auth.ts.boost-notebook",
+    ".vscode\\launch.json": {
+      "sourceRelFile": ".vscode\\launch.json",
+      "notebookRelFile": ".boost/.vscode/launch.json.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
       "issueCells": 0,
       "sections": {}
     },
-    "src/users.ts": {
-      "sourceRelFile": "src/users.ts",
-      "notebookRelFile": ".boost/src/users.ts.boost-notebook",
-      "totalCells": 0,
-      "completedCells": 0,
-      "errorCells": 0,
-      "issueCells": 0,
-      "sections": {}
-    },
-    "src/secrets.ts": {
-      "sourceRelFile": "src/secrets.ts",
-      "notebookRelFile": ".boost/src/secrets.ts.boost-notebook",
-      "totalCells": 0,
-      "completedCells": 0,
-      "errorCells": 0,
-      "issueCells": 0,
-      "sections": {}
-    },
-    "src/storage.ts": {
-      "sourceRelFile": "src/storage.ts",
-      "notebookRelFile": ".boost/src/storage.ts.boost-notebook",
-      "totalCells": 0,
-      "completedCells": 0,
-      "errorCells": 0,
-      "issueCells": 0,
-      "sections": {}
-    },
-    ".vscode/tasks.json": {
-      "sourceRelFile": ".vscode/tasks.json",
+    ".vscode\\tasks.json": {
+      "sourceRelFile": ".vscode\\tasks.json",
       "notebookRelFile": ".boost/.vscode/tasks.json.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
@@ -129,72 +93,117 @@
       "issueCells": 0,
       "sections": {}
     },
-    "build/src/storage.js": {
-      "sourceRelFile": "build/src/storage.js",
-      "notebookRelFile": ".boost/build/src/storage.js.boost-notebook",
+    ".vscode\\settings.json": {
+      "sourceRelFile": ".vscode\\settings.json",
+      "notebookRelFile": ".boost/.vscode/settings.json.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
       "issueCells": 0,
       "sections": {}
     },
-    "build/src/secrets.js": {
-      "sourceRelFile": "build/src/secrets.js",
-      "notebookRelFile": ".boost/build/src/secrets.js.boost-notebook",
+    "src\\users.ts": {
+      "sourceRelFile": "src\\users.ts",
+      "notebookRelFile": ".boost/src/users.ts.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
       "issueCells": 0,
       "sections": {}
     },
-    "build/src/index.js": {
-      "sourceRelFile": "build/src/index.js",
-      "notebookRelFile": ".boost/build/src/index.js.boost-notebook",
+    "src\\test.py": {
+      "sourceRelFile": "src\\test.py",
+      "notebookRelFile": ".boost/src/test.py.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
       "issueCells": 0,
       "sections": {}
     },
-    "build/src/users.js": {
-      "sourceRelFile": "build/src/users.js",
-      "notebookRelFile": ".boost/build/src/users.js.boost-notebook",
+    "src\\storage.ts": {
+      "sourceRelFile": "src\\storage.ts",
+      "notebookRelFile": ".boost/src/storage.ts.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
       "issueCells": 0,
       "sections": {}
     },
-    "build/src/auth.js": {
-      "sourceRelFile": "build/src/auth.js",
-      "notebookRelFile": ".boost/build/src/auth.js.boost-notebook",
+    "src\\secrets.ts": {
+      "sourceRelFile": "src\\secrets.ts",
+      "notebookRelFile": ".boost/src/secrets.ts.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
       "issueCells": 0,
       "sections": {}
     },
-    "build/src/handlers.js": {
-      "sourceRelFile": "build/src/handlers.js",
-      "notebookRelFile": ".boost/build/src/handlers.js.boost-notebook",
+    "src\\openai.ts": {
+      "sourceRelFile": "src\\openai.ts",
+      "notebookRelFile": ".boost/src/openai.ts.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
       "issueCells": 0,
       "sections": {}
     },
-    "build/index.js": {
-      "sourceRelFile": "build/index.js",
-      "notebookRelFile": ".boost/build/index.js.boost-notebook",
+    "src\\index.ts": {
+      "sourceRelFile": "src\\index.ts",
+      "notebookRelFile": ".boost/src/index.ts.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
       "issueCells": 0,
       "sections": {}
     },
-    "index.ts": {
-      "sourceRelFile": "index.ts",
-      "notebookRelFile": ".boost/index.ts.boost-notebook",
+    "src\\github.ts": {
+      "sourceRelFile": "src\\github.ts",
+      "notebookRelFile": ".boost/src/github.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\checkin_test.py": {
+      "sourceRelFile": "src\\checkin_test.py",
+      "notebookRelFile": ".boost/src/checkin_test.py.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "test\\test_checkin.py": {
+      "sourceRelFile": "test\\test_checkin.py",
+      "notebookRelFile": ".boost/test/test_checkin.py.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\auth.ts": {
+      "sourceRelFile": "src\\auth.ts",
+      "notebookRelFile": ".boost/src/auth.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\types\\UserProjectData.ts": {
+      "sourceRelFile": "src\\types\\UserProjectData.ts",
+      "notebookRelFile": ".boost/src/types/UserProjectData.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\types\\ProjectDataReference.ts": {
+      "sourceRelFile": "src\\types\\ProjectDataReference.ts",
+      "notebookRelFile": ".boost/src/types/ProjectDataReference.ts.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
@@ -204,18 +213,18 @@
   },
   "account": {
     "refreshed": true,
-    "enabled": true,
-    "status": "paid",
-    "trialRemaining": 100,
+    "enabled": false,
+    "status": "expired",
+    "trialRemaining": 0,
     "usageThisMonth": 0,
     "discountedUsage": 0,
     "lastOperationCost": 0,
     "batchOperationCost": 0,
     "balanceDue": 0,
-    "couponType": "Polyverse Boost Free Trial",
-    "org": "polyverse-appsec",
-    "owner": "alex@polyverse.io",
-    "created": "2023-05-06",
+    "couponType": "None",
+    "org": "Dewey3K",
+    "owner": "airbear109@gmail.com",
+    "created": "2023-11-29",
     "creditCardLinked": false
   },
   "uiState": {

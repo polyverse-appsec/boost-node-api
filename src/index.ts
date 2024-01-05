@@ -41,9 +41,11 @@ app.get(`${api_root_endpoint}/user_project_file`, async (req: Request, res: Resp
         }
     }
 
-    const uri = new URL(uriString as string);
-    if (uri.protocol !== 'http:' && uri.protocol !== 'https:') {
-        console.error(`Invalid URI: ${uri}`);
+    let uri;
+    try {
+        uri = new URL(uriString as string);
+    } catch (error) {
+        console.error(`Invalid URI: ${uriString}`);
         return res.status(400).send('Invalid URI');
     }
 
