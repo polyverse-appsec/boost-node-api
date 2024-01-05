@@ -185,36 +185,46 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
         return res.status(400).send('Invalid URI');
     }
 
-    const getFilePaths = async (octokit : Octokit, owner: string, repo: string) => {
+    const getFilePaths = async (octokit : Octokit, owner : string, repo : string, path = '') : Promise<string[]> => {
+        let filePaths : string[] = [];
+
         try {
             const response = await octokit.rest.repos.getContent({
                 owner: owner,
                 repo: repo,
-                path: '' // Root directory
+                path: path
             });
 
             if (!Array.isArray(response.data)) {
                 throw new Error('Expected file content, got something else');
             }
 
-            return response.data
-                .filter(item => item.type === 'file')
-                .map(file => file.path);
+            for (const item of response.data) {
+                if (item.type === 'file') {
+                    filePaths.push(item.path);
+                } else if (item.type === 'dir') {
+                    // Recursive call for directories
+                    const subPaths = await getFilePaths(octokit, owner, repo, item.path);
+                    filePaths = filePaths.concat(subPaths);
+                }
+            }
         } catch (error) {
-            console.error(`Error retrieving file paths:`, error);
+            console.error(`Error retrieving file paths from ${path}:`, error);
             throw error;
         }
+
+        return filePaths;
     };
 
     // Try to get the files from GitHub via public path without authentication
     try {
         const octokit = new Octokit();
-        const folderPaths = await getFilePaths(octokit, owner, repo);
+        const filePaths = await getFilePaths(octokit, owner, repo);
 
         return res
             .status(200)
             .header('Content-Type', 'application/json')
-            .send(JSON.stringify(folderPaths));
+            .send(JSON.stringify(filePaths));
     } catch (error) {
         console.error(`Error retrieving files via public access:`, error);
     }

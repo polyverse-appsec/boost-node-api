@@ -7,6 +7,7 @@ Polyverse Boost ReST API (Backend)
 
 ### New Features
 - Add API /user_resource_folders to retrieve all resource folders for a GitHub project (GET)
+- Add API /user_resource_files to retrieve all resource files for a GitHub project (GET)
 
 ### Enhancements
 - Enable post of project and goals with an HTTP body that is a JSON object (instead of a JSON string)

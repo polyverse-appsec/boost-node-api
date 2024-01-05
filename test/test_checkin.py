@@ -19,7 +19,7 @@ class BoostBackendCheckinSuite(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIsNotNone(response.json())
         folders = response.json()
-        self.assertGreater(len(folders), 2)
+        self.assertGreaterEqual(len(folders), 3)
 
     def test_retrieve_files(self):
         print("Running test: Retrieve all files from a public project")
@@ -27,7 +27,7 @@ class BoostBackendCheckinSuite(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIsNotNone(response.json())
         files = response.json()
-        self.assertGreater(len(files), 0)
+        self.assertGreaterEqual(len(files), 22)
 
     def test_retrieve_invalid_uri(self):
         print("Running test: Retrieve a file from the user's project")
