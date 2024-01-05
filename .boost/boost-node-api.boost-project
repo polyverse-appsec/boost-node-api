@@ -111,15 +111,6 @@
       "issueCells": 0,
       "sections": {}
     },
-    "src\\test.py": {
-      "sourceRelFile": "src\\test.py",
-      "notebookRelFile": ".boost/src/test.py.boost-notebook",
-      "totalCells": 0,
-      "completedCells": 0,
-      "errorCells": 0,
-      "issueCells": 0,
-      "sections": {}
-    },
     "src\\storage.ts": {
       "sourceRelFile": "src\\storage.ts",
       "notebookRelFile": ".boost/src/storage.ts.boost-notebook",
@@ -165,15 +156,6 @@
       "issueCells": 0,
       "sections": {}
     },
-    "src\\checkin_test.py": {
-      "sourceRelFile": "src\\checkin_test.py",
-      "notebookRelFile": ".boost/src/checkin_test.py.boost-notebook",
-      "totalCells": 0,
-      "completedCells": 0,
-      "errorCells": 0,
-      "issueCells": 0,
-      "sections": {}
-    },
     "test\\test_checkin.py": {
       "sourceRelFile": "test\\test_checkin.py",
       "notebookRelFile": ".boost/test/test_checkin.py.boost-notebook",
@@ -204,6 +186,24 @@
     "src\\types\\ProjectDataReference.ts": {
       "sourceRelFile": "src\\types\\ProjectDataReference.ts",
       "notebookRelFile": ".boost/src/types/ProjectDataReference.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\types\\ProjectResource.ts": {
+      "sourceRelFile": "src\\types\\ProjectResource.ts",
+      "notebookRelFile": ".boost/src/types/ProjectResource.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\scripts\\create_project.py": {
+      "sourceRelFile": "src\\scripts\\create_project.py",
+      "notebookRelFile": ".boost/src/scripts/create_project.py.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
