@@ -20,31 +20,28 @@ export async function validateUser(req: Request, res: Response): Promise<string 
     if (req.headers['x-signed-identity']) {
         let signingKey = process.env.JWT_SIGNING_KEY;
         if (!signingKey) {
-            // get the key from the AWS Secrets Manager
-            const secretData : any = await getSecret('boost-sara');
-            signingKey = secretData['sara-client-public-key'];
+            signingKey = await getSecret('boost-sara/sara-client-public-key');
         }
         if (!signingKey) {
             console.error(`Unauthorized: Signing key is required`);
             res.status(401).send('Unauthorized');
             return undefined;
         }
+    
         let signingAlgorithm = req.headers['x-signing-algorithm'] as jwt.Algorithm;
         if (!signingAlgorithm) {
             signingAlgorithm = 'RS256';
         }
+    
+        // Extract the JWT from the identity blob
+        const identityJWT = req.headers['x-signed-identity'] as string;
 
-        // extract the JWT from the identity blob
-        const base64encodedIdentityJWT = req.headers['x-signed-identity'] as string;
-        const identityJWT = Buffer.from(base64encodedIdentityJWT, 'base64').toString('utf-8');
-
-        // verify the JWT signature
-        const publicKey = Buffer.from(signingKey as string, 'base64').toString('utf-8');
+        // Verify the JWT signature directly
         try {
-            const identity = jwt.verify(identityJWT, publicKey, { algorithms: [signingAlgorithm] }) as RawIdentity;
-
-            // check the expiration - to help avoid reuse attacks
-            if (identity.expires && identity.expires < Date.now()) {
+            const identity = jwt.verify(identityJWT, signingKey, { algorithms: [signingAlgorithm] }) as RawIdentity;
+    
+            // Check the expiration
+            if (identity.expires && identity.expires < (Date.now() / 1000)) {
                 console.error(`Unauthorized: Signed identity expired`);
                 res.status(401).send('Unauthorized');
                 return undefined;

@@ -1,12 +1,58 @@
 import unittest
 import requests
 
+import time
+import jwt
+import boto3
+
+
+def get_private_key():
+
+    secret_name = "boost-sara/sara-client-private-key"
+    region_name = "us-west-2"
+
+    # Create a Secrets Manager client
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    get_secret_value_response = client.get_secret_value(
+        SecretId=secret_name
+    )
+
+    # Decrypts secret using the associated KMS key.
+    private_key = get_secret_value_response['SecretString']
+
+    return private_key
+
 
 class BoostBackendCheckinSuite(unittest.TestCase):
     BASE_URL = "http://localhost:3000"  # Local Test Server
     CLOUD_URL = "https://pt5sl5vwfjn6lsr2k6szuvfhnq0vaxhl.lambda-url.us-west-2.on.aws"  # AWS Lambda URL
     EMAIL = "unittest@polytest.ai"
-    HEADERS = {'x-user-account': EMAIL}  # need to replace with strong private key signed test
+    HEADERS = {'x-user-account': EMAIL}
+
+    def test_strong_authn(self):
+        print("Running test: Strong authentication")
+
+        private_key = get_private_key()
+
+        # create an unsigned object that expires in 60 seconds from now (unix system time + 60 seconds)
+        expiration_unix_time = int(time.time()) + 60
+
+        # create an unsigned object that expires in 15 seconds from now (unix system time + 15 seconds)
+        unsigedIdentity = {"email": self.EMAIL, "expires": expiration_unix_time}
+
+        # Create the JWT token
+        signedIdentity = jwt.encode(unsigedIdentity, private_key, algorithm='RS256')
+
+        signedHeaders = {'x-signed-identity': signedIdentity}
+
+        data = {"resources": ["resource1", "resource2"]}
+        response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456", json=data, headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
 
     def test_retrieve_file(self):
         print("Running test: Retrieve a file from the user's project")

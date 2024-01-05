@@ -18,6 +18,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Bug Fixes
 - Fix async bug in AWS secret retrieval, ensure secrets aren't logged to server console
+- Fix private/public key validation and AWS Secret retrieval for AuthN JWT
 
 ## Version 0.6.1: January 4th, 2024
 
