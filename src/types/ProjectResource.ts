@@ -4,8 +4,15 @@ const enum ResourceType {
     ReferenceRead = "reference_read",   // user read-only to reference
 }
 
+const enum ResourceStatus {
+    Public = "public",
+    Private = "private",
+    Unknown = "unknown",
+    Error = "error",
+}
+
 interface ProjectResource {
     uri: string;
     type: string;
-    public: boolean;
+    access: ResourceStatus;
 }

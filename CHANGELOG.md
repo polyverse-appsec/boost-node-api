@@ -3,16 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.6.2: January 5th, 2024
+## Version 0.7.0: January 5th, 2024
 
 ### New Features
-- N/A
+- Add API /user_resource_folders to retrieve all resource folders for a GitHub project (GET)
 
 ### Enhancements
 - Enable post of project and goals with an HTTP body that is a JSON object (instead of a JSON string)
 - Ensure project creation doesn't store arbitrary data (e.g. only store project guidelines and resources)
-- Project Resources are not a complex object with primary/reference type and access type (Public or Private) for user
+- Project Resources are now a complex object with primary/reference type and access type (Public or Private) for user
     - NOTE: this is backward compatible for POST, but GET will return the new object type
+- Rename API from /get_file_from_uri to /user_resource_file (GET)
 
 ### Bug Fixes
 - Fix async bug in AWS secret retrieval, ensure secrets aren't logged to server console

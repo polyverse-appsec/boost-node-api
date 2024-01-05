@@ -130,7 +130,7 @@ export async function get_file_from_uri(email: string, uri: URL, req: Request, r
 }
 
 
-export async function getGitHubFile(email: string, uri: URL, req: Request, res: Response) {
+export async function getGitHubFile(email: string, uri: URL, req: Request, res: Response) : Promise<any> {
     const [, owner, repo, ...path] = uri.pathname.split('/');
 
     if (!owner || !repo || !path) {
@@ -175,10 +175,12 @@ export async function getGitHubFile(email: string, uri: URL, req: Request, res: 
         // Set the custom header
         // Example: 'X-Resource-Access' or public or private
         const fileVisibility = 'public';
-        res.set('X-Resource-Access', fileVisibility);
-        res.set('content-type', 'text/plain');
         
-        return res.send(fileContent);
+        return res
+            .status(200)
+            .set('X-Resource-Access', fileVisibility)
+            .set('content-type', 'text/plain')
+            .send(fileContent);
 
     } catch (error: any) {
         if (error.status !== 404) {
@@ -241,10 +243,12 @@ export async function getGitHubFile(email: string, uri: URL, req: Request, res: 
         // Set the custom header
         // Example: 'X-Resource-Access' or public or private
         const fileVisibility = 'private';
-        res.set('X-Resource-Access', fileVisibility);
-        res.set('content-type', 'text/plain');
 
-        return res.send(fileContent);
+        return res
+            .status(200)
+            .set('X-Resource-Access', fileVisibility)
+            .set('content-type', 'text/plain')
+            .send(fileContent);
         
     } catch (error) {
         console.error(`Error:`, error);
@@ -273,6 +277,9 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
             }
 
             return response.data
+                // Filter out folders that start with .
+                .filter(item => !item.name.startsWith('.'))
+                
                 .filter(item => item.type === 'dir')
                 .map(dir => dir.path);
         } catch (error) {
@@ -285,8 +292,11 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
     try {
         const octokit = new Octokit();
         const folderPaths = await getFolderPaths(octokit, owner, repo);
-        res.set('X-Resource-Access', 'public');
-        return res.send(folderPaths);
+
+        return res
+            .status(200)
+            .header('Content-Type', 'application/json')
+            .send(JSON.stringify(folderPaths));
     } catch (error) {
         console.error(`Error retrieving folders via public access:`, error);
     }
@@ -315,8 +325,12 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
         });
 
         const folderPaths = await getFolderPaths(octokit, owner, repo);
-        res.set('X-Resource-Access', 'private');
-        return res.send(folderPaths);
+
+        return res
+            .set('X-Resource-Access', 'private')
+            .status(200)
+            .header('Content-Type', 'application/json')
+            .send(JSON.stringify(folderPaths));
 
     } catch (error) {
         console.error(`Error retrieving folders via private access:`, error);

@@ -8,7 +8,7 @@ import {
     deleteProjectData
 } from './storage';
 import { validateUser } from './auth';
-import { get_file_from_uri } from './github';
+import { getFolderPathsFromRepo, get_file_from_uri as getFileFromRepo } from './github';
 import { uploadProjectDataForAIAssistant } from './openai';
 import { UserProjectData } from './types/UserProjectData';
 
@@ -18,7 +18,15 @@ app.use(express.json()); // Make sure to use express.json middleware to parse JS
 
 const api_root_endpoint : string = '/api';
 
-app.get(`${api_root_endpoint}/user_project_file`, async (req: Request, res: Response) => {
+/*
+// Error handling middleware
+app.use((err : any, req : Request, res : Response) => {
+    console.error(`Request ${req} failed with error ${err}`);
+    res.status(500).send('Internal Server Error');
+});
+*/
+
+app.get(`${api_root_endpoint}/user_resource_file`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -49,7 +57,41 @@ app.get(`${api_root_endpoint}/user_project_file`, async (req: Request, res: Resp
         return res.status(400).send('Invalid URI');
     }
 
-    get_file_from_uri(email, uri, req, res);
+    getFileFromRepo(email, uri, req, res);
+});
+
+app.get(`${api_root_endpoint}/user_resource_folders`, async (req: Request, res: Response) => {
+    const email = await validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    if (!req.query.uri) {
+        console.error(`URI is required`);
+        return res.status(400).send('URI is required');
+    }
+
+    let uriString = req.query.uri as string;
+
+    // Check if the URI is encoded, decode it if necessary
+    if (uriString.match(/%[0-9a-f]{2}/i)) {
+        try {
+            uriString = decodeURIComponent(uriString);
+        } catch (error) {
+            console.error(`Invalid encoded URI: ${uriString}`);
+            return res.status(400).send('Invalid encoded URI');
+        }
+    }
+
+    let uri;
+    try {
+        uri = new URL(uriString as string);
+    } catch (error) {
+        console.error(`Invalid URI: ${uriString}`);
+        return res.status(400).send('Invalid URI');
+    }
+
+    getFolderPathsFromRepo(email, uri, req, res);
 });
 
 async function getCachedProjectData(ownerName: string, sourceType: SourceType, repoName: string, resourcePath: string, projectDataType: string): Promise<string | undefined> {
@@ -106,7 +148,7 @@ app.post(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request,
             body = JSON.stringify(body);
         }
     }
-    const updatedProject : UserProjectData = JSON.parse(body);
+    const updatedProject = JSON.parse(body);
 
     // if there are resources passed into the project, and the resources are an array of strings
     //      the we need to convert the array of strings into an array of ProjectResource objects
@@ -116,8 +158,8 @@ app.post(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request,
             resources.push({
                 uri: resource,
                 type: ResourceType.PrimaryReadWrite,
-                public: false,
-            });
+                access: ResourceStatus.Unknown,
+            } as ProjectResource);
         }
         updatedProject.resources = resources;
     }
