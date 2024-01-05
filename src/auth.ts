@@ -9,7 +9,7 @@ interface RawIdentity {
     expires: number;
 }
 
-export function validateUser(req: Request, res: Response): string | undefined {
+export async function validateUser(req: Request, res: Response): Promise<string | undefined> {
     let email = '';
     // if the identity of the caller is signed, we need to verify AuthN
     //   - we'll get the signed identity blob (base-64 encoded JWT)
@@ -21,7 +21,7 @@ export function validateUser(req: Request, res: Response): string | undefined {
         let signingKey = process.env.JWT_SIGNING_KEY;
         if (!signingKey) {
             // get the key from the AWS Secrets Manager
-            const secretData : any = getSecret('boost-sara');
+            const secretData : any = await getSecret('boost-sara');
             signingKey = secretData['sara-client-public-key'];
         }
         if (!signingKey) {

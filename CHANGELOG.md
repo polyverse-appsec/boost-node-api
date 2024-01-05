@@ -13,7 +13,7 @@ Polyverse Boost ReST API (Backend)
 - Ensure project creation doesn't store arbitrary data (e.g. only store project guidelines and resources)
 
 ### Bug Fixes
-- N/A
+- Fix async bug in AWS secret retrieval, ensure secrets aren't logged to server console
 
 ## Version 0.6.1: January 4th, 2024
 

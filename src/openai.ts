@@ -62,9 +62,8 @@ interface ErrorResponse {
 }
 
 const createAssistantFile = async (dataFilename: string, data: string): Promise<string> => {
-    const secretData : any = getSecret('exetokendev');
-    console.log(`secrets: ${JSON.stringify(secretData)}`)
-    let openAiKey = secretData['openai-personal']?secretData['openai-personal']:'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';
+    const secretData : any = await getSecret('exetokendev');
+    let openAiKey = secretData['openai-personal'];
 
     if (!openAiKey) {
         throw new Error('OpenAI API key not found');

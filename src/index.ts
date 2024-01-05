@@ -19,7 +19,7 @@ app.use(express.json()); // Make sure to use express.json middleware to parse JS
 const api_root_endpoint : string = '/api';
 
 app.get(`${api_root_endpoint}/user_project_file`, async (req: Request, res: Response) => {
-    const email = validateUser(req, res);
+    const email = await validateUser(req, res);
     if (!email) {
         return;
     }
@@ -79,7 +79,7 @@ async function doesPartExist(ownerName: string, repoName: string, resourcePath: 
 }
 
 app.post(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, res: Response) => {
-    const email = validateUser(req, res);
+    const email = await validateUser(req, res);
     if (!email) {
         return;
     }
@@ -124,7 +124,7 @@ app.post(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request,
 });
 
 app.get(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, res: Response) => {
-    const email = validateUser(req, res);
+    const email = await validateUser(req, res);
     if (!email) {
         return;
     }
@@ -166,7 +166,7 @@ app.get(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, 
 });
 
 app.delete(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, res: Response) => {
-    const email = validateUser(req, res);
+    const email = await validateUser(req, res);
     if (!email) {
         return;
     }
@@ -192,7 +192,7 @@ app.delete(`${api_root_endpoint}/user_project/:org/:project`, async (req: Reques
 });
 
 app.delete(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Request, res: Response) => {
-    const email = validateUser(req, res);
+    const email = await validateUser(req, res);
     if (!email) {
         return;
     }
@@ -218,7 +218,7 @@ app.delete(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: 
 });
 
 app.post(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Request, res: Response) => {
-    const email = validateUser(req, res);
+    const email = await validateUser(req, res);
     if (!email) {
         return;
     }
@@ -254,7 +254,7 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Re
 });
 
 app.get(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Request, res: Response) => {
-    const email = validateUser(req, res);
+    const email = await validateUser(req, res);
     if (!email) {
         return;
     }
@@ -289,7 +289,7 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Req
 });
 
 app.get(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async (req: Request, res: Response) => {
-    const email = validateUser(req, res);
+    const email = await validateUser(req, res);
     if (!email) {
         return;
     }
@@ -369,7 +369,7 @@ async function splitAndStoreData(
 }
 
 app.post(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async (req: Request, res: Response) => {
-    const email = validateUser(req, res);
+    const email = await validateUser(req, res);
     if (!email) {
         return;
     }
@@ -421,7 +421,7 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async
 });
 
 app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, async (req: Request, res: Response) => {
-    const email = validateUser(req, res);
+    const email = await validateUser(req, res);
     if (!email) {
         return;
     }
@@ -506,7 +506,7 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, asyn
 });
 
 app.get(`${api_root_endpoint}/user_project/:org/:project/data_references`, async (req: Request, res: Response) => {
-    const email = validateUser(req, res);
+    const email = await validateUser(req, res);
     if (!email) {
         return;
     }
@@ -548,7 +548,7 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/data_references`, async
 });
 
 app.delete(`${api_root_endpoint}/user_project/:org/:project/data_references`, async (req: Request, res: Response) => {
-    const email = validateUser(req, res);
+    const email = await validateUser(req, res);
     if (!email) {
         return;
     }
@@ -575,7 +575,7 @@ app.delete(`${api_root_endpoint}/user_project/:org/:project/data_references`, as
 
 app.delete(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:analysisType`, async (req, res) => {
     try {
-        const email = validateUser(req, res);
+        const email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -624,7 +624,7 @@ app.delete(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:anal
 
 app.get(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:analysisType`, async (req, res) => {
     try {
-        const email = validateUser(req, res);
+        const email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -671,7 +671,7 @@ app.get(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:analysi
 
 app.post(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:analysisType`, async (req, res) => {
     try {
-        const email = validateUser(req, res);
+        const email = await validateUser(req, res);
         if (!email) {
             return res.status(401).send('Unauthorized');
         }
