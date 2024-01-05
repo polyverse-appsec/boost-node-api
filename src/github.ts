@@ -141,30 +141,38 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
         console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
         return res.status(400).send('Invalid URI');
     }
-
-    const getFolderPaths = async (octokit : Octokit, owner: string, repo: string) => {
+    
+    const getFolderPaths = async (octokit: Octokit, owner: string, repo : string, path = '') : Promise<string[]> => {
+        let folderPaths : string[] = [];
+    
         try {
             const response = await octokit.rest.repos.getContent({
                 owner: owner,
                 repo: repo,
-                path: '' // Root directory
+                path: path
             });
-
+    
             if (!Array.isArray(response.data)) {
                 throw new Error('Expected directory content, got something else');
             }
-
-            return response.data
-                // Filter out folders that start with .
-                .filter(item => !item.name.startsWith('.'))
-                
-                .filter(item => item.type === 'dir')
-                .map(dir => dir.path);
+    
+            for (const item of response.data.filter(item => !item.name.startsWith('.'))) {
+                if (item.type === 'dir') {
+                    folderPaths.push(item.path);
+    
+                    // Recursively get paths of subdirectories
+                    const subfolderPaths = await getFolderPaths(octokit, owner, repo, item.path);
+                    folderPaths = folderPaths.concat(subfolderPaths);
+                }
+            }
         } catch (error) {
-            console.error(`Error retrieving folder paths:`, error);
+            console.error(`Error retrieving folder paths from ${path}:`, error);
             throw error;
         }
+    
+        return folderPaths;
     };
+    
 
     // Try to get the folders from GitHub via public path without authentication
     try {
@@ -212,6 +220,85 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
 
     } catch (error) {
         console.error(`Error retrieving folders via private access:`, error);
+        return res.status(500).send('Internal Server Error');
+    }
+}
+
+export async function getFilePathsFromRepo(email: string, uri: URL, req: Request, res: Response) {
+    const [, owner, repo] = uri.pathname.split('/');
+
+    if (!owner || !repo) {
+        console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
+        return res.status(400).send('Invalid URI');
+    }
+
+    const getFilePaths = async (octokit : Octokit, owner: string, repo: string) => {
+        try {
+            const response = await octokit.rest.repos.getContent({
+                owner: owner,
+                repo: repo,
+                path: '' // Root directory
+            });
+
+            if (!Array.isArray(response.data)) {
+                throw new Error('Expected file content, got something else');
+            }
+
+            return response.data
+                .filter(item => item.type === 'file')
+                .map(file => file.path);
+        } catch (error) {
+            console.error(`Error retrieving file paths:`, error);
+            throw error;
+        }
+    };
+
+    // Try to get the files from GitHub via public path without authentication
+    try {
+        const octokit = new Octokit();
+        const folderPaths = await getFilePaths(octokit, owner, repo);
+
+        return res
+            .status(200)
+            .header('Content-Type', 'application/json')
+            .send(JSON.stringify(folderPaths));
+    } catch (error) {
+        console.error(`Error retrieving files via public access:`, error);
+    }
+
+    // Private access part
+    try {
+        const user = await getUser(email);
+        const installationId = user?.installationId;
+        if (!installationId) {
+            console.error(`Error: Git User not found or no installationId - ensure GitHub App is installed to access private source code: ${email}`);
+            return res.status(401).send('Unauthorized');
+        }
+
+        const secretStore = 'boost/GitHubApp';
+        const secretKeyPrivateKey = secretStore + '/' + 'private-key';
+        const privateKey = await getSecret(secretKeyPrivateKey);
+
+        // Configure the auth strategy for Octokit
+        const octokit = new Octokit({
+            authStrategy: createAppAuth,
+            auth: {
+                appId: BoostGitHubAppId,
+                privateKey: privateKey,
+                installationId: installationId,
+            }
+        });
+
+        const filePaths = await getFilePaths(octokit, owner, repo);
+
+        return res
+            .set('X-Resource-Access', 'private')
+            .status(200)
+            .header('Content-Type', 'application/json')
+            .send(JSON.stringify(filePaths));
+
+    } catch (error) {
+        console.error(`Error retrieving files via private access:`, error);
         return res.status(500).send('Internal Server Error');
     }
 }

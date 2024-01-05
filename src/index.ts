@@ -8,7 +8,7 @@ import {
     deleteProjectData
 } from './storage';
 import { validateUser } from './auth';
-import { getFolderPathsFromRepo, getFileFromRepo } from './github';
+import { getFolderPathsFromRepo, getFileFromRepo, getFilePathsFromRepo } from './github';
 import { uploadProjectDataForAIAssistant } from './openai';
 import { UserProjectData } from './types/UserProjectData';
 
@@ -92,6 +92,40 @@ app.get(`${api_root_endpoint}/user_resource_folders`, async (req: Request, res: 
     }
 
     getFolderPathsFromRepo(email, uri, req, res);
+});
+
+app.get(`${api_root_endpoint}/user_resource_files`, async (req: Request, res: Response) => {
+    const email = await validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    if (!req.query.uri) {
+        console.error(`URI is required`);
+        return res.status(400).send('URI is required');
+    }
+
+    let uriString = req.query.uri as string;
+
+    // Check if the URI is encoded, decode it if necessary
+    if (uriString.match(/%[0-9a-f]{2}/i)) {
+        try {
+            uriString = decodeURIComponent(uriString);
+        } catch (error) {
+            console.error(`Invalid encoded URI: ${uriString}`);
+            return res.status(400).send('Invalid encoded URI');
+        }
+    }
+
+    let uri;
+    try {
+        uri = new URL(uriString as string);
+    } catch (error) {
+        console.error(`Invalid URI: ${uriString}`);
+        return res.status(400).send('Invalid URI');
+    }
+
+    getFilePathsFromRepo(email, uri, req, res);
 });
 
 async function getCachedProjectData(ownerName: string, sourceType: SourceType, repoName: string, resourcePath: string, projectDataType: string): Promise<string | undefined> {
