@@ -7,92 +7,62 @@ import { getUser } from './users';
 
 const BoostGitHubAppId = "472802";
 
-
-export async function getFileFromRepo(email: string, uri: URL, req: Request, res: Response) : Promise<any> {
+export async function getFileFromRepo(email: string, uri: URL, req: Request, res: Response): Promise<any> {
     const [, owner, repo, ...path] = uri.pathname.split('/');
 
-    if (!owner || !repo || !path) {
+    if (!owner || !repo || path.length === 0) {
         console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
         return res.status(400).send('Invalid URI');
     }
 
     const filePath = path.join('/');
-
     const filePathWithoutBranch = filePath.replace(/^blob\/(main|master)\//, '');
 
-    const payload = {
-        headers: req.headers,
-        query: req.query,
-        body: req.body
-    }
-
-    console.log(`Inboumd Request: ${JSON.stringify(payload)}`);
-
-    // try to get the file from GitHub via public path without authentication
-    console.log(`Attempting to retrieve file via public access: Owner: ${owner}, Repo: ${repo}, Path: ${filePathWithoutBranch}`);
-    try {
-        const octokit = new Octokit();
+    // Inline function to get file content
+    const getFileContent = async (octokit : Octokit) => {
         const response = await octokit.rest.repos.getContent({
             owner: owner,
             repo: repo,
             path: filePathWithoutBranch
         });
 
-        let fileContent = '';
-
-        // Check if response is for a single file and has content
         if ("content" in response.data && typeof response.data.content === 'string') {
-            fileContent = Buffer.from(response.data.content, 'base64').toString('utf8');
-        } else if (Array.isArray(response.data)) {
-            console.error(`Error: Content retrieved from uri is not a string: ${uri}`);
-            return res.status(400).send('Invalid URI');
+            return Buffer.from(response.data.content, 'base64').toString('utf8');
         } else {
             throw new Error('Content not found or not a file');
         }
+    };
 
-        // Set the custom header
-        // Example: 'X-Resource-Access' or public or private
-        const fileVisibility = 'public';
-        
+    // try to get the file from GitHub via public path without authentication
+    try {
+        const octokit = new Octokit();
+        const fileContent = await getFileContent(octokit);
+
         return res
             .status(200)
-            .set('X-Resource-Access', fileVisibility)
+            .set('X-Resource-Access', 'public')
             .set('content-type', 'text/plain')
             .send(fileContent);
 
-    } catch (error: any) {
-        if (error.status !== 404) {
+    } catch (error : any) {
+        if (error.status !== 404 && error?.response?.data?.message !== 'Not Found') {
             console.error(`Error: retrieving file via public access`, error);
-        } else if (error?.response?.data?.message === 'Not Found') {
-            console.error(`Failed to retrieve file via public access`);
-        } else {
-            console.error(`Error: retrieving file via public access`, error);
+            return res.status(500).send('Internal Server Error');
         }
     }
 
-
-    const user = await getUser(email);
-    const installationId = user?.installationId;
-    if (!installationId) {
-        console.error(`Error: Git User not found or no installationId - ensure GitHub App is installed to access private source code: ${email}`);
-        return res.status(401).send('Unauthorized');
-    }
-
-    // try to get the file from GitHub via private path with authentication
-    console.log(`Attempting to retrieve file via private access: Owner: ${owner}, Repo: ${repo}, Path: ${filePathWithoutBranch}`);
+    // Process for private access
     try {
+        const user = await getUser(email);
+        const installationId = user?.installationId;
+        if (!installationId) {
+            console.error(`Error: Git User not found or no installationId - ensure GitHub App is installed to access private source code: ${email}`);
+            return res.status(401).send('Unauthorized');
+        }
 
         const secretStore = 'boost/GitHubApp';
         const secretKeyPrivateKey = secretStore + '/' + 'private-key';
-
         const privateKey = await getSecret(secretKeyPrivateKey);
-
-        // Configure the auth strategy for Octokit
-        const auth = createAppAuth({
-            appId: BoostGitHubAppId,
-            privateKey: privateKey,
-            installationId: installationId,
-        });
 
         const octokit = new Octokit({
             authStrategy: createAppAuth,
@@ -103,33 +73,16 @@ export async function getFileFromRepo(email: string, uri: URL, req: Request, res
             }
         });
 
-        const response = await octokit.rest.repos.getContent({
-            owner: owner,
-            repo: repo,
-            path: filePathWithoutBranch
-        });
-
-        let fileContent = '';
-        // Check if response is for a single file and has content
-        if ("content" in response.data && typeof response.data.content === 'string') {
-            fileContent = Buffer.from(response.data.content, 'base64').toString('utf8');
-            console.log(`File returned: Owner: ${owner}, Repo: ${repo}, Path: ${filePathWithoutBranch}`);
-        } else {
-            throw new Error('Content not found or not a file');
-        }
-
-        // Set the custom header
-        // Example: 'X-Resource-Access' or public or private
-        const fileVisibility = 'private';
+        const fileContent = await getFileContent(octokit);
 
         return res
             .status(200)
-            .set('X-Resource-Access', fileVisibility)
+            .set('X-Resource-Access', 'private')
             .set('content-type', 'text/plain')
             .send(fileContent);
-        
+
     } catch (error) {
-        console.error(`Error:`, error);
+        console.error(`Error retrieving file via private access:`, error);
         return res.status(500).send('Internal Server Error');
     }
 }
