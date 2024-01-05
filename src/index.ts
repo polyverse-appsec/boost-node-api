@@ -107,21 +107,35 @@ app.post(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request,
         }
     }
     const updatedProject : UserProjectData = JSON.parse(body);
+
+    // if there are resources passed into the project, and the resources are an array of strings
+    //      the we need to convert the array of strings into an array of ProjectResource objects
+    if (updatedProject.resources && Array.isArray(updatedProject.resources)) {
+        const resources : any[] = [];
+        for (const resource of updatedProject.resources) {
+            resources.push({
+                uri: resource,
+                type: ResourceType.PrimaryReadWrite,
+                public: false,
+            });
+        }
+        updatedProject.resources = resources;
+    }
     const storedProject : UserProjectData = {
         org : org,
-        user: email,
         project_name : project,
         guidelines : updatedProject.guidelines? updatedProject.guidelines : '',
         resources : updatedProject.resources? updatedProject.resources : [],
     };
 
-    await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProject);
+    const storedProjectString = JSON.stringify(storedProject);
+
+    await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProjectString);
 
     console.log(`user_project: stored data`);
 
     return res
         .status(200)
-        .header('Content-Type', 'application/json')
         .send();
 });
 
@@ -149,13 +163,23 @@ app.get(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, 
         return res.status(404).send('Project not found');
     }
     projectData = JSON.parse(projectData);
+    if (projectData.resources && projectData.resources.length > 0) {
+        // we need to convert the resources string array into an array of ProjectResource objects
+        const resources : any[] = [];
+        for (const resource of projectData.resources) {
+            resources.push({
+                uri: resource,
+                type: ResourceType.PrimaryReadWrite,
+                public: false,
+            });
+        }
+    }
 
     console.log(`user_project: retrieved data`);
 
     // create an object with the string fields, org, project_name, guidelines, array of string resources
     const userProjectData : UserProjectData = {
         org : org,
-        user: email,
         project_name : project,
         guidelines : projectData.guidelines? projectData.guidelines : '',
         resources : projectData.resources? projectData.resources : [],
@@ -189,7 +213,6 @@ app.delete(`${api_root_endpoint}/user_project/:org/:project`, async (req: Reques
 
     return res
         .status(200)
-        .header('Content-Type', 'application/json')
         .send();
 });
 
@@ -215,7 +238,6 @@ app.delete(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: 
 
     return res
         .status(200)
-        .header('Content-Type', 'application/json')
         .send();
 });
 
@@ -251,7 +273,6 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Re
 
     return res
         .status(200)
-        .header('Content-Type', 'application/json')
         .send();
 });
 
@@ -542,10 +563,10 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/data_references`, async
 
     console.log(`user_project_data_references: retrieved ids`);
 
-    // send result as a JSON string in the body
-    res.header('Content-Type', 'application/json');
-
-    return res.status(200).send(JSON.stringify(dataReferences));
+    return res
+        .status(200)
+        .header('Content-Type', 'application/json')
+        .send(JSON.stringify(dataReferences));
 
 });
 
@@ -571,7 +592,6 @@ app.delete(`${api_root_endpoint}/user_project/:org/:project/data_references`, as
 
     return res
         .status(200)
-        .header('Content-Type', 'application/json')
         .send();
 });
 
