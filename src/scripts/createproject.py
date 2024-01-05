@@ -1,17 +1,19 @@
 import os
 import sys
 
-def create_project(email, organization, github_repo):
-    # Create the project directory
-    project_name = f"{organization}_project"
-    os.makedirs(project_name, exist_ok=True)
+def sanitize_email(email):
+    """Sanitize the email to create a valid directory name."""
+    return email.replace('@', '_')
 
-    # Create a simple README file
-    readme_content = f"# {project_name}\n\nCreated by {email}\n"
-    with open(os.path.join(project_name, "README.md"), "w") as file:
-        file.write(readme_content)
+def create_project(email, organization, repo_name):
+    # Sanitize email
+    email_dir = sanitize_email(email)
 
-    print(f"Project {project_name} created")
+    # Create the directory structure: email/organization/repo_name
+    project_path = os.path.join(email_dir, organization, repo_name)
+    os.makedirs(project_path, exist_ok=True)
+
+    print(f"Project created at: {project_path}")
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:
