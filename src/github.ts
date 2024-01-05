@@ -41,7 +41,7 @@ export async function getFileFromRepo(email: string, uri: URL, req: Request, res
         return res
             .status(200)
             .set('X-Resource-Access', 'public')
-            .set('content-type', 'text/plain')
+            .contentType('text/plain')
             .send(fileContent);
 
     } catch (error : any) {
@@ -78,7 +78,7 @@ export async function getFileFromRepo(email: string, uri: URL, req: Request, res
         return res
             .status(200)
             .set('X-Resource-Access', 'private')
-            .set('content-type', 'text/plain')
+            .contentType('text/plain')
             .send(fileContent);
 
     } catch (error) {
@@ -134,7 +134,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
 
         return res
             .status(200)
-            .header('Content-Type', 'application/json')
+            .contentType('application/json')
             .send(JSON.stringify(folderPaths));
     } catch (error) {
         console.error(`Error retrieving folders via public access:`, error);
@@ -168,7 +168,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
         return res
             .set('X-Resource-Access', 'private')
             .status(200)
-            .header('Content-Type', 'application/json')
+            .contentType('application/json')
             .send(JSON.stringify(folderPaths));
 
     } catch (error) {
@@ -223,7 +223,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
 
         return res
             .status(200)
-            .header('Content-Type', 'application/json')
+            .contentType('application/json')
             .send(JSON.stringify(filePaths));
     } catch (error) {
         console.error(`Error retrieving files via public access:`, error);
@@ -257,7 +257,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
         return res
             .set('X-Resource-Access', 'private')
             .status(200)
-            .header('Content-Type', 'application/json')
+            .contentType('application/json')
             .send(JSON.stringify(filePaths));
 
     } catch (error) {

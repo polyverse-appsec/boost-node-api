@@ -1,6 +1,6 @@
 export interface UserProjectData {
     org : string,
-    project_name : string,
+    name : string,
     guidelines : string,
     resources : ProjectResource[],
 }

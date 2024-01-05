@@ -26,7 +26,8 @@ app.use((err : any, req : Request, res : Response) => {
 });
 */
 
-app.get(`${api_root_endpoint}/user_resource_file`, async (req: Request, res: Response) => {
+const user_resource_file = `/user_resource_file`;
+app.get(`${api_root_endpoint}${user_resource_file}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -60,7 +61,8 @@ app.get(`${api_root_endpoint}/user_resource_file`, async (req: Request, res: Res
     getFileFromRepo(email, uri, req, res);
 });
 
-app.get(`${api_root_endpoint}/user_resource_folders`, async (req: Request, res: Response) => {
+const user_resource_folders = `/user_resource_folders`;
+app.get(`${api_root_endpoint}${user_resource_folders}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -94,7 +96,8 @@ app.get(`${api_root_endpoint}/user_resource_folders`, async (req: Request, res: 
     getFolderPathsFromRepo(email, uri, req, res);
 });
 
-app.get(`${api_root_endpoint}/user_resource_files`, async (req: Request, res: Response) => {
+const user_resource_files = `/user_resource_files`;
+app.get(`${api_root_endpoint}${user_resource_files}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -156,7 +159,8 @@ async function doesPartExist(ownerName: string, repoName: string, resourcePath: 
     return partData !== undefined;
 }
 
-app.post(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, res: Response) => {
+const user_project_org_project = `/user_project/:org/:project`;
+app.post(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -199,7 +203,7 @@ app.post(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request,
     }
     const storedProject : UserProjectData = {
         org : org,
-        project_name : project,
+        name : project,
         guidelines : updatedProject.guidelines? updatedProject.guidelines : '',
         resources : updatedProject.resources? updatedProject.resources : [],
     };
@@ -208,66 +212,31 @@ app.post(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request,
 
     await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProjectString);
 
-    console.log(`user_project: stored data`);
+    console.log(`${user_project_org_project}: stored data`);
 
     return res
         .status(200)
         .send();
 });
 
-app.get(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
     }
 
-    const { org, project } = req.params;
-
-    if (!org || !project) {
-        if (!org) {
-            console.error(`Org is required`);
-        } else if (!project) {
-            console.error(`Project is required`);
-        }
-        return res.status(400).send('Invalid resource path');
+    const projectData = await loadProjectData(email, req, res) as UserProjectData;
+    if (projectData instanceof Response) {
+        return projectData;
     }
-
-    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
-
-    if (!projectData) {
-        console.error(`Project not found: ${org}/${project}`);
-        return res.status(404).send('Project not found');
-    }
-    projectData = JSON.parse(projectData);
-    if (projectData.resources && projectData.resources.length > 0) {
-        // we need to convert the resources string array into an array of ProjectResource objects
-        const resources : any[] = [];
-        for (const resource of projectData.resources) {
-            resources.push({
-                uri: resource,
-                type: ResourceType.PrimaryReadWrite,
-                public: false,
-            });
-        }
-    }
-
-    console.log(`user_project: retrieved data`);
-
-    // create an object with the string fields, org, project_name, guidelines, array of string resources
-    const userProjectData : UserProjectData = {
-        org : org,
-        project_name : project,
-        guidelines : projectData.guidelines? projectData.guidelines : '',
-        resources : projectData.resources? projectData.resources : [],
-    };
 
     return res
         .status(200)
-        .header('Content-Type', 'application/json')
-        .send(JSON.stringify(userProjectData));
+        .contentType('application/json')
+        .send(JSON.stringify(projectData));
 });
 
-app.delete(`${api_root_endpoint}/user_project/:org/:project`, async (req: Request, res: Response) => {
+app.delete(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -285,14 +254,15 @@ app.delete(`${api_root_endpoint}/user_project/:org/:project`, async (req: Reques
     }
 
     await deleteProjectData(email, SourceType.General, org, project, '', 'project');
-    console.log(`user_project: deleted data`);
+    console.log(`${user_project_org_project}: deleted data`);
 
     return res
         .status(200)
         .send();
 });
 
-app.delete(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Request, res: Response) => {
+const user_project_org_project_goals = `/user_project/:org/:project/goals`;
+app.delete(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -317,7 +287,7 @@ app.delete(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: 
         .send();
 });
 
-app.post(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Request, res: Response) => {
+app.post(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -345,14 +315,14 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Re
     }
     await storeProjectData(email, SourceType.General, org, project, '', 'goals', body);
 
-    console.log(`user_project_goals: stored data`);
+    console.log(`${user_project_org_project_goals}: stored data`);
 
     return res
         .status(200)
         .send();
 });
 
-app.get(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -371,51 +341,34 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/goals`, async (req: Req
 
     const projectGoalsRaw = await getProjectData(email, SourceType.General, org, project, '', 'goals');
 
-    console.log(`user_project_goals: retrieved data`);
+    console.log(`${user_project_org_project_goals}: retrieved data`);
 
     // create an object with the project goals
     const projectGoals = {
         org : org,
-        user: email,
-        project_name : project,
+        name : project,
         goals : projectGoalsRaw,
     };
 
     return res
         .status(200)
-        .header('Content-Type', 'application/json')
+        .contentType('application/json')
         .send(JSON.stringify(projectGoals));
 });
 
-app.get(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async (req: Request, res: Response) => {
+const user_project_org_project_data_resource = `/user_project/:org/:project/data/:resource`;
+app.get(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
     }
 
-    const { org, project, resource } = req.params;
-
-    if (!org || !project || !resource) {
-        if (!org) {
-            console.error(`Org is required`);
-        } else if (!project) {
-            console.error(`Project is required`);
-        } else if (!resource) {
-            console.error(`Resource is required`);
-        }
-
-        return res.status(400).send('Invalid resource path');
+    const projectData = await loadProjectData(email, req, res) as UserProjectData;
+    if (projectData instanceof Response) {
+        return projectData;
     }
 
-    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
-    if (!projectData) {
-        console.error(`Project not found: ${org}/${project}`);
-        return res.status(404).send('Project not found');
-    }
-    projectData = JSON.parse(projectData) as UserProjectData;
-    console.log(`user_project: retrieved data`);
-
-    const uri = new URL(projectData.resources[0] as string);
+    const uri = new URL(projectData.resources[0].uri);
 
     // Split the pathname by '/' and filter out empty strings
     const pathSegments = uri.pathname.split('/').filter(segment => segment);
@@ -430,9 +383,10 @@ app.get(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async 
     // we store the project data under the owner (instead of email) so all users in the org can see the data
     // NOTE - we are storing the data for ONLY the first resource in the project (references are not included yet)
 
+    const { _, __, resource } = req.params;
     const resourceData = await getCachedProjectData(ownerName, SourceType.GitHub, repoName, '', resource);
 
-    console.log(`user_project_data: retrieved data`);
+    console.log(`${user_project_org_project_data_resource}: retrieved data`);
     return res.status(200).send(resourceData);
 });
 
@@ -467,35 +421,18 @@ async function splitAndStoreData(
     }
 }
 
-app.post(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async (req: Request, res: Response) => {
+app.post(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
     }
 
-    const { org, project, resource } = req.params;
-
-    if (!org || !project || !resource) {
-        if (!org) {
-            console.error(`Org is required`);
-        } else if (!project) {
-            console.error(`Project is required`);
-        } else if (!resource) {
-            console.error(`Resource is required`);
-        }
-
-        return res.status(400).send('Invalid resource path');
+    const projectData = await loadProjectData(email, req, res) as UserProjectData;
+    if (projectData instanceof Response) {
+        return projectData;
     }
 
-    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
-    if (!projectData) {
-        console.error(`Project not found: ${org}/${project}`);
-        return res.status(404).send('Project not found');
-    }
-    projectData = JSON.parse(projectData) as UserProjectData;
-    console.log(`user_project: retrieved data`);
-
-    const uri = new URL(projectData.resources[0] as string);
+    const uri = new URL(projectData.resources[0].uri);
     // Split the pathname by '/' and filter out empty strings
     const pathSegments = uri.pathname.split('/').filter(segment => segment);
 
@@ -513,18 +450,15 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data/:resource`, async
     if (typeof body !== 'string') {
         body = Buffer.from(body).toString('utf8');
     }
+
+    const { _, __, resource } = req.params;
     await splitAndStoreData(ownerName, SourceType.GitHub, ownerName, repoName, '', resource, body);
 
-    console.log(`user_project_data: stored data`);
+    console.log(`${user_project_org_project_data_resource}: stored data`);
     return res.status(200).send();
 });
 
-app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, async (req: Request, res: Response) => {
-    const email = await validateUser(req, res);
-    if (!email) {
-        return;
-    }
-
+async function loadProjectData(email: string, req: Request, res: Response): Promise<UserProjectData | Response> {
     const { org, project } = req.params;
 
     if (!org || !project) {
@@ -533,20 +467,86 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, asyn
         } else if (!project) {
             console.error(`Project is required`);
         }
+
         return res.status(400).send('Invalid resource path');
     }
 
     let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
-    if (projectData) {
-        projectData = JSON.parse(projectData) as UserProjectData;
+    if (!projectData) {
+        console.error(`loadProjectData: not found: ${org}/${project}`);
+        return res.status(404).send('Project not found');
     }
-    if (!projectData.resources || projectData.resources.length === 0) {
-        console.error(`No resources found in project: ${org}/${project}`);
+    projectData = JSON.parse(projectData) as UserProjectData;
+    console.log(`loadProjectData: retrieved data`);
+
+    // create an object with the string fields, org, name, guidelines, array of string resources
+    const userProjectData : UserProjectData = {
+        org : org,
+        name : project,
+        guidelines : projectData.guidelines? projectData.guidelines : '',
+        resources : projectData.resources? projectData.resources : [],
+    };
+
+    return projectData;
+}
+
+const user_project_org_project_data_resource_generator = `/user_project/:org/:project/data/:resource/generator`;
+app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
+    const email = await validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    const projectData = await loadProjectData(email, req, res) as UserProjectData;
+    if (projectData instanceof Response) {
+        return projectData;
+    }
+
+    const uri = new URL(projectData.resources[0].uri);
+    // Split the pathname by '/' and filter out empty strings
+    const pathSegments = uri.pathname.split('/').filter(segment => segment);
+
+    // The relevant part is the last segment of the path
+    const repoName = pathSegments.pop();
+    const ownerName = pathSegments.pop();
+    if (!repoName || !ownerName) {
+        throw new Error(`Invalid URI: ${uri}`);
+    }
+
+    // we store the project data under the owner (instead of email) so all users in the org can see the data
+    // NOTE - we are storing the data for ONLY the first resource in the project (references are not included yet)
+    // if req body is not a string, then we need to convert back into a normal string
+    let body = req.body;
+    if (typeof body !== 'string') {
+        body = Buffer.from(body).toString('utf8');
+    }
+
+    const { _, __, resource } = req.params;
+    await splitAndStoreData(ownerName, SourceType.GitHub, ownerName, repoName, '', resource, body);
+
+    console.log(`${user_project_org_project_data_resource_generator}: stored data`);
+    return res.status(200).send();
+});
+
+const user_project_org_project_data_references = `/user_project/:org/:project/data_references`;
+app.post(`${api_root_endpoint}${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
+    const email = await validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    const userProjectData = await loadProjectData(email, req, res) as UserProjectData;
+    if (userProjectData instanceof Response) {
+        return userProjectData;
+    }
+
+    if (!userProjectData.resources || userProjectData.resources.length === 0) {
+        console.error(`No resources found in project: ${userProjectData.org}/${userProjectData.name}`);
         return res.status(400).send('No resources found in project');
     }
-    const uri = new URL(projectData.resources[0] as string);
+    const uri = new URL(userProjectData.resources[0].uri);
 
-    console.log(`user_project_data_references: Request validated uri: ${uri}`);
+    console.log(`${user_project_org_project_data_references}: Request validated uri: ${uri}`);
 
     // Split the pathname by '/' and filter out empty strings
     const pathSegments = uri.pathname.split('/').filter(segment => segment);
@@ -576,77 +576,67 @@ app.post(`${api_root_endpoint}/user_project/:org/:project/data_references`, asyn
             let projectData = await getCachedProjectData(ownerName, SourceType.GitHub, repoName, "", projectDataTypes[i]);
             if (!projectData) {
                 // data not found in KV cache - must be manually uploaded for now per project
-                console.log(`user_project_data_references: no data found for ${projectDataTypes[i]}`);
+                console.log(`${user_project_org_project_data_references}: no data found for ${projectDataTypes[i]}`);
                 return res.status(400).send(`No data found for ${projectDataTypes[i]}`);
             }
 
-            console.log(`user_project_data_references: retrieved project data for ${projectDataTypes[i]}`);
+            console.log(`${user_project_org_project_data_references}: retrieved project data for ${projectDataTypes[i]}`);
 
             try {
-                const storedProjectDataId : any[] = await uploadProjectDataForAIAssistant(`${org}_${project}`, uri, projectDataTypes[i], projectDataNames[i], projectData, req, res);
-                console.log(`user_project_data_references: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${storedProjectDataId}`);
+                const storedProjectDataId : any[] = await uploadProjectDataForAIAssistant(`${userProjectData.org}_${userProjectData.name}`, uri, projectDataTypes[i], projectDataNames[i], projectData, req, res);
+                console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${storedProjectDataId}`);
                 projectDataFileIds.push(storedProjectDataId);
             } catch (error) {
-                console.error(`Handler Error: user_project_data_references: Unable to store project data:`, error);
+                console.error(`Handler Error: ${user_project_org_project_data_references}: Unable to store project data:`, error);
                 console.error(`Error storing project data:`, error);
                 return res.status(500).send('Internal Server Error');
             }
         }
     } catch (error) {
-        console.error(`Handler Error: user_project_data_references: Unable to retrieve project data:`, error);
+        console.error(`Handler Error: ${user_project_org_project_data_references}: Unable to retrieve project data:`, error);
         return res.status(500).send('Internal Server Error');
     }
 
-    await storeProjectData(email, SourceType.General, org, project, '', 'data_references', projectDataFileIds);
+    await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', projectDataFileIds);
 
-    console.log(`user_project_data_references: stored data`);
+    console.log(`${user_project_org_project_data_references}: stored data`);
 
     return res.status(200).send();
 });
 
-app.get(`${api_root_endpoint}/user_project/:org/:project/data_references`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
     }
 
-    const { org, project } = req.params;
-
-    if (!org || !project) {
-        if (!org) {
-            console.error(`Org is required`);
-        } else if (!project) {
-            console.error(`Project is required`);
-        }
-        return res.status(400).send('Invalid resource path');
+    const projectData = await loadProjectData(email, req, res) as UserProjectData;
+    if (projectData instanceof Response) {
+        return projectData;
     }
 
-    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
-    if (projectData) {
-        projectData = JSON.parse(projectData) as UserProjectData;
-    }
     if (!projectData.resources || projectData.resources.length === 0) {
-        console.error(`No resources found in project: ${org}/${project}`);
+        console.error(`No resources found in project: ${projectData.org}/${projectData.name}`);
         return res.status(400).send('No resources found in project');
     }
-    const uri = new URL(projectData.resources[0] as string);
+    const uri = new URL(projectData.resources[0].uri);
 
-    const dataReferences : any[] = await getProjectData(email, SourceType.General, org, project, '', 'data_references');
+    const dataReferences : any[] = await getProjectData(email, SourceType.General, projectData.org, projectData.name, '', 'data_references');
     if (!dataReferences) {
-        console.error(`No resources found in project: ${org}/${project}`);
+        console.error(`No resources found in project: ${projectData.org}/${projectData.name}`);
         return res.status(400).send('No data references found for project');
     }
 
-    console.log(`user_project_data_references: retrieved ids`);
+    console.log(`${user_project_org_project_data_references}: retrieved ids`);
 
     return res
         .status(200)
-        .header('Content-Type', 'application/json')
+        .contentType('application/json')
         .send(JSON.stringify(dataReferences));
 
 });
 
-app.delete(`${api_root_endpoint}/user_project/:org/:project/data_references`, async (req: Request, res: Response) => {
+app.delete(`${api_root_endpoint}${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -664,14 +654,15 @@ app.delete(`${api_root_endpoint}/user_project/:org/:project/data_references`, as
     }
 
     await deleteProjectData(email, SourceType.General, org, project, '', 'data_references');
-    console.log(`user_project_data_references: deleted data`);
+    console.log(`${user_project_org_project_data_references}: deleted data`);
 
     return res
         .status(200)
         .send();
 });
 
-app.delete(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:analysisType`, async (req, res) => {
+const files_source_owner_project_path_analysisType = `/files/:source/:owner/:project/:pathBase64/:analysisType`;
+app.delete(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, async (req, res) => {
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -711,16 +702,16 @@ app.delete(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:anal
 
         return res
             .status(200)
-            .header('Content-Type', 'application/json')
+            .contentType('application/json')
             .send();
 
     } catch (error) {
-        console.error(`Handler Error: /api/files/:source/:owner/:project/:pathBase64/:analysisType`, error);
+        console.error(`Handler Error: ${files_source_owner_project_path_analysisType}`, error);
         return res.status(500).send('Internal Server Error');
     }
 });
 
-app.get(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:analysisType`, async (req, res) => {
+app.get(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, async (req, res) => {
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -760,14 +751,14 @@ app.get(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:analysi
             return res.status(404).send('Resource not found');
         }
 
-        return res.status(200).header('Content-Type', 'text/plain').send(data);
+        return res.status(200).contentType('text/plain').send(data);
     } catch (error) {
-        console.error(`Handler Error: /api/files/:source/:owner/:project/:pathBase64/:analysisType`, error);
+        console.error(`Handler Error: ${files_source_owner_project_path_analysisType}`, error);
         return res.status(500).send('Internal Server Error');
     }
 });
 
-app.post(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:analysisType`, async (req, res) => {
+app.post(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, async (req, res) => {
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -798,30 +789,16 @@ app.post(`${api_root_endpoint}/files/:source/:owner/:project/:pathBase64/:analys
         res.sendStatus(200);
 
     } catch (error) {
-        console.error(`Handler Error: /api/files/:source/:owner/:project/:pathBase64/:analysisType`, error);
+        console.error(`Handler Error: ${files_source_owner_project_path_analysisType}`, error);
         return res.status(500).send('Internal Server Error');
     }
 });
 
 app.get("/test", (req, res, next) => {
-    // Set the content type to text
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
-    // Write initial part of the response
-    res.write("Hello ");
-
-    // Use a setInterval to send data in intervals
-    const intervalId = setInterval(() => {
-        res.write("world ");
-    }, 1000); // Sends "world " every second
-
-    // Stop sending data after 5 seconds
-    setTimeout(() => {
-        clearInterval(intervalId);
-        res.end("Goodbye!"); // End the response with a final message
-    }, 5000);
+    return res
+        .status(200)
+        .contentType("text/plain")
+        .send("Test Ack");
 });
 
 module.exports.handler = serverless(app);
