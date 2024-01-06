@@ -7,6 +7,7 @@ Polyverse Boost ReST API (Backend)
 
 ### New Features
 - Stub APIs for resource generator (e.g. blueprint, aispec, etc) (GET/POST) - Task-based API, doesn't yet generate real data
+- Add API to GET /{project}/config/.boostignore info (read-only for now), and per project
 
 ### Enhancements
 - Enable signed call-outs from Backend Service API or Boost Lambda (when available)

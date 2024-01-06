@@ -16,6 +16,15 @@ import { ProjectResource, ResourceType, ResourceStatus } from './types/ProjectRe
 import axios from 'axios';
 import { ProjectDataReference } from './types/ProjectDataReference';
 
+import { 
+    defaultBoostIgnorePaths,
+    boostFilterFiles,
+    potentiallyUsefulTextFiles,
+    defaultIgnoredFolders,
+    binaryFilePatterns,
+    textFilePatterns
+} from './utility/fileConstants';
+
 export const app = express();
 
 app.use(express.json()); // Make sure to use express.json middleware to parse JSON request body
@@ -327,7 +336,8 @@ app.post(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Re
 
     return res
         .status(200)
-        .send();
+        .contentType('application/json')
+        .send(JSON.parse(body));
 });
 
 app.get(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Request, res: Response) => {
@@ -364,6 +374,32 @@ app.get(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Req
         .send(projectGoals);
 });
 
+const user_project_org_project_config_boostignore = `/user_project/:org/:project/config/.boostignore`;
+app.get(`${api_root_endpoint}${user_project_org_project_config_boostignore}`, async (req: Request, res: Response) => {
+    const email = await validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    // Combine all arrays and create a Set to remove duplicates
+    const combinedIgnorePatterns = new Set([
+        ...defaultBoostIgnorePaths,
+        ...boostFilterFiles,
+        ...potentiallyUsefulTextFiles,
+        ...defaultIgnoredFolders,
+        ...binaryFilePatterns,
+        ...textFilePatterns
+    ]);
+
+    const ignoreFileSpecs : string[] = Array.from(combinedIgnorePatterns);
+
+    console.log(`${user_project_org_project_config_boostignore}: read-only .boostignore returned`);
+    return res
+        .status(200)
+        .contentType('application/json')
+        .send(ignoreFileSpecs);
+});
+
 const user_project_org_project_data_resource = `/user_project/:org/:project/data/:resource`;
 app.get(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
@@ -392,7 +428,10 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (
     const resourceData = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, '', resource);
 
     console.log(`${user_project_org_project_data_resource}: retrieved data`);
-    return res.status(200).send(resourceData);
+    return res
+        .status(200)
+        .contentType('application/json')
+        .send(resourceData);
 });
 
 async function splitAndStoreData(
