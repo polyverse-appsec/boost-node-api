@@ -591,12 +591,16 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
     };
 
     if (userGeneratorRequest.status === TaskStatus.Processing) {
+
+        console.log(`${user_project_org_project_data_resource_generator}: processing task: ${JSON.stringify(userGeneratorRequest)}`);
+
         // if we're only updating the timestamp on the processing, then don't kick off any new work
         if (currentGeneratorState.status === TaskStatus.Processing) {
             if (userGeneratorRequest.last_updated && currentGeneratorState.status_details) {
                 currentGeneratorState.last_updated = userGeneratorRequest.last_updated;
                 currentGeneratorState.status_details = userGeneratorRequest.status_details;
 
+                console.log(`${user_project_org_project_data_resource_generator}: updated processing task: ${JSON.stringify(currentGeneratorState)}`);
                 await updateGeneratorState(currentGeneratorState);
 
                 return res
@@ -615,6 +619,8 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
 
             // if we've finished all stages, then we'll set the status to complete and idle
             if (currentGeneratorState.stage === Stages.Complete) {
+                console.log(`${user_project_org_project_data_resource_generator}: completed all stages`);
+
                 currentGeneratorState.status = TaskStatus.Idle;
             }
 
@@ -636,6 +642,7 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
             // we need to terminate the current call so we don't create a long blocking HTTP call
             //      so we'll start a new async HTTP request - detached from the caller to continue processing
             //      the next stage
+            console.log(`${user_project_org_project_data_resource_generator}: starting async processing for ${currentGeneratorState}`);
 
             // create a new request object
             const newProcessingRequest : GeneratorState = {
@@ -647,7 +654,13 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
             //      lifetime of the current call. Additionally, we need to wait a couple seconds to make sure
             //      the new call is created before we return a response to the caller and the host of this call
             //      terminates
-            const selfEndpoint = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+
+            let selfEndpoint = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+            // if we're running locally, then we'll use http:// no matter what
+            if (req.get('host')?.includes('localhost')) {
+                selfEndpoint = `http://${req.get('host')}${req.originalUrl}`;
+            }
+            
             axios.post(selfEndpoint, newProcessingRequest, {
                     headers: await signedAuthHeader(email),
                     timeout: 2000 })
@@ -671,6 +684,8 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
                 .send(currentGeneratorState);
         }
     } else if (userGeneratorRequest.status === TaskStatus.Idle) {
+        console.log(`${user_project_org_project_data_resource_generator}: idle task: ${JSON.stringify(userGeneratorRequest)}`);
+
         if (currentGeneratorState.status === TaskStatus.Processing) {
             // if we have been processing for less than 3 minutes, then we'll return busy HTTP status code
             //      We choose 3 minutes because the forked rate above waits 2 seconds before returning
@@ -692,6 +707,10 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
         }
     } else if (userGeneratorRequest.status === TaskStatus.Error) {
         // external caller can't set the status to error, so we'll return bad input HTTP status code
+        console.error(`Invalid input status: ${userGeneratorRequest.status}`);
+        return res.status(400).send();
+    } else {
+        // external caller can't set the status to unknown, so we'll return bad input HTTP status code
         console.error(`Invalid input status: ${userGeneratorRequest.status}`);
         return res.status(400).send();
     }
