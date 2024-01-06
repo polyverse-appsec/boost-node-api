@@ -3,6 +3,19 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.8.0: January 5th, 2024
+
+### New Features
+- Stub APIs for resource generator (e.g. blueprint, aispec, etc) (GET/POST) - Task-based API, doesn't yet generate real data
+
+### Enhancements
+- Enable signed call-outs from Backend Service API or Boost Lambda (when available)
+- Ensure all user data is stored in isolated KV rows - previously repo data was stored per repo org (default is isolation for now)
+
+### Bug Fixes
+- Fix issue in resource data for Project creation - incorrectly stored when using comoatibility mode
+- Ensure goals and data_references are returned as JSON object, not a string
+
 ## Version 0.7.0: January 5th, 2024
 
 ### New Features

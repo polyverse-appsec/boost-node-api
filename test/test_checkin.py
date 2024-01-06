@@ -110,6 +110,53 @@ class BoostBackendCheckinSuite(unittest.TestCase):
         print("Running test: Retrieve goals data from the user's project")
         response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/goals", headers=self.HEADERS)
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"goal": "goal value"})
+
+    def test_task_generator_launch(self):
+        print("Running test: launch a generator")
+
+        # create a sample project to test with
+        data = {"resources": [{"uri": "http://www.github.com/public-apis/public-apis"}]}
+        response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456", json=data, headers=self.HEADERS)
+        self.assertEqual(response.status_code, 200)
+
+        response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint/generator", headers=self.HEADERS)
+        self.assertEqual(response.status_code, 200)
+        if response.json()['status'] != "idle":
+            print("Generator is not idle, so test results may be compromised - continuing anyway")
+
+            # try to idle the task generator
+            response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint/generator", json={"status": "processing"}, headers=self.HEADERS)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["status"], "idle")
+
+            # check the generator state to make sure its idle
+            response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint/generator", headers=self.HEADERS)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["status"], "idle")
+
+        # start the task generator
+        response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint/generator", json={"status": "processing"}, headers=self.HEADERS)
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.json()["status"], "processing")
+
+        # we'll loop until the generator is idle or in an error state - for 30 seconds max
+        #       every second, we'll do a GET and check its state
+        #       if it's idle, we'll break out of the loop and pass the test
+        #       if it's in an error state, we'll break out of the loop and fail the test
+        #       if it's still processing, we'll continue looping
+        #       each loop, we'll print the current generator state
+        for i in range(15):
+            response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint/generator", headers=self.HEADERS)
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(response.json()["status"], ["idle", "processing", "error"])
+            print(f"Check {i}:\n\t{response.json()}")
+            if response.json()["status"] == "idle":
+                break
+            if response.json()["status"] == "error":
+                break
+            time.sleep(2)
+        self.assertEqual(response.json()["status"], "idle")
 
     # def test_store_resource_in_project(self):
     #     print("Running test: Store resource in project")

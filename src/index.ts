@@ -7,10 +7,13 @@ import {
     convertToSourceType,
     deleteProjectData
 } from './storage';
-import { validateUser } from './auth';
+import { validateUser, signedAuthHeader } from './auth';
 import { getFolderPathsFromRepo, getFileFromRepo, getFilePathsFromRepo } from './github';
 import { uploadProjectDataForAIAssistant } from './openai';
 import { UserProjectData } from './types/UserProjectData';
+import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
+import { ProjectResource, ResourceType, ResourceStatus } from './types/ProjectResource';
+import axios from 'axios';
 
 export const app = express();
 
@@ -131,18 +134,18 @@ app.get(`${api_root_endpoint}${user_resource_files}`, async (req: Request, res: 
     getFilePathsFromRepo(email, uri, req, res);
 });
 
-async function getCachedProjectData(ownerName: string, sourceType: SourceType, repoName: string, resourcePath: string, projectDataType: string): Promise<string | undefined> {
+async function getCachedProjectData(email: string, sourceType: SourceType, ownerName: string, repoName: string, resourcePath: string, projectDataType: string): Promise<string | undefined> {
     let partNumber = 1;
-    let projectData = await getProjectData(ownerName, sourceType, ownerName, repoName, resourcePath, projectDataType);
+    let projectData = await getProjectData(email, sourceType, ownerName, repoName, resourcePath, projectDataType);
     
     if (projectData) {
         return projectData;
     }
 
-    if (await doesPartExist(ownerName, repoName, resourcePath, projectDataType, 1)) {
+    if (await doesPartExist(email, ownerName, repoName, resourcePath, projectDataType, 1)) {
         let allData = '';
         while (true) {
-            const partData = await getProjectData(ownerName, sourceType, ownerName, repoName, resourcePath, `${projectDataType}:part-${partNumber}`);
+            const partData = await getProjectData(email, sourceType, ownerName, repoName, resourcePath, `${projectDataType}:part-${partNumber}`);
             if (!partData) break;
             allData += partData;
             partNumber++;
@@ -154,8 +157,8 @@ async function getCachedProjectData(ownerName: string, sourceType: SourceType, r
 }
 
 // Helper function to check if a specific part exists
-async function doesPartExist(ownerName: string, repoName: string, resourcePath: string, projectDataType: string, partNumber: number): Promise<boolean> {
-    const partData = await getProjectData(ownerName, SourceType.GitHub, ownerName, repoName, resourcePath, `${projectDataType}:part-${partNumber}`);
+async function doesPartExist(email: string, ownerName: string, repoName: string, resourcePath: string, projectDataType: string, partNumber: number): Promise<boolean> {
+    const partData = await getProjectData(email, SourceType.GitHub, ownerName, repoName, resourcePath, `${projectDataType}:part-${partNumber}`);
     return partData !== undefined;
 }
 
@@ -193,11 +196,15 @@ app.post(`${api_root_endpoint}${user_project_org_project}`, async (req: Request,
     if (updatedProject.resources && Array.isArray(updatedProject.resources)) {
         const resources : any[] = [];
         for (const resource of updatedProject.resources) {
-            resources.push({
-                uri: resource,
-                type: ResourceType.PrimaryReadWrite,
-                access: ResourceStatus.Unknown,
-            } as ProjectResource);
+            if (typeof resource !== 'string') {
+                resources.push(resource);
+            } else {
+                resources.push({
+                    uri: resource,
+                    type: ResourceType.PrimaryReadWrite,
+                    access: ResourceStatus.Unknown,
+                } as ProjectResource);
+            }
         }
         updatedProject.resources = resources;
     }
@@ -353,7 +360,7 @@ app.get(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Req
     return res
         .status(200)
         .contentType('application/json')
-        .send(JSON.stringify(projectGoals));
+        .send(projectGoals);
 });
 
 const user_project_org_project_data_resource = `/user_project/:org/:project/data/:resource`;
@@ -380,11 +387,8 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (
         throw new Error(`Invalid URI: ${uri}`);
     }
 
-    // we store the project data under the owner (instead of email) so all users in the org can see the data
-    // NOTE - we are storing the data for ONLY the first resource in the project (references are not included yet)
-
     const { _, __, resource } = req.params;
-    const resourceData = await getCachedProjectData(ownerName, SourceType.GitHub, repoName, '', resource);
+    const resourceData = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, '', resource);
 
     console.log(`${user_project_org_project_data_resource}: retrieved data`);
     return res.status(200).send(resourceData);
@@ -452,7 +456,7 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource}`, async 
     }
 
     const { _, __, resource } = req.params;
-    await splitAndStoreData(ownerName, SourceType.GitHub, ownerName, repoName, '', resource, body);
+    await splitAndStoreData(email, SourceType.GitHub, ownerName, repoName, '', resource, body);
 
     console.log(`${user_project_org_project_data_resource}: stored data`);
     return res.status(200).send();
@@ -491,7 +495,7 @@ async function loadProjectData(email: string, req: Request, res: Response): Prom
 }
 
 const user_project_org_project_data_resource_generator = `/user_project/:org/:project/data/:resource/generator`;
-app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -513,20 +517,209 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
         throw new Error(`Invalid URI: ${uri}`);
     }
 
-    // we store the project data under the owner (instead of email) so all users in the org can see the data
-    // NOTE - we are storing the data for ONLY the first resource in the project (references are not included yet)
-    // if req body is not a string, then we need to convert back into a normal string
-    let body = req.body;
-    if (typeof body !== 'string') {
-        body = Buffer.from(body).toString('utf8');
+    const { _, __, resource } = req.params;
+    const currentInput = await getProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`);
+    if (!currentInput) {
+        console.log(`${user_project_org_project_data_resource_generator}: simulated idle data`);
+
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send({
+                status: TaskStatus.Idle,
+            } as GeneratorState);
+    } else {
+        console.log(`${user_project_org_project_data_resource_generator}: retrieved data`);
+
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send(currentInput);
+    }
+});
+
+app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
+    const email = await validateUser(req, res);
+    if (!email) {
+        return res;
     }
 
-    const { _, __, resource } = req.params;
-    await splitAndStoreData(ownerName, SourceType.GitHub, ownerName, repoName, '', resource, body);
+    const projectData = await loadProjectData(email, req, res) as UserProjectData | Response;
+    if (projectData instanceof Response) {
+        return projectData as Response;
+    }
 
-    console.log(`${user_project_org_project_data_resource_generator}: stored data`);
-    return res.status(200).send();
+    const uri = new URL((projectData as UserProjectData).resources[0].uri);
+    const pathSegments = uri.pathname.split('/').filter(segment => segment);
+    const repoName = pathSegments.pop();
+    const ownerName = pathSegments.pop();
+    if (!repoName || !ownerName) {
+        throw new Error(`Invalid URI: ${uri}`);
+    }
+
+    let body = req.body;
+    if (typeof body !== 'string') {
+        body = JSON.stringify(body);
+    }
+
+    const input : GeneratorState = JSON.parse(body);
+    let userGeneratorRequest : GeneratorState = {
+        status: input.status
+    };
+
+    const { _, __, resource } = req.params;
+    let currentGeneratorState : GeneratorState =
+        await getProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`);
+    if (!currentGeneratorState) {
+        currentGeneratorState = {
+            status: TaskStatus.Idle,
+        };
+    } else if (typeof currentGeneratorState === 'string') {
+        currentGeneratorState = JSON.parse(currentGeneratorState) as GeneratorState;
+    }
+
+    const updateGeneratorState = async (generatorState: GeneratorState) => {
+        if (!generatorState.last_updated) {
+            generatorState.last_updated = Math.floor(Date.now() / 1000);
+        }
+
+        await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', 
+            `${resource}/generator`, JSON.stringify(generatorState));
+
+        console.log(`${user_project_org_project_data_resource_generator}: stored new state: ${JSON.stringify(generatorState)}`);
+    };
+
+    if (userGeneratorRequest.status === TaskStatus.Processing) {
+        // if we're only updating the timestamp on the processing, then don't kick off any new work
+        if (currentGeneratorState.status === TaskStatus.Processing) {
+            if (userGeneratorRequest.last_updated && currentGeneratorState.status_details) {
+                currentGeneratorState.last_updated = userGeneratorRequest.last_updated;
+                currentGeneratorState.status_details = userGeneratorRequest.status_details;
+
+                await updateGeneratorState(currentGeneratorState);
+
+                return res
+                    .status(200)
+                    .contentType('application/json')
+                    .send(currentGeneratorState);
+            }
+        }
+
+        try {
+            currentGeneratorState.status = TaskStatus.Processing;
+            await updateGeneratorState(currentGeneratorState);
+
+            // Launch the processing task
+            currentGeneratorState.stage = await processStage(currentGeneratorState.stage);
+
+            // if we've finished all stages, then we'll set the status to complete and idle
+            if (currentGeneratorState.stage === Stages.Complete) {
+                currentGeneratorState.status = TaskStatus.Idle;
+            }
+
+            await updateGeneratorState(currentGeneratorState);
+        } catch (error) {
+            console.error(`Error processing stage ${currentGeneratorState.stage}:`, error);
+
+            // In case of error, set status to error
+            currentGeneratorState.status = TaskStatus.Error;
+
+            await updateGeneratorState(currentGeneratorState);
+
+            // we errored out, so we'll return an error HTTP status code for operation failed, may need to retry
+            return res.status(500).send();
+        }
+
+        // if we're processing and not yet completed the full stages, then we need to process the next stage
+        if (currentGeneratorState.status === TaskStatus.Processing && currentGeneratorState.stage !== Stages.Complete) {
+            // we need to terminate the current call so we don't create a long blocking HTTP call
+            //      so we'll start a new async HTTP request - detached from the caller to continue processing
+            //      the next stage
+
+            // create a new request object
+            const newProcessingRequest : GeneratorState = {
+                status: TaskStatus.Processing,
+            };
+
+            // start async HTTP request against this serverless app
+            // we're going to make an external call... so the lifetime of the forked call is not tied to the
+            //      lifetime of the current call. Additionally, we need to wait a couple seconds to make sure
+            //      the new call is created before we return a response to the caller and the host of this call
+            //      terminates
+            const selfEndpoint = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+            axios.post(selfEndpoint, newProcessingRequest, {
+                    headers: await signedAuthHeader(email),
+                    timeout: 2000 })
+                .then(response => {
+                    // if the new task stage completes in 2 seconds, we'll wait...
+                    console.log(`${user_project_org_project_data_resource_generator}: Async Processing completed for ${newProcessingRequest}: `, response.status);
+                })
+                    // otherwise, we'll move on
+                .catch(error => {
+                    if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
+                        console.log(`${user_project_org_project_data_resource_generator}: Async Processing started for ${newProcessingRequest}`);
+                    } else {
+                        console.log(`${user_project_org_project_data_resource_generator}: Async Processing failed for ${newProcessingRequest}: `, error);
+                    }
+                });
+                            
+            // Return a response immediately without waiting for the async process
+            return res
+                .status(202)
+                .contentType('application/json')
+                .send(currentGeneratorState);
+        }
+    } else if (userGeneratorRequest.status === TaskStatus.Idle) {
+        if (currentGeneratorState.status === TaskStatus.Processing) {
+            // if we have been processing for less than 3 minutes, then we'll return busy HTTP status code
+            //      We choose 3 minutes because the forked rate above waits 2 seconds before returning
+            //      so if a new task runs, we'd expect to update processing time at least every 1-2 minutes
+            if (currentGeneratorState.last_updated &&
+                currentGeneratorState.last_updated > (Math.floor(Date.now() / 3000) - 60 * 1)) {
+                // if caller wants us to be idle, and we're busy processing, we'll return busy HTTP
+                //      status code
+                return res
+                    .status(409)
+                    .contentType('application/json')
+                    .send(currentGeneratorState);
+            } else {
+                // if we have been processing for more than 15 minutes, then we'll return idle HTTP status code
+                //      and we'll reset the status to idle
+                currentGeneratorState.status = TaskStatus.Idle;
+                await updateGeneratorState(currentGeneratorState);
+            }
+        }
+    } else if (userGeneratorRequest.status === TaskStatus.Error) {
+        // external caller can't set the status to error, so we'll return bad input HTTP status code
+        console.error(`Invalid input status: ${userGeneratorRequest.status}`);
+        return res.status(400).send();
+    }
+
+    return res
+        .status(200)
+        .contentType('application/json')
+        .send(currentGeneratorState);
 });
+
+async function processStage(stage?: string) {
+    if (!stage) {
+        stage = "stage1";
+    }
+    // wait for 3 seconds to simulate processing
+    console.log(`Processing stage ${stage}...`);
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    // Implement the logic for processing each stage
+    // Example:
+    switch (stage) {
+        case "stage1":
+            return "stage2";
+        case "stage2":
+            return "stage3";
+        case "stage3":
+            return Stages.Complete;
+    }
+}
 
 const user_project_org_project_data_references = `/user_project/:org/:project/data_references`;
 app.post(`${api_root_endpoint}${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
@@ -573,7 +766,7 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_references}`, asyn
 
     try {
         for (let i = 0; i < projectDataTypes.length; i++) {
-            let projectData = await getCachedProjectData(ownerName, SourceType.GitHub, repoName, "", projectDataTypes[i]);
+            let projectData = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, "", projectDataTypes[i]);
             if (!projectData) {
                 // data not found in KV cache - must be manually uploaded for now per project
                 console.log(`${user_project_org_project_data_references}: no data found for ${projectDataTypes[i]}`);
@@ -632,7 +825,7 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_references}`, async
     return res
         .status(200)
         .contentType('application/json')
-        .send(JSON.stringify(dataReferences));
+        .send(dataReferences);
 
 });
 

@@ -83,3 +83,17 @@ function normalizeEmail(email: string): string {
     email = email.toLowerCase();
     return email.replace(/@polytest\.ai$/i, '@polyverse.com');
 }
+
+export async function signedAuthHeader(email: string): Promise<any> {
+    let signingKey = process.env.JWT_SIGNING_KEY;
+    if (!signingKey) {
+        signingKey = await getSecret('boost-sara/sara-client-private-key');
+    }
+    if (!signingKey) {
+        return undefined;
+    }
+        // if the domain of the email is polyverse.com then change it to polytest.ai
+    // use a regex to replace the domain case insensitive
+    const signedToken = jwt.sign({ email: email }, signingKey, { algorithm: 'RS256' });
+    return { 'X-Signed-Identity': signedToken}
+}
