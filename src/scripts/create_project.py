@@ -43,9 +43,8 @@ def create_project(email, organization, github_uri, project_name=None):
     return response
 
 def run_script(summarizer_path, args):
-    if args is None:
-        args = ""
     try:
+        print("python", summarizer_path, args)
         result = subprocess.run(["python", summarizer_path, args], check=True, capture_output=True, text=True)
         print(f"Output of summarizer:\n{result.stdout}")
     except subprocess.CalledProcessError as e:
@@ -66,8 +65,9 @@ def post_data(email, organization, project_name, resource_name, data):
     signed_identity = jwt.encode(unsigned_identity, private_key, algorithm='RS256')
     signed_headers = {'x-signed-identity': signed_identity}
 
+    payload = {"resources": data}
     response = requests.post(f"{LOCAL_URL}/api/user_project/{organization}/{project_name}/data/{resource_name}",
-                             json={'content': data}, headers=HEADERS)
+                                data=payload, headers=HEADERS)
     return response
 
 def post_data_references(email, organization, project_name):
@@ -117,15 +117,29 @@ def main():
     if response.status_code == 200:
         print("Project created successfully. Running additional scripts...")
 
+        #run_script(args.path_to_summarizer, "--rawonly")
+        subprocess.run(["python", args.path_to_summarizer, "--rawonly"], check=True, capture_output=True, text=True)
+        print("Raw files generated successfully.")
+
+        #run_script(args.path_to_summarizer, "")
+        subprocess.run(["python", args.path_to_summarizer], check=True, capture_output=True, text=True)
+        print("Processed summary files generated successfully.")
+        
         # Post files to openai
-        for summarizer_path, output_file, resource_name, additional_args in [
-            (args.path_to_summarizer, "allfiles_combined.md", "raw_sources", "--rawonly"),
-            (args.path_to_summarizer, "aispec.md", "aispec", None),
+        for output_file, resource_name in [
+            ("allfiles_combined.md", "projectsource"),
+            ("aispec.md", "aispec"),
         ]:
-            run_script(summarizer_path, additional_args)
             file_content = read_file(output_file)
             post_response = post_data(args.email, args.organization, args.project_name, resource_name, file_content)
             print(f"POST to {resource_name}: {post_response.status_code}, {post_response.text}")
+
+
+        #placeholder blueprint code, replace the data with actual blueprint file
+        blueprint_data = "resources"
+        post_response = post_data(args.email, args.organization, args.project_name, "blueprint", blueprint_data)
+        print(f"POST to blueprint: {post_response.status_code}, {post_response.text}")
+
 
         # Poke openai to process the files
         post_data_references(args.email, args.organization, args.project_name)
