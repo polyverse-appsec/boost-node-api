@@ -39,7 +39,7 @@ def create_project(email, organization, github_uri, project_name=None):
 
     data = {"resources": [github_uri]}
 
-    response = requests.post(f"{LOCAL_URL}/api/user_project/{organization}/{project_name}", json=data, headers=HEADERS)
+    response = requests.post(f"{BASE_URL}/api/user_project/{organization}/{project_name}", json=data, headers=HEADERS)
     return response
 
 def run_script(summarizer_path, args):
@@ -65,8 +65,8 @@ def post_data(email, organization, project_name, resource_name, data):
     signed_identity = jwt.encode(unsigned_identity, private_key, algorithm='RS256')
     signed_headers = {'x-signed-identity': signed_identity}
 
-    payload = {"resources": data}
-    response = requests.post(f"{LOCAL_URL}/api/user_project/{organization}/{project_name}/data/{resource_name}",
+    payload = {"resources" : data}
+    response = requests.post(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_name}",
                                 data=payload, headers=HEADERS)
     return response
 
@@ -81,13 +81,13 @@ def post_data_references(email, organization, project_name):
     signed_identity = jwt.encode(unsigned_identity, private_key, algorithm='RS256')
     signed_headers = {'x-signed-identity': signed_identity}
 
-    post_response = requests.post(f"{LOCAL_URL}/api/user_project/{organization}/{project_name}/data_references/", headers=HEADERS)
+    post_response = requests.post(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data_references/", headers=HEADERS)
     if post_response.status_code != 200:
         print(f"Failed to process data references: {post_response.status_code}, {post_response.text}")
         return
 
     # GET request to retrieve processed data
-    get_response = requests.get(f"{LOCAL_URL}/api/user_project/{organization}/{project_name}/data_references/", headers=HEADERS)
+    get_response = requests.get(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data_references/", headers=HEADERS)
     if get_response.status_code == 200:
         print("Processed Data References!")
     else:
