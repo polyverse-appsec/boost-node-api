@@ -3,6 +3,8 @@ import { Octokit } from '@octokit/rest';
 import { createAppAuth } from '@octokit/auth-app';
 import { getSecret } from './secrets';
 import { getUser } from './users';
+import axios from 'axios';
+import AdmZip from 'adm-zip';
 
 
 const BoostGitHubAppId = "472802";
@@ -263,5 +265,86 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
     } catch (error) {
         console.error(`Error retrieving files via private access:`, error);
         return res.status(500).send('Internal Server Error');
+    }
+}
+
+interface FileContent {
+    path: string;
+    source: string;
+}
+
+export async function getFullSourceFromRepo(email: string, uri: URL, req: Request, res: Response) {
+    const [, owner, repo] = uri.pathname.split('/');
+
+    if (!owner || !repo) {
+        console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
+        return res.status(400).send('Invalid URI');
+    }
+
+    const downloadAndExtractRepo = async (url: string): Promise<FileContent[]> => {
+        try {
+            const response = await axios.get(url, {
+                responseType: 'arraybuffer'
+            });
+            const zip = new AdmZip(response.data);
+            const zipEntries = zip.getEntries();
+
+            return zipEntries.map(entry => ({
+                path: entry.entryName,
+                source: entry.getData().toString('utf8')
+            }));
+        } catch (error) {
+            console.error(`Error downloading or extracting repository:`, error);
+            throw error;
+        }
+    };
+
+    const octokit = new Octokit();
+    try {
+        // Fetch repository details to get the default branch
+        const repoDetails = await octokit.rest.repos.get({
+            owner: owner,
+            repo: repo
+        });
+        const defaultBranch = repoDetails.data.default_branch;
+
+        // Attempt to retrieve the repository source publicly
+        const publicArchiveUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${defaultBranch}`;
+
+        const fileContents = await downloadAndExtractRepo(publicArchiveUrl);
+        return res.status(200).contentType('application/json').send(JSON.stringify(fileContents));
+    } catch (publicError) {
+        console.log('Public access failed, attempting authenticated access');
+
+        // Public access failed, switch to authenticated access
+        try {
+            const user = await getUser(email);
+            const installationId = user?.installationId;
+            if (!installationId) {
+                console.error(`Error: Git User not found or no installationId - ensure GitHub App is installed to access private source code: ${email}`);
+                return res.status(401).send('Unauthorized');
+            }
+
+            const secretStore = 'boost/GitHubApp';
+            const secretKeyPrivateKey = secretStore + '/' + 'private-key';
+            const privateKey = await getSecret(secretKeyPrivateKey);
+
+            const octokit = new Octokit({
+                authStrategy: createAppAuth,
+                auth: {
+                    appId: BoostGitHubAppId,
+                    privateKey: privateKey,
+                    installationId: installationId,
+                }
+            });
+
+            const archiveUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${defaultBranch}`;
+        
+            const fileContents = await downloadAndExtractRepo(archiveUrl);
+            return res.status(200).contentType('application/json').send(JSON.stringify(fileContents));
+        } catch (authenticatedError) {
+            console.error(`Error retrieving files via authenticated access:`, authenticatedError);
+            return res.status(500).send('Internal Server Error');
+        }
     }
 }
