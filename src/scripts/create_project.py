@@ -42,14 +42,14 @@ def create_project(email, organization, github_uri, project_name=None):
     response = requests.post(f"{LOCAL_URL}/api/user_project/{organization}/{project_name}", json=data, headers=HEADERS)
     return response
 
-def run_script(script_name, args):
+def run_script(summarizer_path, args):
     if args is None:
-        args = []
+        args = ""
     try:
-        result = subprocess.run([script_name, *args], check=True, capture_output=True, text=True)
-        print(f"Output of {script_name}:\n{result.stdout}")
+        result = subprocess.run(["python", summarizer_path, args], check=True, capture_output=True, text=True)
+        print(f"Output of summarizer:\n{result.stdout}")
     except subprocess.CalledProcessError as e:
-        print(f"Error running {script_name}:\n{e.output}")
+        print(f"Error running summarizer:\n{e.output}")
 
 def read_file(file_path):
     with open(file_path, 'r') as file:
@@ -118,11 +118,11 @@ def main():
         print("Project created successfully. Running additional scripts...")
 
         # Post files to openai
-        for script, output_file, resource_name, additional_args in [
-            (f"python {args.path_to_summarizer}", "allfiles_combined.md", "raw_sources", ["--rawonly"]),
-            (f"python {args.path_to_summarizer}", "aispec.md", "aispec", None),
+        for summarizer_path, output_file, resource_name, additional_args in [
+            (args.path_to_summarizer, "allfiles_combined.md", "raw_sources", "--rawonly"),
+            (args.path_to_summarizer, "aispec.md", "aispec", None),
         ]:
-            run_script(script, additional_args)
+            run_script(summarizer_path, additional_args)
             file_content = read_file(output_file)
             post_response = post_data(args.email, args.organization, args.project_name, resource_name, file_content)
             print(f"POST to {resource_name}: {post_response.status_code}, {post_response.text}")
