@@ -14,6 +14,7 @@ import { UserProjectData } from './types/UserProjectData';
 import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
 import { ProjectResource, ResourceType, ResourceStatus } from './types/ProjectResource';
 import axios from 'axios';
+import { ProjectDataReference } from './types/ProjectDataReference';
 
 export const app = express();
 
@@ -776,8 +777,9 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_references}`, asyn
             console.log(`${user_project_org_project_data_references}: retrieved project data for ${projectDataTypes[i]}`);
 
             try {
-                const storedProjectDataId : any[] = await uploadProjectDataForAIAssistant(`${userProjectData.org}_${userProjectData.name}`, uri, projectDataTypes[i], projectDataNames[i], projectData, req, res);
+                const storedProjectDataId = await uploadProjectDataForAIAssistant(`${userProjectData.org}_${userProjectData.name}`, uri, projectDataTypes[i], projectDataNames[i], projectData, req, res);
                 console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${storedProjectDataId}`);
+
                 projectDataFileIds.push(storedProjectDataId);
             } catch (error) {
                 console.error(`Handler Error: ${user_project_org_project_data_references}: Unable to store project data:`, error);
@@ -794,7 +796,10 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_references}`, asyn
 
     console.log(`${user_project_org_project_data_references}: stored data`);
 
-    return res.status(200).send();
+    return res
+        .status(200)
+        .contentType('application/json')
+        .send(projectDataFileIds);
 });
 
 app.get(`${api_root_endpoint}${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
@@ -814,11 +819,12 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_references}`, async
     }
     const uri = new URL(projectData.resources[0].uri);
 
-    const dataReferences : any[] = await getProjectData(email, SourceType.General, projectData.org, projectData.name, '', 'data_references');
-    if (!dataReferences) {
+    const dataReferencesRaw : string = await getProjectData(email, SourceType.General, projectData.org, projectData.name, '', 'data_references');
+    if (!dataReferencesRaw) {
         console.error(`No resources found in project: ${projectData.org}/${projectData.name}`);
         return res.status(400).send('No data references found for project');
     }
+    const dataReferences = JSON.parse(dataReferencesRaw) as ProjectDataReference[];
 
     console.log(`${user_project_org_project_data_references}: retrieved ids`);
 
