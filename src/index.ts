@@ -545,12 +545,13 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
         return res;
     }
 
-    const projectData = await loadProjectData(email, req, res) as UserProjectData | Response;
-    if (projectData instanceof Response) {
-        return projectData as Response;
+    const loadedProjectData = await loadProjectData(email, req, res) as UserProjectData | Response;
+    if (loadedProjectData instanceof Response) {
+        return loadedProjectData as Response;
     }
+    const projectData = loadedProjectData as UserProjectData;
 
-    const uri = new URL((projectData as UserProjectData).resources[0].uri);
+    const uri = new URL(projectData.resources[0].uri);
     const pathSegments = uri.pathname.split('/').filter(segment => segment);
     const repoName = pathSegments.pop();
     const ownerName = pathSegments.pop();
@@ -615,7 +616,7 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
             await updateGeneratorState(currentGeneratorState);
 
             // Launch the processing task
-            currentGeneratorState.stage = await processStage(currentGeneratorState.stage);
+            currentGeneratorState.stage = await processStage(email, projectData, resource, currentGeneratorState.stage);
 
             // if we've finished all stages, then we'll set the status to complete and idle
             if (currentGeneratorState.stage === Stages.Complete) {
@@ -660,7 +661,7 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
             if (req.get('host')?.includes('localhost')) {
                 selfEndpoint = `http://${req.get('host')}${req.originalUrl}`;
             }
-            
+
             axios.post(selfEndpoint, newProcessingRequest, {
                     headers: await signedAuthHeader(email),
                     timeout: 2000 })
@@ -721,7 +722,7 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
         .send(currentGeneratorState);
 });
 
-async function processStage(stage?: string) {
+async function processStage(email: string, project: UserProjectData, resource: string, stage?: string) {
     if (!stage) {
         stage = "stage1";
     }
