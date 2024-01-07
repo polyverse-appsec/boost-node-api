@@ -24,6 +24,7 @@ import {
     binaryFilePatterns,
     textFilePatterns
 } from './utility/fileConstants';
+import { ProjectDataFilename, ProjectDataType } from './types/ProjectData';
 
 export const app = express();
 
@@ -813,16 +814,17 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_references}`, asyn
     }
 
     const projectDataFileIds = [];
-
-    const projectDataTypes = [];
-    projectDataTypes.push('projectsource');
-    projectDataTypes.push('aispec');
-    projectDataTypes.push('blueprint');
-
     const projectDataNames = [];
-    projectDataNames.push(`allfiles_combined.md`);
-    projectDataNames.push(`aispec.md`);
-    projectDataNames.push('blueprint.md');
+    const projectDataTypes = [];
+
+    projectDataTypes.push(ProjectDataType.ProjectSource);
+    projectDataNames.push(ProjectDataFilename.ProjectSource);
+
+    projectDataTypes.push(ProjectDataType.ProjectSpecification);
+    projectDataNames.push(ProjectDataFilename.ProjectSpecification);
+
+    projectDataTypes.push(ProjectDataType.ArchitecturalBlueprint);
+    projectDataNames.push(ProjectDataFilename.ArchitecturalBlueprint);
 
     try {
         for (let i = 0; i < projectDataTypes.length; i++) {
