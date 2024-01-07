@@ -732,7 +732,7 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
             //      We choose 3 minutes because the forked rate above waits 2 seconds before returning
             //      so if a new task runs, we'd expect to update processing time at least every 1-2 minutes
             if (currentGeneratorState.last_updated &&
-                currentGeneratorState.last_updated > (Math.floor(Date.now() / 3000) - 60 * 1)) {
+                currentGeneratorState.last_updated > (Math.floor(Date.now() / 1000) - 60 * 3)) {
                 // if caller wants us to be idle, and we're busy processing, we'll return busy HTTP
                 //      status code
                 return res
