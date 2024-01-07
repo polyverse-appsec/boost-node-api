@@ -312,7 +312,10 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
         const publicArchiveUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${defaultBranch}`;
 
         const fileContents = await downloadAndExtractRepo(publicArchiveUrl);
-        return res.status(200).contentType('application/json').send(JSON.stringify(fileContents));
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send(fileContents);
     } catch (publicError) {
         console.log('Public access failed, attempting authenticated access');
 
@@ -341,7 +344,10 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
             const archiveUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${defaultBranch}`;
         
             const fileContents = await downloadAndExtractRepo(archiveUrl);
-            return res.status(200).contentType('application/json').send(JSON.stringify(fileContents));
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(fileContents);
         } catch (authenticatedError) {
             console.error(`Error retrieving files via authenticated access:`, authenticatedError);
             return res.status(500).send('Internal Server Error');
