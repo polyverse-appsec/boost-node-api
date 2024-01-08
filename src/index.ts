@@ -175,6 +175,57 @@ async function doesPartExist(email: string, ownerName: string, repoName: string,
 }
 
 const user_project_org_project = `/user_project/:org/:project`;
+app.patch(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
+
+    const email = await validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    const { org, project } = req.params;
+
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+        return res.status(400).send('Invalid resource path');
+    }
+
+    let body = req.body;
+    let updated_body = JSON.parse(body) as UserProjectData;
+    
+    let defined_key;
+    let defined_key_value;
+
+    const definedEntry = Object.entries(updated_body).find(([key, value]) => value !== undefined);
+
+    if (definedEntry) {
+        const [definedKey, definedValue] = definedEntry;
+        defined_key = definedKey;
+        defined_key_value = definedValue;
+        //console.log(`Defined field: ${definedKey}, Value: ${definedValue}`);
+    }
+
+    const projectData = await loadProjectData(email, req, res) as UserProjectData;
+
+    if ((defined_key as string) in projectData) {
+        projectData[defined_key as keyof UserProjectData] = defined_key_value;
+    }
+
+    const storedProjectString = JSON.stringify(projectData);
+
+    await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProjectString);
+
+    console.log(`${user_project_org_project}: updated data`);
+
+    return res
+        .status(200)
+        .send();
+});
+
+
 app.post(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
