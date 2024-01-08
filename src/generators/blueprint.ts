@@ -40,7 +40,7 @@ readonly defaultBlueprint =
 
     async generate(stage?: string) : Promise<string> {
 
-        if (!stage || stage !== Stages.Complete) {
+        if (!stage || stage === Stages.Complete) {
             await this.updateProgress('Generating Default Blueprint');
 
             this.data = this.defaultBlueprint.replace('{projectName}', this.projectData.name);
