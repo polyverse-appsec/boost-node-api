@@ -158,6 +158,11 @@ class BoostBackendCheckinSuite(unittest.TestCase):
             time.sleep(2)
         self.assertEqual(response.json()["status"], "idle")
 
+        response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint", headers=self.HEADERS)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIsNotNone(data)
+
     # def test_store_resource_in_project(self):
     #     print("Running test: Store resource in project")
     #     data = {"resource data": "data value for resource"}

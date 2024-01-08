@@ -84,13 +84,13 @@ function normalizeEmail(email: string): string {
     return email.replace(/@polytest\.ai$/i, '@polyverse.com');
 }
 
-export async function signedAuthHeader(email: string): Promise<any> {
+export async function signedAuthHeader(email: string): Promise<{'X-Signed-Identity': string}> {
     let signingKey = process.env.JWT_SIGNING_KEY;
     if (!signingKey) {
         signingKey = await getSecret('boost-sara/sara-client-private-key');
     }
     if (!signingKey) {
-        return undefined;
+        throw new Error(`Signing key is required`);
     }
         // if the domain of the email is polyverse.com then change it to polytest.ai
     // use a regex to replace the domain case insensitive

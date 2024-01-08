@@ -25,6 +25,7 @@ import {
     textFilePatterns
 } from './utility/fileConstants';
 import { ProjectDataFilename, ProjectDataType } from './types/ProjectData';
+import { BlueprintGenerator } from './generators/blueprint';
 
 export const app = express();
 
@@ -579,7 +580,8 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_resource_generator}
     }
 });
 
-app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
+// for updating the generator task status
+app.patch(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return res;
@@ -599,16 +601,6 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
         throw new Error(`Invalid URI: ${uri}`);
     }
 
-    let body = req.body;
-    if (typeof body !== 'string') {
-        body = JSON.stringify(body);
-    }
-
-    const input : GeneratorState = JSON.parse(body);
-    let userGeneratorRequest : GeneratorState = {
-        status: input.status
-    };
-
     const { _, __, resource } = req.params;
     let currentGeneratorState : GeneratorState =
         await getProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`);
@@ -619,6 +611,16 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
     } else if (typeof currentGeneratorState === 'string') {
         currentGeneratorState = JSON.parse(currentGeneratorState) as GeneratorState;
     }
+
+    let body = req.body;
+    if (typeof body !== 'string') {
+        body = JSON.stringify(body);
+    }
+
+    const input : GeneratorState = JSON.parse(body);
+    let userGeneratorRequest : GeneratorState = {
+        status: input.status
+    };
 
     const updateGeneratorState = async (generatorState: GeneratorState) => {
         if (!generatorState.last_updated) {
@@ -631,159 +633,234 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
         console.log(`${user_project_org_project_data_resource_generator}: stored new state: ${JSON.stringify(generatorState)}`);
     };
 
-    if (userGeneratorRequest.status === TaskStatus.Processing) {
+    // if we're only updating the timestamp on the processing, then don't kick off any new work
+    if (currentGeneratorState.status === TaskStatus.Processing) {
+        if (userGeneratorRequest.last_updated && currentGeneratorState.status_details) {
+            currentGeneratorState.last_updated = userGeneratorRequest.last_updated;
+            currentGeneratorState.status_details = userGeneratorRequest.status_details;
 
-        console.log(`${user_project_org_project_data_resource_generator}: processing task: ${JSON.stringify(userGeneratorRequest)}`);
-
-        // if we're only updating the timestamp on the processing, then don't kick off any new work
-        if (currentGeneratorState.status === TaskStatus.Processing) {
-            if (userGeneratorRequest.last_updated && currentGeneratorState.status_details) {
-                currentGeneratorState.last_updated = userGeneratorRequest.last_updated;
-                currentGeneratorState.status_details = userGeneratorRequest.status_details;
-
-                console.log(`${user_project_org_project_data_resource_generator}: updated processing task: ${JSON.stringify(currentGeneratorState)}`);
-                await updateGeneratorState(currentGeneratorState);
-
-                return res
-                    .status(200)
-                    .contentType('application/json')
-                    .send(currentGeneratorState);
-            }
-        }
-
-        try {
-            currentGeneratorState.status = TaskStatus.Processing;
+            console.log(`${user_project_org_project_data_resource_generator}: updated processing task: ${JSON.stringify(currentGeneratorState)}`);
             await updateGeneratorState(currentGeneratorState);
 
-            // Launch the processing task
-            currentGeneratorState.stage = await processStage(email, projectData, resource, currentGeneratorState.stage);
-
-            // if we've finished all stages, then we'll set the status to complete and idle
-            if (currentGeneratorState.stage === Stages.Complete) {
-                console.log(`${user_project_org_project_data_resource_generator}: completed all stages`);
-
-                currentGeneratorState.status = TaskStatus.Idle;
-            }
-
-            await updateGeneratorState(currentGeneratorState);
-        } catch (error) {
-            console.error(`Error processing stage ${currentGeneratorState.stage}:`, error);
-
-            // In case of error, set status to error
-            currentGeneratorState.status = TaskStatus.Error;
-
-            await updateGeneratorState(currentGeneratorState);
-
-            // we errored out, so we'll return an error HTTP status code for operation failed, may need to retry
-            return res.status(500).send();
-        }
-
-        // if we're processing and not yet completed the full stages, then we need to process the next stage
-        if (currentGeneratorState.status === TaskStatus.Processing && currentGeneratorState.stage !== Stages.Complete) {
-            // we need to terminate the current call so we don't create a long blocking HTTP call
-            //      so we'll start a new async HTTP request - detached from the caller to continue processing
-            //      the next stage
-            console.log(`${user_project_org_project_data_resource_generator}: starting async processing for ${currentGeneratorState}`);
-
-            // create a new request object
-            const newProcessingRequest : GeneratorState = {
-                status: TaskStatus.Processing,
-            };
-
-            // start async HTTP request against this serverless app
-            // we're going to make an external call... so the lifetime of the forked call is not tied to the
-            //      lifetime of the current call. Additionally, we need to wait a couple seconds to make sure
-            //      the new call is created before we return a response to the caller and the host of this call
-            //      terminates
-
-            let selfEndpoint = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-            // if we're running locally, then we'll use http:// no matter what
-            if (req.get('host')?.includes('localhost')) {
-                selfEndpoint = `http://${req.get('host')}${req.originalUrl}`;
-            }
-
-            axios.post(selfEndpoint, newProcessingRequest, {
-                    headers: await signedAuthHeader(email),
-                    timeout: 2000 })
-                .then(response => {
-                    // if the new task stage completes in 2 seconds, we'll wait...
-                    console.log(`${user_project_org_project_data_resource_generator}: Async Processing completed for ${newProcessingRequest}: `, response.status);
-                })
-                    // otherwise, we'll move on
-                .catch(error => {
-                    if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
-                        console.log(`${user_project_org_project_data_resource_generator}: Async Processing started for ${newProcessingRequest}`);
-                    } else {
-                        console.log(`${user_project_org_project_data_resource_generator}: Async Processing failed for ${newProcessingRequest}: `, error);
-                    }
-                });
-                            
-            // Return a response immediately without waiting for the async process
             return res
-                .status(202)
+                .status(200)
                 .contentType('application/json')
                 .send(currentGeneratorState);
         }
-    } else if (userGeneratorRequest.status === TaskStatus.Idle) {
-        console.log(`${user_project_org_project_data_resource_generator}: idle task: ${JSON.stringify(userGeneratorRequest)}`);
+    } else {
+        // patch is only supported for processing tasks
+        console.error(`Invalid PATCH status: ${currentGeneratorState.status}`);
+        return res.status(400).send(`Invalid PATCH status: ${currentGeneratorState.status}`)
+    }
+});
 
-        if (currentGeneratorState.status === TaskStatus.Processing) {
-            // if we have been processing for less than 3 minutes, then we'll return busy HTTP status code
-            //      We choose 3 minutes because the forked rate above waits 2 seconds before returning
-            //      so if a new task runs, we'd expect to update processing time at least every 1-2 minutes
-            if (currentGeneratorState.last_updated &&
-                currentGeneratorState.last_updated > (Math.floor(Date.now() / 1000) - 60 * 3)) {
-                // if caller wants us to be idle, and we're busy processing, we'll return busy HTTP
-                //      status code
+const userProjectDataResourceGenerator = async (req: Request, res: Response) => {
+    const email = await validateUser(req, res);
+    if (!email) {
+        return res;
+    }
+
+    const loadedProjectData = await loadProjectData(email, req, res) as UserProjectData | Response;
+    if (loadedProjectData instanceof Response) {
+        return loadedProjectData as Response;
+    }
+    const projectData = loadedProjectData as UserProjectData;
+
+    const uri = new URL(projectData.resources[0].uri);
+    const pathSegments = uri.pathname.split('/').filter(segment => segment);
+    const repoName = pathSegments.pop();
+    const ownerName = pathSegments.pop();
+    if (!repoName || !ownerName) {
+        throw new Error(`Invalid URI: ${uri}`);
+    }
+
+    const { _, __, resource } = req.params;
+    let currentGeneratorState : GeneratorState =
+        await getProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`);
+    if (!currentGeneratorState) {
+        currentGeneratorState = {
+            status: TaskStatus.Idle,
+        };
+    } else if (typeof currentGeneratorState === 'string') {
+        currentGeneratorState = JSON.parse(currentGeneratorState) as GeneratorState;
+    }
+
+    let body = req.body;
+    if (typeof body !== 'string') {
+        body = JSON.stringify(body);
+    }
+
+    const input : GeneratorState = JSON.parse(body);
+    let userGeneratorRequest : GeneratorState = {
+        status: input.status
+    };
+
+    const updateGeneratorState = async (generatorState: GeneratorState) => {
+        if (!generatorState.last_updated) {
+            generatorState.last_updated = Math.floor(Date.now() / 1000);
+        }
+
+        await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', 
+            `${resource}/generator`, JSON.stringify(generatorState));
+
+        console.log(`${user_project_org_project_data_resource_generator}: stored new state: ${JSON.stringify(generatorState)}`);
+    };
+
+    try {
+        if (userGeneratorRequest.status === TaskStatus.Processing) {
+
+            console.log(`${user_project_org_project_data_resource_generator}: processing task: ${JSON.stringify(userGeneratorRequest)}`);
+
+            try {
+                currentGeneratorState.status = TaskStatus.Processing;
+                await updateGeneratorState(currentGeneratorState);
+
+                // Launch the processing task
+                let selfEndpoint = `${req.protocol}://${req.get('host')}`;
+                // if we're running locally, then we'll use http:// no matter what
+                if (req.get('host')!.includes('localhost')) {
+                    selfEndpoint = `http://${req.get('host')}`;
+                }
+
+                currentGeneratorState.stage = await processStage(selfEndpoint, email, projectData, resource, currentGeneratorState.stage);
+
+                // if we've finished all stages, then we'll set the status to complete and idle
+                if (currentGeneratorState.stage === Stages.Complete) {
+                    console.log(`${user_project_org_project_data_resource_generator}: completed all stages`);
+
+                    currentGeneratorState.status = TaskStatus.Idle;
+                }
+
+                await updateGeneratorState(currentGeneratorState);
+            } catch (error) {
+                console.error(`Error processing stage ${currentGeneratorState.stage}:`, error);
+
+                // In case of error, set status to error
+                currentGeneratorState.status = TaskStatus.Error;
+
+                await updateGeneratorState(currentGeneratorState);
+
+                // we errored out, so we'll return an error HTTP status code for operation failed, may need to retry
+                return res.status(500).send();
+            }
+
+            // if we're processing and not yet completed the full stages, then we need to process the next stage
+            if (currentGeneratorState.status === TaskStatus.Processing && currentGeneratorState.stage !== Stages.Complete) {
+                // we need to terminate the current call so we don't create a long blocking HTTP call
+                //      so we'll start a new async HTTP request - detached from the caller to continue processing
+                //      the next stage
+                console.log(`${user_project_org_project_data_resource_generator}: starting async processing for ${currentGeneratorState}`);
+
+                // create a new request object
+                const newProcessingRequest : GeneratorState = {
+                    status: TaskStatus.Processing,
+                };
+
+                // start async HTTP request against this serverless app
+                // we're going to make an external call... so the lifetime of the forked call is not tied to the
+                //      lifetime of the current call. Additionally, we need to wait a couple seconds to make sure
+                //      the new call is created before we return a response to the caller and the host of this call
+                //      terminates
+
+                let selfEndpoint = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+                // if we're running locally, then we'll use http:// no matter what
+                if (req.get('host')!.includes('localhost')) {
+                    selfEndpoint = `http://${req.get('host')}${req.originalUrl}`;
+                }
+
+                const authHeader = await signedAuthHeader(email);
+                axios.put(selfEndpoint, newProcessingRequest, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...authHeader,
+                        },
+                        timeout: 2000 })
+                    .then(response => {
+                        // if the new task stage completes in 2 seconds, we'll wait...
+                        console.log(`${user_project_org_project_data_resource_generator}: Async Processing completed for ${newProcessingRequest}: `, response.status);
+                    })
+                        // otherwise, we'll move on
+                    .catch(error => {
+                        if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
+                            console.log(`${user_project_org_project_data_resource_generator}: Async Processing started for ${newProcessingRequest}`);
+                        } else {
+                            console.log(`${user_project_org_project_data_resource_generator}: Async Processing failed for ${newProcessingRequest}: `, error);
+                        }
+                    });
+                                
+                // Return a response immediately without waiting for the async process
                 return res
-                    .status(409)
+                    .status(202)
                     .contentType('application/json')
                     .send(currentGeneratorState);
-            } else {
-                // if we have been processing for more than 15 minutes, then we'll return idle HTTP status code
-                //      and we'll reset the status to idle
-                currentGeneratorState.status = TaskStatus.Idle;
-                await updateGeneratorState(currentGeneratorState);
             }
+        } else if (userGeneratorRequest.status === TaskStatus.Idle) {
+            console.log(`${user_project_org_project_data_resource_generator}: idle task: ${JSON.stringify(userGeneratorRequest)}`);
+
+            if (currentGeneratorState.status === TaskStatus.Processing) {
+                // if we have been processing for less than 3 minutes, then we'll return busy HTTP status code
+                //      We choose 3 minutes because the forked rate above waits 2 seconds before returning
+                //      so if a new task runs, we'd expect to update processing time at least every 1-2 minutes
+                if (currentGeneratorState.last_updated &&
+                    currentGeneratorState.last_updated > (Math.floor(Date.now() / 1000) - 60 * 3)) {
+                    // if caller wants us to be idle, and we're busy processing, we'll return busy HTTP
+                    //      status code
+                    return res
+                        .status(409)
+                        .contentType('application/json')
+                        .send(currentGeneratorState);
+                } else {
+                    // if we have been processing for more than 15 minutes, then we'll return idle HTTP status code
+                    //      and we'll reset the status to idle
+                    currentGeneratorState.status = TaskStatus.Idle;
+                    await updateGeneratorState(currentGeneratorState);
+                }
+            }
+        } else if (userGeneratorRequest.status === TaskStatus.Error) {
+            // external caller can't set the status to error, so we'll return bad input HTTP status code
+            console.error(`Invalid input status: ${userGeneratorRequest.status}`);
+            return res.status(400).send();
+        } else {
+            // external caller can't set the status to unknown, so we'll return bad input HTTP status code
+            console.error(`Invalid input status: ${userGeneratorRequest.status}`);
+            return res.status(400).send();
         }
-    } else if (userGeneratorRequest.status === TaskStatus.Error) {
-        // external caller can't set the status to error, so we'll return bad input HTTP status code
-        console.error(`Invalid input status: ${userGeneratorRequest.status}`);
-        return res.status(400).send();
-    } else {
-        // external caller can't set the status to unknown, so we'll return bad input HTTP status code
-        console.error(`Invalid input status: ${userGeneratorRequest.status}`);
-        return res.status(400).send();
+    } catch (error) {
+        console.error(`Handler Error: ${user_project_org_project_data_resource_generator}: Unable to handle task request:`, error);
+        return res.status(500).send('Internal Server Error');
     }
 
     return res
         .status(200)
         .contentType('application/json')
         .send(currentGeneratorState);
-});
+};
 
-async function processStage(email: string, project: UserProjectData, resource: string, stage?: string) {
-    if (!stage) {
-        stage = "stage1";
+app.route(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`)
+   .post(userProjectDataResourceGenerator)
+   .put(userProjectDataResourceGenerator);
+
+async function processStage(serviceEndpoint: string, email: string, project: UserProjectData, resource: string, stage?: string) {
+    if (stage) {
+        console.log(`Processing ${resource} stage ${stage}...`);
     }
-    // wait for 3 seconds to simulate processing
-    console.log(`Processing stage ${stage}...`);
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    // Implement the logic for processing each stage
-    // Example:
-    switch (stage) {
-        case "stage1":
-            return "stage2";
-        case "stage2":
-            return "stage3";
-        case "stage3":
-            return Stages.Complete;
+    switch (resource) {
+        case ProjectDataType.ProjectSource:
+            // not implemented error
+            throw new Error(`Not implemented: ${resource}`);
+        case ProjectDataType.ProjectSpecification:
+            return new BlueprintGenerator(serviceEndpoint, email, project).generate(stage);
+        case ProjectDataType.ArchitecturalBlueprint:
+            // not implemented error
+            throw new Error(`Not implemented: ${resource}`);
+        default:
+            throw new Error(`Invalid resource: ${resource}`);
     }
 }
 
 const user_project_org_project_data_references = `/user_project/:org/:project/data_references`;
-app.post(`${api_root_endpoint}${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
+
+const userProjectDataReferences = async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -861,7 +938,11 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_references}`, asyn
         .status(200)
         .contentType('application/json')
         .send(projectDataFileIds);
-});
+};
+
+app.route(`${api_root_endpoint}${user_project_org_project_data_references}`)
+   .post(userProjectDataReferences)
+   .put(userProjectDataReferences);
 
 app.get(`${api_root_endpoint}${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);

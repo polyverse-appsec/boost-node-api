@@ -6,7 +6,9 @@ Polyverse Boost ReST API (Backend)
 ## Version 0.8.0: January 5th, 2024
 
 ### New Features
-- Stub APIs for resource generator (e.g. blueprint, aispec, etc) (GET/POST) - Task-based API, doesn't yet generate real data
+- Base API for resource generator (e.g. blueprint, aispec, etc) (GET/POST) - Task-based API, doesn't yet generate real data
+- Default (Empty) Architectural Blueprint Generator (POST)
+- Stub APIs for resource generator aispec and projectsource (POST)
 - Add API to GET /{project}/config/.boostignore info (read-only for now), and per project
 
 ### Enhancements
