@@ -428,6 +428,10 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (
 
     const { _, __, resource } = req.params;
     const resourceData = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, '', resource);
+    if (!resourceData) {
+        console.error(`${user_project_org_project_data_resource}: not found: ${ownerName}/${repoName}/data/${resource}`);
+        return res.status(404).send('Resource not found');
+    }
 
     console.log(`${user_project_org_project_data_resource}: retrieved data`);
     return res
@@ -846,13 +850,11 @@ async function processStage(serviceEndpoint: string, email: string, project: Use
     }
     switch (resource) {
         case ProjectDataType.ProjectSource:
-            // not implemented error
             throw new Error(`Not implemented: ${resource}`);
         case ProjectDataType.ProjectSpecification:
-            return new BlueprintGenerator(serviceEndpoint, email, project).generate(stage);
-        case ProjectDataType.ArchitecturalBlueprint:
-            // not implemented error
             throw new Error(`Not implemented: ${resource}`);
+        case ProjectDataType.ArchitecturalBlueprint:
+            return new BlueprintGenerator(serviceEndpoint, email, project).generate(stage);
         default:
             throw new Error(`Invalid resource: ${resource}`);
     }
