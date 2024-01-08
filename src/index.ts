@@ -932,7 +932,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
         return res.status(500).send('Internal Server Error');
     }
 
-    await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', projectDataFileIds);
+    await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', JSON.stringify(projectDataFileIds));
 
     console.log(`${user_project_org_project_data_references}: stored data`);
 
@@ -963,7 +963,7 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_references}`, async
     }
     const uri = new URL(projectData.resources[0].uri);
 
-    const dataReferencesRaw : string = await getProjectData(email, SourceType.General, projectData.org, projectData.name, '', 'data_references');
+    const dataReferencesRaw : any = await getProjectData(email, SourceType.General, projectData.org, projectData.name, '', 'data_references');
     if (!dataReferencesRaw) {
         console.error(`No resources found in project: ${projectData.org}/${projectData.name}`);
         return res.status(400).send('No data references found for project');

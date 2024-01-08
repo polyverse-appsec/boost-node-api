@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { SourceType, storeProjectData } from './storage';
-import { getSecret } from './secrets';
+import { getSingleSecret, getSecretsAsObject as getSecretsAsObject } from './secrets';
 import { ProjectDataReference } from './types/ProjectDataReference';
 
 import fetch from 'node-fetch';
@@ -62,7 +62,7 @@ interface ErrorResponse {
 }
 
 const createAssistantFile = async (dataFilename: string, data: string): Promise<string> => {
-    const secretData : any = await getSecret('exetokendev');
+    const secretData : any = await getSecretsAsObject('exetokendev');
     let openAiKey = secretData['openai-personal'];
 
     if (!openAiKey) {

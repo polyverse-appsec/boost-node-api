@@ -6,7 +6,7 @@ interface SecretObject {
 
 const client = new SecretsManagerClient({ region: "us-west-2" });
 
-export async function getSecrets(secretName: string): Promise<SecretObject> {
+export async function getSecretsAsObject(secretName: string): Promise<SecretObject> {
   try {
     const command = new GetSecretValueCommand({ SecretId: secretName });
     const rawSecretData = await client.send(command);
@@ -20,7 +20,7 @@ export async function getSecrets(secretName: string): Promise<SecretObject> {
   }
 }
 
-export async function getSecret(secretName: string): Promise<string> {
+export async function getSingleSecret(secretName: string): Promise<string> {
   try {
     const command = new GetSecretValueCommand({ SecretId: secretName });
     const rawSecretData = await client.send(command);

@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 
 import * as jwt from 'jsonwebtoken';
 
-import { getSecret } from './secrets';
+import { getSingleSecret } from './secrets';
 
 interface RawIdentity {
     email: string;
@@ -20,7 +20,7 @@ export async function validateUser(req: Request, res: Response): Promise<string 
     if (req.headers['x-signed-identity']) {
         let signingKey = process.env.JWT_SIGNING_KEY;
         if (!signingKey) {
-            signingKey = await getSecret('boost-sara/sara-client-public-key');
+            signingKey = await getSingleSecret('boost-sara/sara-client-public-key');
         }
         if (!signingKey) {
             console.error(`Unauthorized: Signing key is required`);
@@ -87,7 +87,7 @@ function normalizeEmail(email: string): string {
 export async function signedAuthHeader(email: string): Promise<{'X-Signed-Identity': string}> {
     let signingKey = process.env.JWT_SIGNING_KEY;
     if (!signingKey) {
-        signingKey = await getSecret('boost-sara/sara-client-private-key');
+        signingKey = await getSingleSecret('boost-sara/sara-client-private-key');
     }
     if (!signingKey) {
         throw new Error(`Signing key is required`);

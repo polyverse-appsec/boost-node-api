@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { Octokit } from '@octokit/rest';
 import { createAppAuth } from '@octokit/auth-app';
-import { getSecret } from './secrets';
+import { getSingleSecret } from './secrets';
 import { getUser } from './users';
 import axios from 'axios';
 import AdmZip from 'adm-zip';
@@ -64,7 +64,7 @@ export async function getFileFromRepo(email: string, uri: URL, req: Request, res
 
         const secretStore = 'boost/GitHubApp';
         const secretKeyPrivateKey = secretStore + '/' + 'private-key';
-        const privateKey = await getSecret(secretKeyPrivateKey);
+        const privateKey = await getSingleSecret(secretKeyPrivateKey);
 
         const octokit = new Octokit({
             authStrategy: createAppAuth,
@@ -153,7 +153,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
 
         const secretStore = 'boost/GitHubApp';
         const secretKeyPrivateKey = secretStore + '/' + 'private-key';
-        const privateKey = await getSecret(secretKeyPrivateKey);
+        const privateKey = await getSingleSecret(secretKeyPrivateKey);
 
         // Configure the auth strategy for Octokit
         const octokit = new Octokit({
@@ -242,7 +242,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
 
         const secretStore = 'boost/GitHubApp';
         const secretKeyPrivateKey = secretStore + '/' + 'private-key';
-        const privateKey = await getSecret(secretKeyPrivateKey);
+        const privateKey = await getSingleSecret(secretKeyPrivateKey);
 
         // Configure the auth strategy for Octokit
         const octokit = new Octokit({
@@ -330,7 +330,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
 
             const secretStore = 'boost/GitHubApp';
             const secretKeyPrivateKey = secretStore + '/' + 'private-key';
-            const privateKey = await getSecret(secretKeyPrivateKey);
+            const privateKey = await getSingleSecret(secretKeyPrivateKey);
 
             const octokit = new Octokit({
                 authStrategy: createAppAuth,
