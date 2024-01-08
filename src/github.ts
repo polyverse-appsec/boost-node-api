@@ -347,6 +347,13 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
             });
             const defaultBranch = repoDetails.data.default_branch;
 
+            // Fetch repository details to get the default branch
+            const repoDetails = await octokit.rest.repos.get({
+                owner: owner,
+                repo: repo
+            });
+            const defaultBranch = repoDetails.data.default_branch;
+            
             const archiveUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${defaultBranch}`;
         
             const fileContents = await downloadAndExtractRepo(archiveUrl);
