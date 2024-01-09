@@ -214,8 +214,11 @@ app.patch(`${api_root_endpoint}${user_project_org_project}`, async (req: Request
     } else {
         console.error(`No valid project update key`);
     }
-
+    console.log(defined_key)
+    console.log(defined_key_value)
+    
     const projectData = await loadProjectData(email, req, res) as UserProjectData; 
+    console.log(projectData)
     projectData[defined_key as keyof UserProjectData] = defined_key_value;
     const storedProjectString = JSON.stringify(projectData);
 

@@ -115,7 +115,7 @@ class BoostBackendCheckinSuite(unittest.TestCase):
     def test_update_project(self):
         print("Running test: Updating project data")
         data = {"org" : "org321"}
-        response = requests.patch(f"{self.BASE_URL}/api/user_project/org123/project456", data=data, headers=self.HEADERS)
+        response = requests.patch(f"{self.BASE_URL}/api/user_project/org123/project456", json=data, headers=self.HEADERS)
         self.assertEqual(response.status_code, 200)
 
     def test_task_generator_launch(self):
