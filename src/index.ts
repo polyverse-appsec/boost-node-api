@@ -194,30 +194,32 @@ app.patch(`${api_root_endpoint}${user_project_org_project}`, async (req: Request
     }
 
     let body = req.body;
+    if (typeof body !== 'string') {
+        body = JSON.stringify(body);
+    }
     let updated_body = JSON.parse(body) as UserProjectData;
+    console.log(updated_body)
     
     let defined_key;
     let defined_key_value;
 
+    // Get entry that matches the key of the incoming http body
     const definedEntry = Object.entries(updated_body).find(([key, value]) => value !== undefined);
 
+    // Capture key and value to be updated
     if (definedEntry) {
         const [definedKey, definedValue] = definedEntry;
         defined_key = definedKey;
         defined_key_value = definedValue;
-        //console.log(`Defined field: ${definedKey}, Value: ${definedValue}`);
+    } else {
+        console.error(`No valid project update key`);
     }
 
-    const projectData = await loadProjectData(email, req, res) as UserProjectData;
-
-    if ((defined_key as string) in projectData) {
-        projectData[defined_key as keyof UserProjectData] = defined_key_value;
-    }
-
+    const projectData = await loadProjectData(email, req, res) as UserProjectData; 
+    projectData[defined_key as keyof UserProjectData] = defined_key_value;
     const storedProjectString = JSON.stringify(projectData);
 
     await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProjectString);
-
     console.log(`${user_project_org_project}: updated data`);
 
     return res
