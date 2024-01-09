@@ -2,6 +2,7 @@ import { ProjectDataType } from "../types/ProjectData";
 import { UserProjectData } from "../types/UserProjectData";
 import { GeneratorState, TaskStatus } from "../types/GeneratorState";
 import { signedAuthHeader } from "../auth";
+import axios from 'axios';
 
 
 export class Generator {
@@ -26,15 +27,15 @@ export class Generator {
     }
 
     async save() : Promise<void> {
+        console.log(`Saving ${this.dataType} data`);
         const authHeader = await signedAuthHeader(this.email);
-        await fetch(this.resourceUri, {
-            method: 'PUT',
+        await axios.put(this.resourceUri, this.data, {
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'text/plain',
                 ...authHeader
             },
-            body: this.data
         });
+        console.log(`Saved ${this.dataType} data`);
     }
 
     async updateProgress(statusUpdate: string) : Promise<void> {
@@ -56,7 +57,7 @@ export class Generator {
     }
 
     get resourceUri() : string {
-        const resourceUri : URL = new URL(`${this.serviceEndpoint}/api/${this.projectData.org}/${this.projectData.name}/data/${this.data}`);
+        const resourceUri : URL = new URL(`${this.serviceEndpoint}/api/${this.projectData.org}/${this.projectData.name}/data/${this.dataType}`);
         return resourceUri.href;
     }
 }
