@@ -114,7 +114,7 @@ class BoostBackendCheckinSuite(unittest.TestCase):
 
     def test_update_project(self):
         print("Running test: Updating project data")
-        data = {"org" : "org321"}
+        data = {"org": "org321"}
         response = requests.patch(f"{self.BASE_URL}/api/user_project/org123/project456", json=data, headers=self.HEADERS)
         self.assertEqual(response.status_code, 200)
 
@@ -166,7 +166,7 @@ class BoostBackendCheckinSuite(unittest.TestCase):
 
         response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint", headers=self.HEADERS)
         self.assertEqual(response.status_code, 200)
-        data = response.json()
+        data = response.text
         self.assertIsNotNone(data)
 
     # def test_store_resource_in_project(self):

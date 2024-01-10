@@ -2,6 +2,7 @@ import { ProjectDataType } from "../types/ProjectData";
 import { UserProjectData } from "../types/UserProjectData";
 import { GeneratorState, TaskStatus } from "../types/GeneratorState";
 import { signedAuthHeader } from "../auth";
+import { saveProjectDataResource } from "..";
 
 
 export class Generator {
@@ -29,6 +30,17 @@ export class Generator {
         console.log(`Saving ${this.dataType} data`);
         const authHeader = await signedAuthHeader(this.email);
 
+        const uri = new URL(this.projectData.resources[0].uri);
+        const pathSegments = uri.pathname.split('/').filter(segment => segment);
+        const repoName = pathSegments.pop();
+        const ownerName = pathSegments.pop();
+        if (!repoName || !ownerName) {
+            throw new Error(`Invalid URI: ${uri}`);
+        }
+
+        await saveProjectDataResource(this.email, ownerName, repoName, this.dataType, this.data);
+
+        /*
         const response = await fetch(this.resourceUri, {
             method: 'PUT',
             headers: {
@@ -41,6 +53,8 @@ export class Generator {
         if (!response.ok) {
             throw new Error(`Unable to Save Generated Resource: ${response.status}`);
         }
+        */
+
         console.log(`Saved ${this.dataType} data`);
     }
 

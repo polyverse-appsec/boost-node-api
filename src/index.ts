@@ -72,6 +72,16 @@ async function splitAndStoreData(
     }
 }
 
+export async function saveProjectDataResource(
+    email: string,
+    ownerName: string,
+    repoName: string,
+    resource: string,
+    data: any
+): Promise<void> {
+    await splitAndStoreData(email, SourceType.GitHub, ownerName, repoName, '', resource, data);
+}
+
 const postOrPutUserProjectDataResource = async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
@@ -103,7 +113,8 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
     }
 
     const { _, __, resource } = req.params;
-    await splitAndStoreData(email, SourceType.GitHub, ownerName, repoName, '', resource, body);
+
+    await saveProjectDataResource(email, ownerName, repoName, resource, body);
 
     console.log(`${user_project_org_project_data_resource}: stored data`);
     return res.status(200).send();
