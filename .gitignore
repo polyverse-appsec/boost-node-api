@@ -1,3 +1,5 @@
 node_modules/**
 .serverless/**
 build/**
+test/__pycache__/**
+.pytest_cache/**
