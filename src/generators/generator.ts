@@ -2,7 +2,6 @@ import { ProjectDataType } from "../types/ProjectData";
 import { UserProjectData } from "../types/UserProjectData";
 import { GeneratorState, TaskStatus } from "../types/GeneratorState";
 import { signedAuthHeader } from "../auth";
-import axios from 'axios';
 
 
 export class Generator {
@@ -29,12 +28,19 @@ export class Generator {
     async save() : Promise<void> {
         console.log(`Saving ${this.dataType} data`);
         const authHeader = await signedAuthHeader(this.email);
-        await axios.put(this.resourceUri, this.data, {
+
+        const response = await fetch(this.resourceUri, {
+            method: 'PUT',
             headers: {
                 'Content-Type': 'text/plain',
                 ...authHeader
             },
+            body: this.data
         });
+
+        if (!response.ok) {
+            throw new Error(`Unable to Save Generated Resource: ${response.status}`);
+        }
         console.log(`Saved ${this.dataType} data`);
     }
 
