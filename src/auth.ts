@@ -6,6 +6,7 @@ import { getSingleSecret } from './secrets';
 
 interface RawIdentity {
     email: string;
+    organization?: string;
     expires: number;
 }
 
@@ -84,7 +85,7 @@ function normalizeEmail(email: string): string {
     return email.replace(/@polytest\.ai$/i, '@polyverse.com');
 }
 
-export async function signedAuthHeader(email: string): Promise<{'X-Signed-Identity': string}> {
+export async function signedAuthHeader(email: string, organization?: string): Promise<{'X-Signed-Identity': string}> {
     let signingKey = process.env.JWT_SIGNING_KEY;
     if (!signingKey) {
         signingKey = await getSingleSecret('boost-sara/sara-client-private-key');
@@ -92,8 +93,18 @@ export async function signedAuthHeader(email: string): Promise<{'X-Signed-Identi
     if (!signingKey) {
         throw new Error(`Signing key is required`);
     }
-        // if the domain of the email is polyverse.com then change it to polytest.ai
+
+    const unsignedIdentity : RawIdentity = {
+        email: email,
+        expires: Math.floor(Date.now() / 1000) + 60  // auth expires in 1 minute
+    };
+    // only include organization if provided - e.g. to talk to backend AI Boost Service
+    if (organization) {
+        unsignedIdentity.organization = organization;
+    }
+
+    // if the domain of the email is polyverse.com then change it to polytest.ai
     // use a regex to replace the domain case insensitive
-    const signedToken = jwt.sign({ email: email }, signingKey, { algorithm: 'RS256' });
+    const signedToken = jwt.sign(unsignedIdentity, signingKey, { algorithm: 'RS256' });
     return { 'X-Signed-Identity': signedToken}
 }
