@@ -1197,7 +1197,66 @@ app.post(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, 
     }
 });
 
-app.get("/test", (req, res, next) => {
+const proxy_ai_endpoint = "/proxy/ai/:org/:endpoint";
+const handleProxyRequest = async (req: Request, res: Response) => {
+    const org = req.params.org;
+    const endpoint = req.params.endpoint;
+
+    const email = await validateUser(req, res);
+    if (!email) {
+        return res.status(401).send('Unauthorized');
+    }
+
+    const signedIdentity = await signedAuthHeader(email, org);
+
+    let externalEndpoint;
+    if (req.get('host')!.includes('localhost')) {
+        // this is the default local endpoint of the boost AI lambda python (chalice) server
+        externalEndpoint = `http://localhost:8000/${endpoint}`;
+    } else {
+        externalEndpoint = Endpoints.get(endpoint as Services);
+    }
+
+    const fetchOptions : any = {
+        method: req.method,
+        headers: {
+            'Accept': 'application/json',
+            ...signedIdentity
+        }
+    };
+
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+        fetchOptions.body = req.body;
+    }
+
+    try {
+        const response = await fetch(externalEndpoint, fetchOptions);
+
+        if (response.ok) {
+            const responseObject = await response.json();
+            return res.
+                status(200).
+                contentType('application/json').
+                send(responseObject);
+        } else {
+            return res.status(response.status).send(response.statusText);
+        }
+    } catch (error : any) {
+        // check for ECONNREFUSED error from fetch
+        if (error.errno === 'ECONNREFUSED') {
+            console.error(`Error making proxy request - endpoint refused request: ${externalEndpoint}`, error);
+            return res.status(500).send('Internal Server Error');
+        }
+
+        console.error('Error making proxy request:', error);
+        return res.status(500).send('Internal Server Error');
+    }
+};
+
+app.route(`${api_root_endpoint}${proxy_ai_endpoint}`)
+   .all(handleProxyRequest);
+
+app.get("/test", (req: Request, res: Response, next) => {
     console.log("Test Ack");
     return res
         .status(200)
