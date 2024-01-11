@@ -19,6 +19,7 @@ Polyverse Boost ReST API (Backend)
 - Fix issue in resource data for Project creation - incorrectly stored when using comoatibility mode
 - Ensure goals and data_references are returned as JSON object, not a string
 - Fix issue with deserialization of data_references from storage (returning JSON string instead of an object to user)
+- Fix filename extension typo for aispec and blueprint files to .ms instead of .md
 
 ## Version 0.7.0: January 5th, 2024
 
