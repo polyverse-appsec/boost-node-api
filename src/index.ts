@@ -305,18 +305,14 @@ app.patch(`${api_root_endpoint}${user_project_org_project}`, async (req: Request
     }
 
     let body = req.body;
-    if (typeof body !== 'string') {
-        body = JSON.stringify(body);
-    }
-    let updated_body = JSON.parse(body) as UserProjectData;
 
     // Puts resources and/or guidline values to be updated into new object    
-    const updates: { resources?: ProjectResource[], guidelines?: string } = {};
-    if (updated_body.resources !== undefined) {
-        updates.resources = updated_body.resources;
+    let updates: { resources?: ProjectResource[], guidelines?: string } = {};
+    if (body.resources !== undefined) {
+        updates.resources = body.resources;
     }
-    if (updated_body.guidelines !== undefined) {
-        updates.guidelines = updated_body.guidelines;
+    if (body.guidelines !== undefined) {
+        updates.guidelines = body.guidelines;
     }
   
     const projectData = await loadProjectData(email, req, res) as UserProjectData; 

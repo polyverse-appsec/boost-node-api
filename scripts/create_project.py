@@ -85,7 +85,7 @@ def post_data_references(email, organization, project_name):
     # GET request to retrieve processed data
     get_response = requests.get(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data_references/", headers=get_headers(email))
     if get_response.status_code == 200:
-        print("Processed Data References!")
+        print(get_response.text)
     else:
         print(f"Failed to retrieve data references: {get_response.status_code}, {get_response.text}")
 

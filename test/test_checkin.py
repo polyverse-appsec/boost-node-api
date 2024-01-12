@@ -87,8 +87,8 @@ class BoostBackendCheckinSuite(unittest.TestCase):
 
     def test_store_data_in_project(self):
         print("Running test: Store data in the user's project")
-        data = {"resources": ["resource1", "resource2"]}
-        response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456", json=data, headers=self.HEADERS)
+        data = {"resources": [{"uri": "https://github.com/sindresorhus/bro"}]}
+        response = requests.post(f"{self.CLOUD_URL}/api/user_project/org123/project456", json=data, headers=self.HEADERS)
         self.assertEqual(response.status_code, 200)
 
     def test_retrieve_data_from_project(self):
@@ -114,8 +114,8 @@ class BoostBackendCheckinSuite(unittest.TestCase):
 
     def test_update_project(self):
         print("Running test: Updating project data")
-        data = {"guidelines": "bruddah"}
-        response = requests.patch(f"{self.BASE_URL}/api/user_project/org123/project456", json=data, headers=self.HEADERS)
+        data = {"resources": [{"uri": "https://github.com/sindresorhus/awesome"}]}
+        response = requests.patch(f"{self.CLOUD_URL}/api/user_project/org123/project456", json=data, headers=self.HEADERS)
         self.assertEqual(response.status_code, 200)
 
     def test_task_generator_launch(self):
