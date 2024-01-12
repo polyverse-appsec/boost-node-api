@@ -6,6 +6,17 @@ Polyverse Boost ReST API (Backend)
 ## Version 0.8.0: January 11th, 2024
 
 ### New Features
+- New API /api/user/{org}/account to get status of user account (GET)
+
+### Enhancements
+- N/A
+
+### Bug Fixes
+- N/A
+
+## Version 0.8.0: January 11th, 2024
+
+### New Features
 - Base API for resource generator (e.g. blueprint, aispec, etc) (GET/POST) - Task-based API, doesn't yet generate real data
 - Default (Empty) Architectural Blueprint Generator (POST)
 - Stub APIs for resource generator aispec and projectsource (POST)
