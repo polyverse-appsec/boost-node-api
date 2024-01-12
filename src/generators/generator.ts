@@ -26,6 +26,27 @@ export class Generator {
         throw new Error('Not implemented');
     }
 
+    async load() : Promise<void> {
+        console.log(`Loading ${this.dataType} data`);
+
+        const authHeader = await signedAuthHeader(this.email);
+
+        const response = await fetch(this.resourceUri, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'text/plain',
+                ...authHeader
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Unable to Save Generated Resource: ${response.status}`);
+        }
+        this.data = await response.text();
+
+        console.log(`Loaded ${this.dataType} data`);
+    }
+
     async save() : Promise<void> {
         console.log(`Saving ${this.dataType} data`);
         const authHeader = await signedAuthHeader(this.email);
