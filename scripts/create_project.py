@@ -5,7 +5,7 @@ import boto3
 import subprocess
 
 
-# REMOTE_URL = "https://pt5sl5vwfjn6lsr2k6szuvfhnq0vaxhl.lambda-url.us-west-2.on.aws"
+REMOTE_URL = "https://pt5sl5vwfjn6lsr2k6szuvfhnq0vaxhl.lambda-url.us-west-2.on.aws"
 LOCAL_URL = "http://localhost:3000"
 BASE_URL = LOCAL_URL
 
@@ -49,7 +49,7 @@ def create_project(email, organization, github_uri, project_name=None):
 
     data = {"resources": [{"uri": github_uri}]}
 
-    response = requests.post(f"{BASE_URL}/api/user_project/{organization}/{project_name}", json=data, headers=get_headers(email))
+    response = requests.post(f"{REMOTE_URL}/api/user_project/{organization}/{project_name}", json=data, headers=get_headers(email))
     return response
 
 
@@ -70,20 +70,20 @@ def read_file(file_path):
 def post_data(email, organization, project_name, resource_name, data):
 
     payload = {"resources": data}
-    response = requests.post(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_name}",
+    response = requests.post(f"{REMOTE_URL}/api/user_project/{organization}/{project_name}/data/{resource_name}",
                              data=payload, headers=get_headers(email))
     return response
 
 
 def post_data_references(email, organization, project_name):
 
-    post_response = requests.post(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data_references/", headers=get_headers(email))
+    post_response = requests.post(f"{REMOTE_URL}/api/user_project/{organization}/{project_name}/data_references/", headers=get_headers(email))
     if post_response.status_code != 200:
         print(f"Failed to process data references: {post_response.status_code}, {post_response.text}")
         return
 
     # GET request to retrieve processed data
-    get_response = requests.get(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data_references/", headers=get_headers(email))
+    get_response = requests.get(f"{REMOTE_URL}/api/user_project/{organization}/{project_name}/data_references/", headers=get_headers(email))
     if get_response.status_code == 200:
         print(get_response.text)
     else:
