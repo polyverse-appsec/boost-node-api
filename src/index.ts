@@ -26,6 +26,7 @@ import {
 } from './utility/fileConstants';
 import { ProjectDataFilename, ProjectDataType } from './types/ProjectData';
 import { BlueprintGenerator } from './generators/blueprint';
+import { Services, Endpoints } from './boost-python-api/endpoints';
 
 export const app = express();
 
@@ -40,6 +41,30 @@ app.use((err : any, req : Request, res : Response) => {
     res.status(500).send('Internal Server Error');
 });
 */
+
+async function localSelfDispatch(email: string, originalIdentityHeader: string, initialRequest: Request, path: string, httpVerb: string, body?: any): Promise<any> {
+
+    let selfEndpoint = `${initialRequest.protocol}://${initialRequest.get('host')}/${api_root_endpoint}/${path}`;
+    // if we're running locally, then we'll use http:// no matter what
+    if (initialRequest.get('host')!.includes('localhost')) {
+        selfEndpoint = `http://${initialRequest.get('host')}${api_root_endpoint}/${path}`;
+    }
+
+    // convert above to fetch
+    const response = await fetch(selfEndpoint, {
+        method: httpVerb,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Signed-Identity': originalIdentityHeader,
+        },
+        body: JSON.stringify(body)?body:undefined,
+    });
+    if (response.ok) {
+        return response.json();
+    }
+
+    throw new Error(`Request ${selfEndpoint} failed with status ${response.status}`);
+}
 
 async function splitAndStoreData(
     email: string,
@@ -1193,12 +1218,89 @@ app.post(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, 
     }
 });
 
-app.get("/test", (req, res, next) => {
-    console.log("Test Ack");
+const proxy_ai_endpoint = "/proxy/ai/:org/:endpoint";
+const handleProxyRequest = async (req: Request, res: Response) => {
+    const org = req.params.org;
+    const endpoint = req.params.endpoint;
+
+    const email = await validateUser(req, res);
+    if (!email) {
+        return res.status(401).send('Unauthorized');
+    }
+
+    const signedIdentity = await signedAuthHeader(email, org);
+
+    let externalEndpoint;
+    if (req.get('host')!.includes('localhost')) {
+        // this is the default local endpoint of the boost AI lambda python (chalice) server
+        externalEndpoint = `http://localhost:8000/${endpoint}`;
+    } else {
+        externalEndpoint = Endpoints.get(endpoint as Services);
+    }
+
+    const fetchOptions : any = {
+        method: req.method,
+        headers: {
+            'Accept': 'application/json',
+            ...signedIdentity
+        }
+    };
+
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+        fetchOptions.body = req.body;
+    }
+
+    try {
+        const response = await fetch(externalEndpoint, fetchOptions);
+
+        if (response.ok) {
+            const responseObject = await response.json();
+            return res.
+                status(200).
+                contentType('application/json').
+                send(responseObject);
+        } else {
+            return res.status(response.status).send(response.statusText);
+        }
+    } catch (error : any) {
+        // check for ECONNREFUSED error from fetch
+        if (error.errno === 'ECONNREFUSED') {
+            console.error(`Error making proxy request - endpoint refused request: ${externalEndpoint}`, error);
+            return res.status(500).send('Internal Server Error');
+        }
+
+        console.error('Error making proxy request:', error);
+        return res.status(500).send('Internal Server Error');
+    }
+};
+
+app.route(`${api_root_endpoint}${proxy_ai_endpoint}`)
+   .all(handleProxyRequest);
+
+const user_org_account = `/user/:org/account`;
+app.get(`${api_root_endpoint}${user_org_account}`, async (req, res) => {
+    const org = req.params.org;
+
+    const email = await validateUser(req, res);
+    if (!email) {
+        return res.status(401).send('Unauthorized');
+    }
+
+    const identityHeader = req.headers['x-signed-identity'] as string;
+    const result = await localSelfDispatch(email, identityHeader, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
+
+    return res
+        .status(200)
+        .contentType('application/json')
+        .send(result);
+});
+
+app.get("/test", (req: Request, res: Response, next) => {
+    console.log("Test Console Ack");
     return res
         .status(200)
         .contentType("text/plain")
-        .send("Test Ack");
+        .send("Test HTTP Ack");
 });
 
 module.exports.handler = serverless(app);

@@ -3,13 +3,25 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.8.0: January 5th, 2024
+## Version 0.8.0: January 11th, 2024
+
+### New Features
+- New API /api/user/{org}/account to get status of user account (GET)
+
+### Enhancements
+- N/A
+
+### Bug Fixes
+- N/A
+
+## Version 0.8.0: January 11th, 2024
 
 ### New Features
 - Base API for resource generator (e.g. blueprint, aispec, etc) (GET/POST) - Task-based API, doesn't yet generate real data
 - Default (Empty) Architectural Blueprint Generator (POST)
 - Stub APIs for resource generator aispec and projectsource (POST)
 - Add API to GET /{project}/config/.boostignore info (read-only for now), and per project
+- New API Proxy Service - enabling Sara to talk to Boost AI service with signed headers (requiring an org-level secret)
 
 ### Enhancements
 - Enable signed call-outs from Backend Service API or Boost Lambda (when available)
@@ -19,6 +31,7 @@ Polyverse Boost ReST API (Backend)
 - Fix issue in resource data for Project creation - incorrectly stored when using comoatibility mode
 - Ensure goals and data_references are returned as JSON object, not a string
 - Fix issue with deserialization of data_references from storage (returning JSON string instead of an object to user)
+- Fix filename extension typo for aispec and blueprint files to .ms instead of .md
 
 ## Version 0.7.0: January 5th, 2024
 

@@ -5,7 +5,7 @@ export enum ProjectDataType {
 }
 
 export enum ProjectDataFilename {
-    ProjectSpecification = "aispec.ms",
-    ArchitecturalBlueprint = "blueprint.ms",
+    ProjectSpecification = "aispec.md",
+    ArchitecturalBlueprint = "blueprint.md",
     ProjectSource = "allfiles_combined.md"
 }
