@@ -20,6 +20,16 @@ class BoostBackendCheckinSuite(unittest.TestCase):
         response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456", json=data, headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
+    def test_user_account(self):
+        print("Running test: Strong authentication")
+
+        signedHeaders = get_signed_headers(self.EMAIL)
+
+        response = requests.get(f"{self.BASE_URL}/api/user/org123/account", None, headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+        account = response.json()
+        self.assertTrue(account["enabled"])
+
     def test_retrieve_file(self):
         print("Running test: Retrieve a file from the user's project")
         response = requests.get(f"{self.BASE_URL}/api/user_resource_file?uri=https://github.com/public-apis/public-apis/blob/master/scripts/validate/links.py", headers=self.HEADERS)

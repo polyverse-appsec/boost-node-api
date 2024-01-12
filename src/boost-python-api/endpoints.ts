@@ -1,4 +1,4 @@
-enum Services {
+export enum Services {
     QuickBlueprint = 'quick-blueprint',
     DraftBlueprint = 'draft-blueprint',
 
@@ -7,7 +7,7 @@ enum Services {
     CustomerPortal = 'customer_portal',
 }
 
-class Endpoints {
+export class Endpoints {
     private static map: Map<Services, string> = new Map<Services, string>([
         [Services.QuickBlueprint, 'https://vryv4jotc6rghitxmwaz5whrqm0obehc.lambda-url.us-west-2.on.aws/'],
         [Services.DraftBlueprint, 'https://7qpij3jplvcmdaojfumgj32e7e0vcchc.lambda-url.us-west-2.on.aws/'],
