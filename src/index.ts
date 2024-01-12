@@ -60,7 +60,7 @@ async function localSelfDispatch(email: string, originalIdentityHeader: string, 
         body: JSON.stringify(body)?body:undefined,
     });
     if (response.ok) {
-        return response.json();
+        return await response.json();
     }
 
     throw new Error(`Request ${selfEndpoint} failed with status ${response.status}`);
