@@ -138,15 +138,12 @@ def main():
         for output_file, resource_name in [
             ("allfiles_combined.md", "projectsource"),
             ("aispec.md", "aispec"),
+            # placeholder blueprint code, make sure you have a blueprint.md file in this directory before running
+            ("blueprint.md", "blueprint"),
         ]:
             file_content = read_file(output_file)
             post_response = post_data(args.email, args.organization, args.project_name, resource_name, file_content)
             print(f"POST to {resource_name}: {post_response.status_code}, {post_response.text}")
-
-        # placeholder blueprint code, replace the data with actual blueprint file
-        blueprint_data = "resources"
-        post_response = post_data(args.email, args.organization, args.project_name, "blueprint", blueprint_data)
-        print(f"POST to blueprint: {post_response.status_code}, {post_response.text}")
 
         # Poke openai to process the files
         post_data_references(args.email, args.organization, args.project_name)
