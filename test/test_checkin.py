@@ -88,6 +88,14 @@ class BoostBackendCheckinSuite(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"goal": "goal value"})
 
+    def test_retrieve_sara_project_data_references(self):
+        print("Running test: Retrieve goals data from the user's project")
+        response = requests.get(f"{self.BASE_URL}/api/user_project/polyverse-appsec/sara/data_references", headers={'x-user-account': "aaron@polyverse.com"})
+        self.assertEqual(response.status_code, 200)
+        data_references = response.json()
+        self.assertIsNotNone(data_references)
+        self.assertIsNotNone(len(data_references) > 0)
+
     def test_update_project(self):
         print("Running test: Updating project data")
         data = {"resources": [{"uri": "https://github.com/sindresorhus/awesome"}]}
