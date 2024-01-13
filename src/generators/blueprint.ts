@@ -24,8 +24,17 @@ interface DraftBlueprintOutput {
     draftBlueprint: string;
     recommendedListOfFilesToExcludeFromAnalysis: string[];
     prioritizedListOfSourceFilesToAnalyze: string[];
-    recommendedSampleSourceFile: string;
-    recommendedProjectDeploymentFile: string;
+    recommendedSampleSourceFile?: string;
+    recommendedProjectDeploymentFile?: string;
+}
+
+interface QuickBlueprintInput {
+    draftBlueprint: string;
+    filelist: string[];
+    projectName: string;
+
+    projectFile?: string;
+    code?: string;
 }
 
 export class BlueprintGenerator extends Generator {
@@ -80,30 +89,58 @@ readonly defaultBlueprint =
 
             break;
         case BlueprintStage.FileScan:
-            await this.updateProgress('Scanning Files');
+            {
+                await this.updateProgress('Scanning Files');
 
-            const fileList = await this.getFilenameList();
+                const fileList = await this.getFilenameList();
 
-            const draftOutput : DraftBlueprintOutput = await this.draftBlueprint(fileList);
+                const draftOutput : DraftBlueprintOutput = await this.draftBlueprint(fileList);
 
-            this.data = this.sampleBlueprint;
+                this.data = this.sampleBlueprint;
 
-            // we're going to save our resulting data, so we can run sampled code
-            await this.saveScratchData(JSON.stringify(draftOutput));
+                // we're going to save our resulting data, so we can run sampled code
+                await this.saveScratchData(JSON.stringify(draftOutput));
 
-            nextStage = BlueprintStage.SampledCode;
+                nextStage = BlueprintStage.SampledCode;
+            }
             break;
         case BlueprintStage.SampledCode:
-            await this.updateProgress('Sampling Project Code');
+            {
+                await this.updateProgress('Sampling Project Code');
 
-            const loadedDraftOutputRaw = await this.loadScratchData();
-            if (!loadedDraftOutputRaw) {
-                throw new GeneratorProcessingError('Unable to load draft data', BlueprintStage.FileScan);
+                const loadedDraftOutputRaw = await this.loadScratchData();
+                if (!loadedDraftOutputRaw) {
+                    // if we don't have the data we need from the draft blueprint process, we won't be able
+                    //      to build a better sampled code blueprint - so reset back to file scan to try and
+                    //      generate it again
+                    throw new GeneratorProcessingError('Unable to load draft data', BlueprintStage.FileScan);
+                }
+
+                const draftOutput : DraftBlueprintOutput = JSON.parse(loadedDraftOutputRaw);
+
+                const inputData : QuickBlueprintInput = {
+                    draftBlueprint: this.data,
+                    filelist: draftOutput.prioritizedListOfSourceFilesToAnalyze,
+                    projectName: this.projectData.name,
+                }
+
+                if (draftOutput.recommendedSampleSourceFile) {
+                    const code = await this.loadProjectFile(draftOutput.recommendedSampleSourceFile);
+                    if (code) {
+                        inputData.code = code;
+                    }
+                }
+                if (draftOutput.recommendedProjectDeploymentFile) {
+                    const projectFile = await this.loadProjectFile(draftOutput.recommendedProjectDeploymentFile);
+                    if (projectFile) {
+                        inputData.projectFile = projectFile;
+                    }
+                }
+
+                this.data = await this.sampledCodeBlueprint(inputData);
+
+                nextStage = BlueprintStage.Complete;
             }
-
-            const loadedDraftOutput : DraftBlueprintOutput = JSON.parse(loadedDraftOutputRaw);
-
-            nextStage = BlueprintStage.Complete;
             break;
         default:
             throw new Error(`Invalid Blueprint Stage: ${stage}`);
@@ -140,6 +177,18 @@ readonly defaultBlueprint =
         if (!response.ok) {
             throw new Error(`Unable to draft blueprint: ${response.status}`);
         }
-        return response.json() as Promise<DraftBlueprintOutput>;
+        return await response.json();
+    }
+
+    async sampledCodeBlueprint(inputData: QuickBlueprintInput) : Promise<string> {
+        const response = await fetch(this.serviceEndpoint + `/api/ai/${this.projectData.org}/${Services.QuickBlueprint}`, {
+            method: 'POST',
+            headers: await signedAuthHeader(this.email),
+            body: JSON.stringify(inputData)
+        });
+        if (!response.ok) {
+            throw new Error(`Unable to build blueprint from project samples: ${response.status}`);
+        }
+        return await response.text();
     }
 }

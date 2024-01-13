@@ -144,6 +144,26 @@ export class Generator {
         });
     }
 
+    async loadProjectFile(filename: string) : Promise<string> {
+        const authHeader = await signedAuthHeader(this.email);
+
+        const encodedFilename = encodeURIComponent(filename);
+        const response = await fetch(this.resourceUri + `/user_resource_file/?uri=${encodedFilename}`, {
+            method: 'GET',
+            headers: {
+                ...authHeader
+            }
+        });
+
+        // if we can't load the project file, just return an empty string - caller can decide if that's a fatal issue
+        if (!response.ok) {
+            console.log(`Unable to load project file: ${filename} from ${this.projectData.resources[0].uri}`);
+            return '';
+        }
+
+        return await response.text();
+    }
+
     get resourceUri() : string {
         const resourceUri : URL = new URL(`${this.serviceEndpoint}/api/${this.projectData.org}/${this.projectData.name}/data/${this.dataType}`);
         return resourceUri.href;
