@@ -125,17 +125,23 @@ readonly defaultBlueprint =
                 }
 
                 if (draftOutput.recommendedSampleSourceFile) {
+                    await this.updateProgress('Sampling Project Source Files');
+
                     const code = await this.loadProjectFile(draftOutput.recommendedSampleSourceFile);
                     if (code) {
                         inputData.code = code;
                     }
                 }
                 if (draftOutput.recommendedProjectDeploymentFile) {
+                    await this.updateProgress('Sampling Project Deployment Configuration');
+
                     const projectFile = await this.loadProjectFile(draftOutput.recommendedProjectDeploymentFile);
                     if (projectFile) {
                         inputData.projectFile = projectFile;
                     }
                 }
+
+                await this.updateProgress('Rebuilding Blueprint from Sampled Project Files');
 
                 this.data = await this.sampledCodeBlueprint(inputData);
 
