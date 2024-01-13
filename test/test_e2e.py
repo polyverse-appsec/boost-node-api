@@ -16,9 +16,16 @@ class End2EndTestSuite(unittest.TestCase):
 
         headers = get_signed_headers(self.EMAIL)
 
+        # cleanup resources
+        response = requests.delete(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint", headers=headers)
+        self.assertEqual(response.status_code, 200)
+
+        # response = requests.delete(f"{self.BASE_URL}/api/user_project/org123/project456/data_references", headers=headers)
+        # self.assertEqual(response.status_code, 200)
+
         # create a sample project to test with
         data = {"resources": [{"uri": "http://www.github.com/public-apis/public-apis"}]}
-        response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456", json=data, headers=headers)
+        response = requests.put(f"{self.BASE_URL}/api/user_project/org123/project456", json=data, headers=headers)
         self.assertEqual(response.status_code, 200)
 
         response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint/generator", headers=headers)
@@ -27,7 +34,7 @@ class End2EndTestSuite(unittest.TestCase):
             print("Generator is not idle, so test results may be compromised - continuing anyway")
 
             # try to idle the task generator
-            response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint/generator", json={"status": "processing"}, headers=headers)
+            response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint/generator", json={"status": "idle"}, headers=headers)
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["status"], "idle")
 
@@ -41,13 +48,19 @@ class End2EndTestSuite(unittest.TestCase):
         self.assertTrue(response.status_code == 202 or response.status_code == 200)
         self.assertTrue(response.json()["status"] == "processing" or response.json()["status"] == "idle")
 
+        # we need to make sure the resource is generated immediately - even if further updates will happen
+        response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint", headers=headers)
+        self.assertEqual(response.status_code, 200)
+        data = response.text
+        self.assertIsNotNone(data)
+
         # we'll loop until the generator is idle or in an error state - for 30 seconds max
         #       every second, we'll do a GET and check its state
         #       if it's idle, we'll break out of the loop and pass the test
         #       if it's in an error state, we'll break out of the loop and fail the test
         #       if it's still processing, we'll continue looping
         #       each loop, we'll print the current generator state
-        for i in range(15):
+        for i in range(48):
             response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint/generator", headers=headers)
             self.assertEqual(response.status_code, 200)
             self.assertIn(response.json()["status"], ["idle", "processing", "error"])
@@ -56,7 +69,15 @@ class End2EndTestSuite(unittest.TestCase):
                 break
             if response.json()["status"] == "error":
                 break
-            time.sleep(2)
+
+            # make sure the blueprint resource is still available
+            response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint", headers=headers)
+            self.assertEqual(response.status_code, 200)
+            data = response.text
+            self.assertIsNotNone(data)
+
+            # wait a couple seconds before re-sampling
+            time.sleep(5)
         self.assertEqual(response.json()["status"], "idle")
 
         response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/data/blueprint", headers=headers)
@@ -68,7 +89,7 @@ class End2EndTestSuite(unittest.TestCase):
         print("Running test: Build User profile and verify")
         headers = get_signed_headers(self.EMAIL)
 
-        response = requests.get(f"{self.BASE_URL}/api/user/profile", None, headers=headers)
+        response = requests.get(f"{self.BASE_URL}/api/user/profile", headers=headers)
         self.assertEqual(response.status_code, 200)
 
         profile = {
@@ -84,7 +105,7 @@ class End2EndTestSuite(unittest.TestCase):
         self.assertEqual(puttedData['title'], profile['title'])
         self.assertEqual(puttedData['details'], profile['details'])
 
-        response = requests.get(f"{self.BASE_URL}/api/user/profile", None, headers=headers)
+        response = requests.get(f"{self.BASE_URL}/api/user/profile", headers=headers)
         self.assertEqual(response.status_code, 200)
         gettedData = response.json()
         self.assertEqual(gettedData['name'], profile['name'])
@@ -94,7 +115,7 @@ class End2EndTestSuite(unittest.TestCase):
         response = requests.delete(f"{self.BASE_URL}/api/user/profile", headers=headers)
         self.assertEqual(response.status_code, 200)
 
-        response = requests.get(f"{self.BASE_URL}/api/user/profile", None, headers=headers)
+        response = requests.get(f"{self.BASE_URL}/api/user/profile", headers=headers)
         self.assertEqual(response.status_code, 200)
         gettedData = response.json()
         self.assertFalse('name' in gettedData)
