@@ -382,14 +382,13 @@ app.post(`${api_root_endpoint}${user_project_org_project}`, async (req: Request,
 
     // if req body is not a string, then we need to convert back into a normal string
     let body = req.body;
-    // Check if body is a Buffer
-    if (Buffer.isBuffer(body)) {
-        body = body.toString('utf8');
-    }
 
     // If body is not a string, handle accordingly
     if (typeof body !== 'string') {
-        if (Array.isArray(body)) {
+        // Check if body is a Buffer
+        if (Buffer.isBuffer(body)) {
+            body = body.toString('utf8');
+        } else if (Array.isArray(body)) {
             // Handle the case where body is an array
             // Convert array to string or handle it as needed
             body = Buffer.from(body).toString('utf8');
@@ -398,6 +397,12 @@ app.post(`${api_root_endpoint}${user_project_org_project}`, async (req: Request,
             body = JSON.stringify(body);
         }
     }
+
+    if (body === '') {
+        console.error(`${user_profile}: empty body`);
+        return res.status(400).send('Missing body');
+    }
+
 
     // Parse the body string to an object
     let updatedProject;
@@ -504,7 +509,7 @@ app.delete(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: 
     }
 
     await deleteProjectData(email, SourceType.General, org, project, '', 'goals');
-    console.log(`user_project_goals: deleted data`);
+    console.log(`${user_project_org_project_goals}: deleted data`);
 
     return res
         .status(200)
@@ -854,7 +859,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         console.error(`Resetting to ${processingError.stage} due to error in ${resource} stage ${currentGeneratorState.stage}:`, processingError);
                     }
                 }
-                
+
                 // In case of error, set status to error
                 currentGeneratorState.status = TaskStatus.Error;
 
@@ -1328,6 +1333,85 @@ app.get(`${api_root_endpoint}${user_org_account}`, async (req, res) => {
         .status(200)
         .contentType('application/json')
         .send(result);
+});
+
+const user_profile = `/user/profile`;
+app.delete(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Response) => {
+    const email = await validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    await deleteProjectData(email, SourceType.General, 'user', '', '', 'profile');
+    console.log(`${user_profile}: deleted data`);
+
+    return res
+        .status(200)
+        .send();
+});
+
+interface UserProfile {
+    name?: string,
+    title?: string,
+    details?: string,
+};
+
+app.put(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Response) => {
+    const email = await validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    // if req body is not a string, then we need to convert back into a normal string
+    let body = req.body;
+    if (typeof body !== 'string') {
+        if (Buffer.isBuffer(body)) {
+            body = Buffer.from(body).toString('utf8');
+        }
+        else if (Array.isArray(body)) {
+            body = Buffer.from(body).toString('utf8');
+        } else {
+            body = JSON.stringify(body);
+        }
+    }
+    if (body === '') {
+        console.error(`${user_profile}: empty body`);
+        return res.status(400).send('Missing body');
+    }
+
+    const newProfileData = JSON.parse(body) as UserProfile;
+    const profileData: UserProfile = {};
+    profileData.name = newProfileData.name;
+    profileData.title = newProfileData.title;
+    profileData.details = newProfileData.details;
+    await storeProjectData(email, SourceType.General, 'user', '', '', 'profile', JSON.stringify(profileData));
+
+    console.log(`${user_profile}: stored data`);
+
+    return res
+        .status(200)
+        .contentType('application/json')
+        .send(profileData);
+});
+
+app.get(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Response) => {
+    const email = await validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    const profileRaw = await getProjectData(email, SourceType.General, 'user', '', '', 'profile');
+    let profileData: UserProfile = {};
+    if (profileRaw) {
+        profileData = JSON.parse(profileRaw) as UserProfile;
+    }
+
+    console.log(`${user_profile}: retrieved data`);
+
+    return res
+        .status(200)
+        .contentType('application/json')
+        .send(profileData);
 });
 
 app.get("/test", (req: Request, res: Response, next) => {
