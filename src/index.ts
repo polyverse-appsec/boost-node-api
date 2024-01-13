@@ -671,6 +671,40 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (
         .send(resourceData);
 });
 
+app.delete(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
+    const email = await validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    const projectData = await loadProjectData(email, req, res) as UserProjectData;
+    if (projectData instanceof Response) {
+        return projectData;
+    }
+
+    const uri = new URL(projectData.resources[0].uri);
+
+    // Split the pathname by '/' and filter out empty strings
+    const pathSegments = uri.pathname.split('/').filter(segment => segment);
+
+    // The relevant part is the last segment of the path
+    const repoName = pathSegments.pop();
+    const ownerName = pathSegments.pop();
+    if (!repoName || !ownerName) {
+        throw new Error(`Invalid URI: ${uri}`);
+    }
+
+    const { _, __, resource } = req.params;
+    
+    await deleteProjectData(email, SourceType.GitHub, ownerName, repoName, '', resource);
+
+    console.log(`${user_project_org_project_data_resource}: deleted data`);
+    return res
+        .status(200)
+        .contentType('application/json')
+        .send();
+});
+
 app.route(`${api_root_endpoint}${user_project_org_project_data_resource}`)
    .post(postOrPutUserProjectDataResource)
    .put(postOrPutUserProjectDataResource);
