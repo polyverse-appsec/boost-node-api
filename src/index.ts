@@ -371,14 +371,31 @@ app.post(`${api_root_endpoint}${user_project_org_project}`, async (req: Request,
 
     // if req body is not a string, then we need to convert back into a normal string
     let body = req.body;
+    // Check if body is a Buffer
+    if (Buffer.isBuffer(body)) {
+        body = body.toString('utf8');
+    }
+
+    // If body is not a string, handle accordingly
     if (typeof body !== 'string') {
         if (Array.isArray(body)) {
+            // Handle the case where body is an array
+            // Convert array to string or handle it as needed
             body = Buffer.from(body).toString('utf8');
         } else {
+            // Handle other cases (e.g., body is an object)
             body = JSON.stringify(body);
         }
     }
-    const updatedProject = JSON.parse(body);
+
+    // Parse the body string to an object
+    let updatedProject;
+    try {
+        updatedProject = JSON.parse(body);
+    } catch (error) {
+        console.error('Error parsing JSON:', error);
+        return res.status(400).send('Invalid JSON');
+    }
 
     // if there are resources passed into the project, and the resources are an array of strings
     //      the we need to convert the array of strings into an array of ProjectResource objects
