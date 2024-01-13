@@ -27,6 +27,7 @@ import {
 import { ProjectDataFilename, ProjectDataType } from './types/ProjectData';
 import { BlueprintGenerator } from './generators/blueprint';
 import { Services, Endpoints } from './boost-python-api/endpoints';
+import { GeneratorProcessingError } from './generators/generator';
 
 export const app = express();
 
@@ -42,7 +43,7 @@ app.use((err : any, req : Request, res : Response) => {
 });
 */
 
-async function localSelfDispatch(email: string, originalIdentityHeader: string, initialRequest: Request, path: string, httpVerb: string, body?: any): Promise<any> {
+export async function localSelfDispatch(email: string, originalIdentityHeader: string, initialRequest: Request, path: string, httpVerb: string, body?: any): Promise<any> {
 
     let selfEndpoint = `${initialRequest.protocol}://${initialRequest.get('host')}/${api_root_endpoint}/${path}`;
     // if we're running locally, then we'll use http:// no matter what
@@ -102,9 +103,19 @@ export async function saveProjectDataResource(
     ownerName: string,
     repoName: string,
     resource: string,
+    path: string,
     data: any
 ): Promise<void> {
-    await splitAndStoreData(email, SourceType.GitHub, ownerName, repoName, '', resource, data);
+    await splitAndStoreData(email, SourceType.GitHub, ownerName, repoName, path, resource, data);
+}
+
+export async function loadProjectDataResource(
+    email: string,
+    ownerName: string,
+    repoName: string,
+    resource: string,
+    path: string): Promise<string | undefined> {
+    return await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, path, resource);
 }
 
 const postOrPutUserProjectDataResource = async (req: Request, res: Response) => {
@@ -139,7 +150,7 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
 
     const { _, __, resource } = req.params;
 
-    await saveProjectDataResource(email, ownerName, repoName, resource, body);
+    await saveProjectDataResource(email, ownerName, repoName, resource, '', body);
 
     console.log(`${user_project_org_project_data_resource}: stored data`);
     return res.status(200).send();
@@ -837,6 +848,13 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             } catch (error) {
                 console.error(`Error processing stage ${currentGeneratorState.stage}:`, error);
 
+                if (error instanceof GeneratorProcessingError) {
+                    const processingError = error as GeneratorProcessingError;
+                    if (processingError.stage != currentGeneratorState.stage) {
+                        console.error(`Resetting to ${processingError.stage} due to error in ${resource} stage ${currentGeneratorState.stage}:`, processingError);
+                    }
+                }
+                
                 // In case of error, set status to error
                 currentGeneratorState.status = TaskStatus.Error;
 

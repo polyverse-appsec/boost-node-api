@@ -2,8 +2,18 @@ import { ProjectDataType } from "../types/ProjectData";
 import { UserProjectData } from "../types/UserProjectData";
 import { GeneratorState, TaskStatus } from "../types/GeneratorState";
 import { signedAuthHeader } from "../auth";
-import { saveProjectDataResource } from "..";
+import { saveProjectDataResource, loadProjectDataResource } from "..";
 
+
+export class GeneratorProcessingError extends Error {
+    stage: string;
+
+    constructor(message: string, stage: string) {
+        super(message);
+        this.name = 'GeneratorProcessingError';
+        this.stage = stage;
+    }
+}
 
 export class Generator {
     email: string;
@@ -13,6 +23,7 @@ export class Generator {
     currentStage: string;
 
     data: string;
+
     constructor(serviceEndpoint: string, email: string, projectData: UserProjectData, dataType: ProjectDataType) {
         this.email = email;
         this.projectData = projectData;
@@ -47,9 +58,8 @@ export class Generator {
         console.log(`Loaded ${this.dataType} data`);
     }
 
-    async save() : Promise<void> {
-        console.log(`Saving ${this.dataType} data`);
-        const authHeader = await signedAuthHeader(this.email);
+    async saveScratchData(data: string) : Promise<void> {
+        console.log(`Saving Scratch ${this.dataType} data`);
 
         const uri = new URL(this.projectData.resources[0].uri);
         const pathSegments = uri.pathname.split('/').filter(segment => segment);
@@ -59,9 +69,46 @@ export class Generator {
             throw new Error(`Invalid URI: ${uri}`);
         }
 
-        await saveProjectDataResource(this.email, ownerName, repoName, this.dataType, this.data);
+        // write the scratch data for the current stage
+        await saveProjectDataResource(
+            this.email, ownerName, repoName, this.dataType,
+            `${this.dataType}/generators/scratch/${this.currentStage}`,
+            data);
+    }
+
+    async loadScratchData(stage?: string) : Promise<string | undefined> {
+        console.log(`Saving Scratch ${this.dataType} data`);
+
+        const uri = new URL(this.projectData.resources[0].uri);
+        const pathSegments = uri.pathname.split('/').filter(segment => segment);
+        const repoName = pathSegments.pop();
+        const ownerName = pathSegments.pop();
+        if (!repoName || !ownerName) {
+            throw new Error(`Invalid URI: ${uri}`);
+        }
+
+        // write the scratch data for the current stage or a different stage
+        const data = await loadProjectDataResource(
+            this.email, ownerName, repoName, this.dataType,
+            `${this.dataType}/generators/scratch/${stage?stage:this.currentStage}`);
+        return data;
+    }
+
+    async save() : Promise<void> {
+        console.log(`Saving ${this.dataType} data`);
+
+        const uri = new URL(this.projectData.resources[0].uri);
+        const pathSegments = uri.pathname.split('/').filter(segment => segment);
+        const repoName = pathSegments.pop();
+        const ownerName = pathSegments.pop();
+        if (!repoName || !ownerName) {
+            throw new Error(`Invalid URI: ${uri}`);
+        }
+
+        await saveProjectDataResource(this.email, ownerName, repoName, this.dataType, '', this.data);
 
         /*
+        const authHeader = await signedAuthHeader(this.email);
         const response = await fetch(this.resourceUri, {
             method: 'PUT',
             headers: {
