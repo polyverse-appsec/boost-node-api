@@ -15,7 +15,7 @@ class UnitTestSuite(unittest.TestCase):
 
         signedHeaders = get_signed_headers(self.EMAIL)
 
-        response = requests.get(f"{self.BASE_URL}/api/user/org123/account", None, headers=signedHeaders)
+        response = requests.get(f"{self.BASE_URL}/api/user/org123/account", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
         account = response.json()
         self.assertTrue(account["enabled"])
@@ -68,7 +68,7 @@ class UnitTestSuite(unittest.TestCase):
 
     def test_store_goals_data_in_project(self):
         print("Running test: Store goals data in the user's project")
-        data = {"goal": "goal value"}
+        data = {"goals": "goal value"}
         response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456/goals", json=data, headers=self.HEADERS)
         self.assertEqual(response.status_code, 200)
 
@@ -76,7 +76,7 @@ class UnitTestSuite(unittest.TestCase):
         print("Running test: Retrieve goals data from the user's project")
         response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/goals", headers=self.HEADERS)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {"goal": "goal value"})
+        self.assertEqual(response.json(), {"goals": "goal value"})
 
     def test_retrieve_sara_project_data_references(self):
         print("Running test: Retrieve goals data from the user's project")

@@ -490,6 +490,11 @@ app.delete(`${api_root_endpoint}${user_project_org_project}`, async (req: Reques
         .send();
 });
 
+// create an object with the project goals
+interface ProjectGoals {
+    goals?: string;
+}
+
 const user_project_org_project_goals = `/user_project/:org/:project/goals`;
 app.delete(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
@@ -536,13 +541,31 @@ app.post(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Re
     // if req body is not a string, then we need to convert back into a normal string
     let body = req.body;
     if (typeof body !== 'string') {
-        if (Array.isArray(body)) {
+        // Check if body is a Buffer
+        if (Buffer.isBuffer(body)) {
+            body = body.toString('utf8');
+        } else if (Array.isArray(body)) {
             body = Buffer.from(body).toString('utf8');
         } else {
             body = JSON.stringify(body);
         }
     }
-    await storeProjectData(email, SourceType.General, org, project, '', 'goals', body);
+
+    if (body === '') {
+        console.error(`${user_profile}: empty body`);
+        return res.status(400).send('Missing body');
+    }
+
+    // Parse the body string to an object
+    let updatedGoals;
+    try {
+        updatedGoals = JSON.parse(body);
+    } catch (error) {
+        console.error('Error parsing JSON:', error);
+        return res.status(400).send('Invalid JSON');
+    }
+
+    await storeProjectData(email, SourceType.General, org, project, '', 'goals', JSON.stringify(updatedGoals));
 
     console.log(`${user_project_org_project_goals}: stored data`);
 
@@ -571,14 +594,12 @@ app.get(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Req
 
     const projectGoalsRaw = await getProjectData(email, SourceType.General, org, project, '', 'goals');
 
-    console.log(`${user_project_org_project_goals}: retrieved data`);
+    let projectGoals : ProjectGoals = {};
+    if (projectGoalsRaw) {
+        projectGoals = JSON.parse(projectGoalsRaw);
+    }
 
-    // create an object with the project goals
-    const projectGoals = {
-        org : org,
-        name : project,
-        goals : projectGoalsRaw,
-    };
+    console.log(`${user_project_org_project_goals}: retrieved data`);
 
     return res
         .status(200)
