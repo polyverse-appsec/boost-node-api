@@ -16,7 +16,7 @@ class BoostBackendAIServiceSuite(unittest.TestCase):
 
         signedHeaders = get_signed_headers(self.EMAIL)
 
-        response = requests.get(f"{self.BASE_URL}/api/proxy/ai/${self.ORG}/customer_portal", None, headers=signedHeaders)
+        response = requests.get(f"{self.BASE_URL}/api/proxy/ai/${self.ORG}/customer_portal", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
         responseJson = response.json()
         self.assertTrue(responseJson["enabled"])
