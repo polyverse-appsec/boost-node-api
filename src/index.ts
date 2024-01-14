@@ -153,6 +153,11 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
         body = Buffer.from(body).toString('utf8');
     }
 
+    if (body === '') {
+        console.error(`${user_profile}: empty body`);
+        return res.status(400).send('Missing body');
+    }
+
     const { _, __, resource } = req.params;
 
     await saveProjectDataResource(email, ownerName, repoName, resource, '', body);

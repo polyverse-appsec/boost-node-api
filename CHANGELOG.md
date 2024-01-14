@@ -10,6 +10,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Return Project data for GET /api/user/{org}/project/{project} (POST)
+- Return error for empty resource on /api/user/{org}/project/{project}/data/{resource} (POST)
 
 ### Bug Fixes
 - Return JSON object instead of raw JSON string for GET /api/user/{org}/project/{project}
