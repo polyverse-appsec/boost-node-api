@@ -9,6 +9,23 @@ class UnitTestSuite(unittest.TestCase):
     CLOUD_URL = "https://pt5sl5vwfjn6lsr2k6szuvfhnq0vaxhl.lambda-url.us-west-2.on.aws"  # AWS Lambda URL
     EMAIL = "unittest@polytest.ai"
 
+    def test_strong_authn(self):
+        print("Running test: Strong authentication")
+
+        signedHeaders = get_signed_headers(self.EMAIL)
+
+        data = {"resources": ["resource1", "resource2"]}
+        response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456", json=data, headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+    def test_weak_authn(self):
+        print("Running test: Weak authentication")
+
+        unsignedHeader = {'x-user-account': self.EMAIL}
+
+        response = requests.get(f"{self.BASE_URL}/api/user/profile", headers=unsignedHeader)
+        self.assertEqual(response.status_code, 200)
+
     def test_user_account(self):
         print("Running test: Strong authentication")
 
