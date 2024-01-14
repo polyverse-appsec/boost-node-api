@@ -216,7 +216,11 @@ async function doesPartExist(email: string, ownerName: string, repoName: string,
     return partData !== undefined;
 }
 
-const user_resource_file = `/user_resource_file`;
+function checkPrivateAccessAllowed(accountStatus: UserAccountState): boolean {
+    return accountStatus.enabled && accountStatus.plan === 'premium';
+}
+
+const user_resource_file = `/user/:org/connectors/github/file`;
 app.get(`${api_root_endpoint}${user_resource_file}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
@@ -248,10 +252,19 @@ app.get(`${api_root_endpoint}${user_resource_file}`, async (req: Request, res: R
         return res.status(400).send('Invalid URI');
     }
 
-    getFileFromRepo(email, uri, req, res);
+    const { org } = req.params;
+
+    if (!req.get('X-Signed-Identity')) {
+        console.error(`Unauthorized: Signed Header missing`);
+        return res.status(401).send('Unauthorized');
+    }
+    const accountStatus : UserAccountState = await localSelfDispatch(email, req.get('X-Signed-Identity')!, req, `user/${org}/account`, 'GET');
+    const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
+
+    getFileFromRepo(email, uri, req, res, privateAccessAllowed);
 });
 
-const user_resource_folders = `/user_resource_folders`;
+const user_resource_folders = `/user/:org/connectors/github/folders`;
 app.get(`${api_root_endpoint}${user_resource_folders}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
@@ -283,10 +296,15 @@ app.get(`${api_root_endpoint}${user_resource_folders}`, async (req: Request, res
         return res.status(400).send('Invalid URI');
     }
 
-    getFolderPathsFromRepo(email, uri, req, res);
+    const { org } = req.params;
+
+    const accountStatus : UserAccountState = await localSelfDispatch(email, req.get('X-Signed-Identity')!, req, `user/${org}/account`, 'GET');
+    const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
+
+    getFolderPathsFromRepo(email, uri, req, res, privateAccessAllowed);
 });
 
-const user_resource_files = `/user_resource_files`;
+const user_resource_files = `/user/:org/connectors/github/files`;
 app.get(`${api_root_endpoint}${user_resource_files}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
@@ -318,7 +336,12 @@ app.get(`${api_root_endpoint}${user_resource_files}`, async (req: Request, res: 
         return res.status(400).send('Invalid URI');
     }
 
-    getFilePathsFromRepo(email, uri, req, res);
+    const { org } = req.params;
+
+    const accountStatus : UserAccountState = await localSelfDispatch(email, req.get('X-Signed-Identity')!, req, `user/${org}/account`, 'GET');
+    const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
+
+    getFilePathsFromRepo(email, uri, req, res, privateAccessAllowed);
 });
 
 const user_project_org_project = `/user_project/:org/:project`;
@@ -1371,6 +1394,17 @@ const handleProxyRequest = async (req: Request, res: Response) => {
 
 app.route(`${api_root_endpoint}${proxy_ai_endpoint}`)
    .all(handleProxyRequest);
+
+interface UserAccountState {
+    enabled: boolean,
+    status: string,
+    org: string,
+    owner: string,
+    plan: string,
+    saas_client: boolean,
+    email: string,
+    portal_url: string,
+};
 
 const user_org_account = `/user/:org/account`;
 app.get(`${api_root_endpoint}${user_org_account}`, async (req, res) => {

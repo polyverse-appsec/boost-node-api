@@ -9,7 +9,7 @@ import AdmZip from 'adm-zip';
 
 const BoostGitHubAppId = "472802";
 
-export async function getFileFromRepo(email: string, uri: URL, req: Request, res: Response): Promise<any> {
+export async function getFileFromRepo(email: string, uri: URL, req: Request, res: Response, allowPrivateAccess: boolean): Promise<any> {
     const [, owner, repo, ...path] = uri.pathname.split('/');
 
     if (!owner || !repo || path.length === 0) {
@@ -53,6 +53,11 @@ export async function getFileFromRepo(email: string, uri: URL, req: Request, res
         }
     }
 
+    if (!allowPrivateAccess) {
+        console.error(`Error: Private Access Not Allowed for this Plan: ${filePath}`);
+        return res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
+    }
+
     // Process for private access
     try {
         const user = await getUser(email);
@@ -89,7 +94,7 @@ export async function getFileFromRepo(email: string, uri: URL, req: Request, res
     }
 }
 
-export async function getFolderPathsFromRepo(email: string, uri: URL, req: Request, res: Response) {
+export async function getFolderPathsFromRepo(email: string, uri: URL, req: Request, res: Response, allowPrivateAccess: boolean) {
     const [, owner, repo] = uri.pathname.split('/');
 
     if (!owner || !repo) {
@@ -142,6 +147,11 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
         console.error(`Error retrieving folders via public access:`, error);
     }
 
+    if (!allowPrivateAccess) {
+        console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
+        return res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
+    }
+
     // Private access part
     try {
         const user = await getUser(email);
@@ -179,7 +189,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
     }
 }
 
-export async function getFilePathsFromRepo(email: string, uri: URL, req: Request, res: Response) {
+export async function getFilePathsFromRepo(email: string, uri: URL, req: Request, res: Response, allowPrivateAccess: boolean) {
     const [, owner, repo] = uri.pathname.split('/');
 
     if (!owner || !repo) {
@@ -231,6 +241,11 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
         console.error(`Error retrieving files via public access:`, error);
     }
 
+    if (!allowPrivateAccess) {
+        console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
+        return res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
+    }
+
     // Private access part
     try {
         const user = await getUser(email);
@@ -273,7 +288,7 @@ interface FileContent {
     source: string;
 }
 
-export async function getFullSourceFromRepo(email: string, uri: URL, req: Request, res: Response) {
+export async function getFullSourceFromRepo(email: string, uri: URL, req: Request, res: Response, allowPrivateAccess: boolean) {
     const [, owner, repo] = uri.pathname.split('/');
 
     if (!owner || !repo) {
@@ -319,6 +334,11 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
     } catch (publicError) {
         console.log('Public access failed, attempting authenticated access');
 
+        if (!allowPrivateAccess) {
+            console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
+            return res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
+        }
+    
         // Public access failed, switch to authenticated access
         try {
             const user = await getUser(email);

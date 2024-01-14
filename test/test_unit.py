@@ -8,7 +8,6 @@ class UnitTestSuite(unittest.TestCase):
     BASE_URL = "http://localhost:3000"  # Local Test Server
     CLOUD_URL = "https://pt5sl5vwfjn6lsr2k6szuvfhnq0vaxhl.lambda-url.us-west-2.on.aws"  # AWS Lambda URL
     EMAIL = "unittest@polytest.ai"
-    HEADERS = {'x-user-account': EMAIL}
 
     def test_user_account(self):
         print("Running test: Strong authentication")
@@ -22,12 +21,14 @@ class UnitTestSuite(unittest.TestCase):
 
     def test_retrieve_file(self):
         print("Running test: Retrieve a file from the user's project")
-        response = requests.get(f"{self.BASE_URL}/api/user_resource_file?uri=https://github.com/public-apis/public-apis/blob/master/scripts/validate/links.py", headers=self.HEADERS)
+        signedHeaders = get_signed_headers(self.EMAIL)
+        response = requests.get(f"{self.BASE_URL}/api/user/org123/connectors/github/file?uri=https://github.com/public-apis/public-apis/blob/master/scripts/validate/links.py", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
     def test_retrieve_folders(self):
         print("Running test: Retrieve all folders from a public project")
-        response = requests.get(f"{self.BASE_URL}/api/user_resource_folders?uri=https://github.com/public-apis/public-apis/", headers=self.HEADERS)
+        signedHeaders = get_signed_headers(self.EMAIL)
+        response = requests.get(f"{self.BASE_URL}/api/user/org123/connectors/github/folders?uri=https://github.com/public-apis/public-apis/", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
         self.assertIsNotNone(response.json())
         folders = response.json()
@@ -35,7 +36,8 @@ class UnitTestSuite(unittest.TestCase):
 
     def test_retrieve_files(self):
         print("Running test: Retrieve all files from a public project")
-        response = requests.get(f"{self.BASE_URL}/api/user_resource_files?uri=https://github.com/public-apis/public-apis/", headers=self.HEADERS)
+        signedHeaders = get_signed_headers(self.EMAIL)
+        response = requests.get(f"{self.BASE_URL}/api/user/org123/connectors/github/files?uri=https://github.com/public-apis/public-apis/", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
         self.assertIsNotNone(response.json())
         files = response.json()
@@ -43,44 +45,51 @@ class UnitTestSuite(unittest.TestCase):
 
     def test_retrieve_invalid_uri(self):
         print("Running test: Retrieve a file from the user's project")
-        response = requests.get(f"{self.BASE_URL}/api/user_resource_file?uri=example.com", headers=self.HEADERS)
+        signedHeaders = get_signed_headers(self.EMAIL)
+        response = requests.get(f"{self.BASE_URL}/api/user/org123/connectors/github/file?uri=example.com", headers=signedHeaders)
         self.assertEqual(response.status_code, 400)
 
     def test_retrieve_github_repo(self):
         print("Running test: Retrieve a file from the user's project")
-        response = requests.get(f"{self.BASE_URL}/api/user_resource_file?uri=https://github.com/public-apis/public-apis", headers=self.HEADERS)
+        signedHeaders = get_signed_headers(self.EMAIL)
+        response = requests.get(f"{self.BASE_URL}/api/user/org123/connectors/github/file?uri=https://github.com/public-apis/public-apis", headers=signedHeaders)
         self.assertEqual(response.status_code, 400)
 
     def test_store_data_in_project(self):
         print("Running test: Store data in the user's project")
         data = {"resources": [{"uri": "https://github.com/sindresorhus/bro"}]}
-        response = requests.post(f"{self.CLOUD_URL}/api/user_project/org123/project456", json=data, headers=self.HEADERS)
+        signedHeaders = get_signed_headers(self.EMAIL)
+        response = requests.post(f"{self.CLOUD_URL}/api/user_project/org123/project456", json=data, headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
     def test_retrieve_data_from_project(self):
         print("Running test: Retrieve data from the user's project")
 
-        response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456", json={}, headers=self.HEADERS)
+        signedHeaders = get_signed_headers(self.EMAIL)
+        response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456", json={}, headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
-        response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456", headers=self.HEADERS)
+        response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
     def test_store_goals_data_in_project(self):
         print("Running test: Store goals data in the user's project")
+        signedHeaders = get_signed_headers(self.EMAIL)
         data = {"goals": "goal value"}
-        response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456/goals", json=data, headers=self.HEADERS)
+        response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456/goals", json=data, headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
     def test_retrieve_goals_data_from_project(self):
         print("Running test: Retrieve goals data from the user's project")
-        response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/goals", headers=self.HEADERS)
+        signedHeaders = get_signed_headers(self.EMAIL)
+        response = requests.get(f"{self.BASE_URL}/api/user_project/org123/project456/goals", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"goals": "goal value"})
 
     def test_retrieve_sara_project_data_references(self):
         print("Running test: Retrieve goals data from the user's project")
-        response = requests.get(f"{self.BASE_URL}/api/user_project/polyverse-appsec/sara/data_references", headers={'x-user-account': "aaron@polyverse.com"})
+        signedHeaders = get_signed_headers('aaron@polyverse.com')
+        response = requests.get(f"{self.BASE_URL}/api/user_project/polyverse-appsec/sara/data_references", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
         data_references = response.json()
         self.assertIsNotNone(data_references)
@@ -88,6 +97,7 @@ class UnitTestSuite(unittest.TestCase):
 
     def test_update_project(self):
         print("Running test: Updating project data")
+        signedHeaders = get_signed_headers(self.EMAIL)
         data = {"resources": [{"uri": "https://github.com/sindresorhus/awesome"}]}
-        response = requests.patch(f"{self.CLOUD_URL}/api/user_project/org123/project456", json=data, headers=self.HEADERS)
+        response = requests.patch(f"{self.CLOUD_URL}/api/user_project/org123/project456", json=data, headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
