@@ -436,23 +436,6 @@ app.post(`${api_root_endpoint}${user_project_org_project}`, async (req: Request,
         return res.status(400).send('Invalid JSON');
     }
 
-    // if there are resources passed into the project, and the resources are an array of strings
-    //      the we need to convert the array of strings into an array of ProjectResource objects
-    if (updatedProject.resources && Array.isArray(updatedProject.resources)) {
-        const resources : any[] = [];
-        for (const resource of updatedProject.resources) {
-            if (typeof resource !== 'string') {
-                resources.push(resource);
-            } else {
-                resources.push({
-                    uri: resource,
-                    type: ResourceType.PrimaryReadWrite,
-                    access: ResourceStatus.Unknown,
-                } as ProjectResource);
-            }
-        }
-        updatedProject.resources = resources;
-    }
     const storedProject : UserProjectData = {
         org : org,
         name : project,
