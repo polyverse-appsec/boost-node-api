@@ -142,7 +142,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
         return res
             .status(200)
             .contentType('application/json')
-            .send(JSON.stringify(folderPaths));
+            .send(folderPaths);
     } catch (error) {
         console.error(`Error retrieving folders via public access:`, error);
     }
@@ -181,7 +181,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
             .set('X-Resource-Access', 'private')
             .status(200)
             .contentType('application/json')
-            .send(JSON.stringify(folderPaths));
+            .send(folderPaths);
 
     } catch (error) {
         console.error(`Error retrieving folders via private access:`, error);
@@ -236,7 +236,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
         return res
             .status(200)
             .contentType('application/json')
-            .send(JSON.stringify(filePaths));
+            .send(filePaths);
     } catch (error) {
         console.error(`Error retrieving files via public access:`, error);
     }
@@ -275,7 +275,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
             .set('X-Resource-Access', 'private')
             .status(200)
             .contentType('application/json')
-            .send(JSON.stringify(filePaths));
+            .send(filePaths);
 
     } catch (error) {
         console.error(`Error retrieving files via private access:`, error);
@@ -286,6 +286,72 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
 interface FileContent {
     path: string;
     source: string;
+}
+
+// returns details of repo, or undefined if res/Response is an error written
+export async function getDetailsFromRepo(email: string, uri: URL, req: Request, res: Response, allowPrivateAccess: boolean) : Promise<any>{
+    const [, owner, repo] = uri.pathname.split('/');
+
+    if (!owner || !repo) {
+        console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
+        res.status(400).send('Invalid URI');
+        return undefined;
+    }
+
+    const octokit = new Octokit();
+    try {
+        // Fetch repository details to get the default branch
+        const repoDetails = await octokit.rest.repos.get({
+            owner: owner,
+            repo: repo
+        });
+
+        return repoDetails.data;
+    } catch (publicError) {
+        console.log('Public access failed, attempting authenticated access');
+
+        if (!allowPrivateAccess) {
+            console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
+            res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
+            return undefined;
+        }
+    
+        // Public access failed, switch to authenticated access
+        try {
+            const user = await getUser(email);
+            const installationId = user?.installationId;
+            if (!installationId) {
+                console.error(`Error: Git User not found or no installationId - ensure GitHub App is installed to access private source code: ${email}`);
+                res.status(401).send('Unauthorized');
+                return undefined;
+            }
+
+            const secretStore = 'boost/GitHubApp';
+            const secretKeyPrivateKey = secretStore + '/' + 'private-key';
+            const privateKey = await getSingleSecret(secretKeyPrivateKey);
+
+            const octokit = new Octokit({
+                authStrategy: createAppAuth,
+                auth: {
+                    appId: BoostGitHubAppId,
+                    privateKey: privateKey,
+                    installationId: installationId,
+                }
+            });
+
+            // Fetch repository details to get the default branch
+            const repoDetails = await octokit.rest.repos.get({
+                owner: owner,
+                repo: repo
+            });
+
+            return repoDetails.data;
+        } catch (authenticatedError) {
+            console.error(`Error retrieving repo data via authenticated access:`, authenticatedError);
+            res.status(500).send('Internal Server Error');
+            return undefined;
+        }
+    }
 }
 
 export async function getFullSourceFromRepo(email: string, uri: URL, req: Request, res: Response, allowPrivateAccess: boolean) {

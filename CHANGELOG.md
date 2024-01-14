@@ -3,16 +3,16 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.8.0: January 11th, 2024
+## Version 0.8.1: January 11th, 2024
 
 ### New Features
 - New API /api/user/{org}/account to get status of user account (GET)
 
 ### Enhancements
-- N/A
+- Return Project data for GET /api/user/{org}/project/{project} (POST)
 
 ### Bug Fixes
-- N/A
+- Return JSON object instead of raw JSON string for GET /api/user/{org}/project/{project}
 
 ## Version 0.8.0: January 11th, 2024
 

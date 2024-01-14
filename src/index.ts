@@ -8,11 +8,16 @@ import {
     deleteProjectData
 } from './storage';
 import { validateUser, signedAuthHeader } from './auth';
-import { getFolderPathsFromRepo, getFileFromRepo, getFilePathsFromRepo } from './github';
+import {
+    getFolderPathsFromRepo,
+    getFileFromRepo,
+    getFilePathsFromRepo,
+    getDetailsFromRepo
+} from './github';
 import { uploadProjectDataForAIAssistant } from './openai';
 import { UserProjectData } from './types/UserProjectData';
 import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
-import { ProjectResource, ResourceType, ResourceStatus } from './types/ProjectResource';
+import { ProjectResource } from './types/ProjectResource';
 import axios from 'axios';
 import { ProjectDataReference } from './types/ProjectDataReference';
 
@@ -443,6 +448,32 @@ app.post(`${api_root_endpoint}${user_project_org_project}`, async (req: Request,
         resources : updatedProject.resources? updatedProject.resources : [],
     };
 
+    // validate every resource is a valid Uri
+    for (const resource of storedProject.resources) {
+        let resourceUri;
+        try {
+            resourceUri = new URL(resource.uri);
+        } catch (error) {
+            console.error(`Invalid URI: ${resource.uri}`);
+            return res.status(400).send('Invalid URI');
+        }
+
+        // for now, we'll validate that the resource is a valid GitHub resource
+        //      and we can access it with this user account plan
+        if (resourceUri.hostname.toLowerCase() !== 'github.com') {
+            console.error(`Invalid URI: ${resource.uri}`);
+            return res.status(400).send('Invalid Resource - must be Github');
+        }
+        // get the account status
+        const accountStatus = await localSelfDispatch(email, req.get('X-Signed-Identity')!, req, `user/${org}/account`, 'GET');
+
+        // verify this account (and org pair) can access this resource
+        const allowPrivateAccess = checkPrivateAccessAllowed(accountStatus);
+        if (!await getDetailsFromRepo(email, resourceUri, req, res, allowPrivateAccess)) {
+            return res;
+        }
+    }
+
     const storedProjectString = JSON.stringify(storedProject);
 
     await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProjectString);
@@ -451,7 +482,8 @@ app.post(`${api_root_endpoint}${user_project_org_project}`, async (req: Request,
 
     return res
         .status(200)
-        .send();
+        .contentType('application/json')
+        .send(storedProject);
 });
 
 app.get(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
@@ -468,7 +500,7 @@ app.get(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, 
     return res
         .status(200)
         .contentType('application/json')
-        .send(JSON.stringify(projectData));
+        .send(projectData);
 });
 
 app.delete(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
@@ -578,7 +610,7 @@ app.post(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Re
     return res
         .status(200)
         .contentType('application/json')
-        .send(JSON.parse(body));
+        .send(updatedGoals);
 });
 
 app.get(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Request, res: Response) => {
