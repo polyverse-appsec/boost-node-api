@@ -1,6 +1,5 @@
 import unittest
 import requests
-import json
 import time
 
 from utils import get_signed_headers
