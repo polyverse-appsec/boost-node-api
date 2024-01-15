@@ -22,6 +22,8 @@ class End2EndTestSuite(unittest.TestCase):
         # cleanup resources
         response = requests.delete(f"{self.TARGET_URL}/api/user_project/{self.ORG}/{self.PROJECT}/data/blueprint", headers=headers)
         self.assertEqual(response.status_code, 200)
+        response = requests.delete(f"{self.TARGET_URL}/api/user_project/{self.ORG}/{self.PROJECT}/data/blueprint/generator", headers=headers)
+        self.assertEqual(response.status_code, 200)
 
         # response = requests.delete(f"{self.BASE_URL}/api/user_project/org123/project456/data_references", headers=headers)
         # self.assertEqual(response.status_code, 200)
@@ -63,11 +65,20 @@ class End2EndTestSuite(unittest.TestCase):
         #       if it's in an error state, we'll break out of the loop and fail the test
         #       if it's still processing, we'll continue looping
         #       each loop, we'll print the current generator state
-        for i in range(48):
+        # for i in range(48):
+        i = 0
+        while True:
+            i += 1
+            print(f"Checking Blueprint Resource/Generator #{i}")
+
             response = requests.get(f"{self.TARGET_URL}/api/user_project/{self.ORG}/{self.PROJECT}/data/blueprint/generator", headers=headers)
             self.assertEqual(response.status_code, 200)
             self.assertIn(response.json()["status"], ["idle", "processing", "error"])
+
             print(f"Check {i}:\n\t{response.json()}")
+
+            # if the generator is idle or an error, we'll exit the loop
+            # otherwise, keep 'processing'
             if response.json()["status"] == "idle":
                 break
             if response.json()["status"] == "error":

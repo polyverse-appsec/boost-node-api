@@ -754,9 +754,9 @@ app.delete(`${api_root_endpoint}${user_project_org_project_data_resource}`, asyn
     await deleteProjectData(email, SourceType.GitHub, ownerName, repoName, '', resource);
 
     console.log(`${user_project_org_project_data_resource}: deleted data`);
+
     return res
         .status(200)
-        .contentType('application/json')
         .send();
 });
 
@@ -765,6 +765,39 @@ app.route(`${api_root_endpoint}${user_project_org_project_data_resource}`)
    .put(postOrPutUserProjectDataResource);
 
 const user_project_org_project_data_resource_generator = `/user_project/:org/:project/data/:resource/generator`;
+app.delete(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
+    const email = await validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    const projectData = await loadProjectData(email, req, res) as UserProjectData;
+    if (projectData instanceof Response) {
+        return projectData;
+    }
+
+    const uri = new URL(projectData.resources[0].uri);
+    // Split the pathname by '/' and filter out empty strings
+    const pathSegments = uri.pathname.split('/').filter(segment => segment);
+
+    // The relevant part is the last segment of the path
+    const repoName = pathSegments.pop();
+    const ownerName = pathSegments.pop();
+    if (!repoName || !ownerName) {
+        throw new Error(`Invalid URI: ${uri}`);
+    }
+
+    const { _, __, resource } = req.params;
+
+    await deleteProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`);
+
+    console.log(`${user_project_org_project_data_resource_generator}: deleted data`);
+
+    return res
+        .status(200)
+        .send();
+});
+
 app.get(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
@@ -1276,7 +1309,6 @@ app.delete(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`
 
         return res
             .status(200)
-            .contentType('application/json')
             .send();
 
     } catch (error) {
