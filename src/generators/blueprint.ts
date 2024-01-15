@@ -160,7 +160,7 @@ readonly defaultBlueprint =
 
     async getFilenameList() : Promise<string[]> {
         const encodedUri = encodeURIComponent(this.projectData.resources[0].uri);
-        const response = await fetch(this.serviceEndpoint + `/api/get_resource_files?${encodedUri}`, {
+        const response = await fetch(this.serviceEndpoint + `/api/${this.projectData.org}/connectors/github/file?${encodedUri}`, {
             method: 'GET',
             headers: await signedAuthHeader(this.email)
         });
