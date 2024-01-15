@@ -94,7 +94,16 @@ readonly defaultBlueprint =
 
                 const fileList = await this.getFilenameList();
 
-                const draftOutput : DraftBlueprintOutput = await this.draftBlueprint(fileList);
+                // need to filter the fileList based on the boostignore (similar to gitignore)
+                // files in the filelist look like "foo/bar/baz.txt"
+                // file specs in boost ignore look like "**/*.txt" - which should ignore all text files
+                //      in all folders. Or "node_modules/" which should ignore all files in the node_modules root folder.
+                //      Or ".gitignore" which should ignore file named .gitignore in the root directory
+                const boostIgnoreFileSpecs = await this.getBoostIgnoreFileSpecs();
+                const boostIgnore = require('ignore')().add(boostIgnoreFileSpecs);
+                const filteredFileList = fileList.filter((file) => !boostIgnore.ignores(file));
+
+                const draftOutput : DraftBlueprintOutput = await this.createDraftBlueprint(filteredFileList);
 
                 this.data = this.sampleBlueprint;
 
@@ -143,7 +152,7 @@ readonly defaultBlueprint =
 
                 await this.updateProgress('Rebuilding Blueprint from Sampled Project Files');
 
-                this.data = await this.sampledCodeBlueprint(inputData);
+                this.data = await this.createSampledCodeBlueprint(inputData);
 
                 nextStage = BlueprintStage.Complete;
             }
@@ -160,7 +169,7 @@ readonly defaultBlueprint =
 
     async getFilenameList() : Promise<string[]> {
         const encodedUri = encodeURIComponent(this.projectData.resources[0].uri);
-        const response = await fetch(this.serviceEndpoint + `/api/${this.projectData.org}/connectors/github/file?${encodedUri}`, {
+        const response = await fetch(this.serviceEndpoint + `/api/${this.projectData.org}/connectors/github/files?${encodedUri}`, {
             method: 'GET',
             headers: await signedAuthHeader(this.email)
         });
@@ -170,7 +179,22 @@ readonly defaultBlueprint =
         throw new Error(`Unable to get file list: ${response.status}`);
     }
 
-    async draftBlueprint(fileList: string[]) : Promise<DraftBlueprintOutput> {
+    async getBoostIgnoreFileSpecs() : Promise<string[]> {
+        const response = await fetch(this.serviceEndpoint + `/api/user_project/${this.projectData.org}/${this.projectData.name}/config/.boostignore`, {
+            method: 'GET',
+            headers: await signedAuthHeader(this.email)
+        });
+        if (response.ok) {
+            return await response.json() as Promise<string[]>;
+        }
+
+        // for now - if we fail to get the boostignore specs, just return an empty list since its only
+        //      used to build a basic blueprint
+        // throw new Error(`Unable to get boostignore file specs: ${response.status}`);
+        return [];
+    }
+
+    async createDraftBlueprint(fileList: string[]) : Promise<DraftBlueprintOutput> {
         const draftInput : DraftBlueprintInput = {
             filelist: fileList,
             projectName: this.projectData.name
@@ -186,7 +210,7 @@ readonly defaultBlueprint =
         return await response.json();
     }
 
-    async sampledCodeBlueprint(inputData: QuickBlueprintInput) : Promise<string> {
+    async createSampledCodeBlueprint(inputData: QuickBlueprintInput) : Promise<string> {
         const response = await fetch(this.serviceEndpoint + `/api/ai/${this.projectData.org}/${Services.QuickBlueprint}`, {
             method: 'POST',
             headers: await signedAuthHeader(this.email),
