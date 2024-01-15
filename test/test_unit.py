@@ -44,6 +44,12 @@ class UnitTestSuite(unittest.TestCase):
         response = requests.get(f"{self.TARGET_URL}/api/user/org123/connectors/github/file?uri=https://github.com/public-apis/public-apis/blob/master/scripts/validate/links.py", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
+    def test_retrieve_file_private_access(self):
+        print("Running test: Retrieve a private file from the team's project")
+        signedHeaders = get_signed_headers("stephen@polyverse.com")
+        response = requests.get(f"{self.TARGET_URL}/api/user/org123/connectors/github/file?uri=https://github.com/polyverse-appsec/sara/blob/main/README.md", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
     def test_retrieve_folders(self):
         print("Running test: Retrieve all folders from a public project")
         signedHeaders = get_signed_headers(self.EMAIL)

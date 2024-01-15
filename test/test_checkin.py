@@ -13,8 +13,9 @@ class BoostBackendCheckinSuite(unittest.TestCase):
     EMAIL = "stephen@polyverse.com"
     ORG = "unitestorg"
 
-    PRIVATE_PROJECT = "https://github.com/StephenAFisher/testRepoForBoostGitHubApp"
-    # PRIVATE_PROJECT = "https://github.com/polyverse-appsec/sara"
+    # PRIVATE_PROJECT = "https://github.com/StephenAFisher/testRepoForBoostGitHubApp"
+    PRIVATE_PROJECT = "https://github.com/polyverse-appsec/sara"
+    # PRIVATE_PROJECT = "https://github.com/polyverse-appsec/boostlambda"
     PUBLIC_PROJECT = "https://github.com/public-apis/public-apis"
 
     def test_user_profile(self):

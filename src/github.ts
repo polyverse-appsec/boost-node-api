@@ -5,6 +5,7 @@ import { getSingleSecret } from './secrets';
 import { getUser } from './users';
 import axios from 'axios';
 import AdmZip from 'adm-zip';
+import { App } from "octokit";
 
 
 const BoostGitHubAppId = "472802";
@@ -318,11 +319,20 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
     
         // Public access failed, switch to authenticated access
         try {
-            const user = await getUser(email);
+            // try by the repo org first, then by the user
+            let user = await getUser(owner);
+            if (!user) {
+                user = await getUser(email);
+                if (!user) {
+                    console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                    res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                    return undefined;
+                }
+            }
             const installationId = user?.installationId;
             if (!installationId) {
-                console.error(`Error: Git User not found or no installationId - ensure GitHub App is installed to access private source code: ${email}`);
-                res.status(401).send('Unauthorized');
+                console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
                 return undefined;
             }
 
@@ -330,16 +340,13 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
             const secretKeyPrivateKey = secretStore + '/' + 'private-key';
             const privateKey = await getSingleSecret(secretKeyPrivateKey);
 
-            const octokit = new Octokit({
-                authStrategy: createAppAuth,
-                auth: {
-                    appId: BoostGitHubAppId,
-                    privateKey: privateKey,
-                    installationId: installationId,
-                }
+            const app = new App({
+                appId: BoostGitHubAppId,
+                privateKey: privateKey,
             });
+            const octokit = await app.getInstallationOctokit(Number(installationId));            
 
-            // Fetch repository details to get the default branch
+            // const reposForOrg = await octokit.rest.repos.listForOrg({type: "private", org: "polyverse-appsec"});
             const repoDetails = await octokit.rest.repos.get({
                 owner: owner,
                 repo: repo
