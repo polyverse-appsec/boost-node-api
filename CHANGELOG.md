@@ -11,7 +11,7 @@ Polyverse Boost ReST API (Backend)
 ### Enhancements
 - Return Project data for GET /api/user/{org}/project/{project} (POST)
 - Return error for empty resource on /api/user/{org}/project/{project}/data/{resource} (POST)
-- Validation of Account 'plan' for Project Repo access during Project creation (POST)
+- Validation of Account 'plan' for Project Repo access during Project creation/update (POST/PATCH)
 - Enable support for accessing private Repos attached to another Organization
 
 ### Bug Fixes

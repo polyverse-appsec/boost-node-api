@@ -354,6 +354,36 @@ app.get(`${api_root_endpoint}${user_resource_files}`, async (req: Request, res: 
     getFilePathsFromRepo(email, uri, req, res, privateAccessAllowed);
 });
 
+async function validateProjectRepositories(email: string, org: string, resources: ProjectResource[], req: Request, res: Response) : Promise<Response | undefined> {
+
+    // validate every resource is a valid Uri
+    for (const resource of resources) {
+        let resourceUri;
+        try {
+            resourceUri = new URL(resource.uri);
+        } catch (error) {
+            console.error(`Invalid URI: ${resource.uri}`);
+            return res.status(400).send('Invalid URI');
+        }
+
+        // for now, we'll validate that the resource is a valid GitHub resource
+        //      and we can access it with this user account plan
+        if (resourceUri.hostname.toLowerCase() !== 'github.com') {
+            console.error(`Invalid URI: ${resource.uri}`);
+            return res.status(400).send('Invalid Resource - must be Github');
+        }
+        // get the account status
+        const accountStatus = await localSelfDispatch(email, req.get('X-Signed-Identity')!, req, `user/${org}/account`, 'GET');
+
+        // verify this account (and org pair) can access this resource
+        const allowPrivateAccess = checkPrivateAccessAllowed(accountStatus);
+        if (!await getDetailsFromRepo(email, resourceUri, req, res, allowPrivateAccess)) {
+            return res;
+        }
+    }
+    return undefined;
+}
+
 const user_project_org_project = `/user_project/:org/:project`;
 app.patch(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
 
@@ -379,6 +409,10 @@ app.patch(`${api_root_endpoint}${user_project_org_project}`, async (req: Request
     let updates: { resources?: ProjectResource[], guidelines?: string } = {};
     if (body.resources !== undefined) {
         updates.resources = body.resources;
+
+        if (await validateProjectRepositories(email, org, body.resources, req, res)) {
+            return res;
+        }
     }
     if (body.guidelines !== undefined) {
         updates.guidelines = body.guidelines;
@@ -453,30 +487,8 @@ app.post(`${api_root_endpoint}${user_project_org_project}`, async (req: Request,
         resources : updatedProject.resources? updatedProject.resources : [],
     };
 
-    // validate every resource is a valid Uri
-    for (const resource of storedProject.resources) {
-        let resourceUri;
-        try {
-            resourceUri = new URL(resource.uri);
-        } catch (error) {
-            console.error(`Invalid URI: ${resource.uri}`);
-            return res.status(400).send('Invalid URI');
-        }
-
-        // for now, we'll validate that the resource is a valid GitHub resource
-        //      and we can access it with this user account plan
-        if (resourceUri.hostname.toLowerCase() !== 'github.com') {
-            console.error(`Invalid URI: ${resource.uri}`);
-            return res.status(400).send('Invalid Resource - must be Github');
-        }
-        // get the account status
-        const accountStatus = await localSelfDispatch(email, req.get('X-Signed-Identity')!, req, `user/${org}/account`, 'GET');
-
-        // verify this account (and org pair) can access this resource
-        const allowPrivateAccess = checkPrivateAccessAllowed(accountStatus);
-        if (!await getDetailsFromRepo(email, resourceUri, req, res, allowPrivateAccess)) {
-            return res;
-        }
+    if (await validateProjectRepositories(email, org, storedProject.resources, req, res)) {
+        return res;
     }
 
     const storedProjectString = JSON.stringify(storedProject);
