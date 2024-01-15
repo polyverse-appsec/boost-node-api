@@ -61,11 +61,21 @@ export async function getFileFromRepo(email: string, uri: URL, req: Request, res
 
     // Process for private access
     try {
-        const user = await getUser(email);
+        // try by the repo org first, then by the user
+        let user = await getUser(owner);
+        if (!user) {
+            user = await getUser(email);
+            if (!user) {
+                console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                return undefined;
+            }
+        }
         const installationId = user?.installationId;
         if (!installationId) {
-            console.error(`Error: Git User not found or no installationId - ensure GitHub App is installed to access private source code: ${email}`);
-            return res.status(401).send('Unauthorized');
+            console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+            res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+            return undefined;
         }
 
         const secretStore = 'boost/GitHubApp';
@@ -155,11 +165,21 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
 
     // Private access part
     try {
-        const user = await getUser(email);
+        // try by the repo org first, then by the user
+        let user = await getUser(owner);
+        if (!user) {
+            user = await getUser(email);
+            if (!user) {
+                console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                return undefined;
+            }
+        }
         const installationId = user?.installationId;
         if (!installationId) {
-            console.error(`Error: Git User not found or no installationId - ensure GitHub App is installed to access private source code: ${email}`);
-            return res.status(401).send('Unauthorized');
+            console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+            res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+            return undefined;
         }
 
         const secretStore = 'boost/GitHubApp';
@@ -249,11 +269,21 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
 
     // Private access part
     try {
-        const user = await getUser(email);
+        // try by the repo org first, then by the user
+        let user = await getUser(owner);
+        if (!user) {
+            user = await getUser(email);
+            if (!user) {
+                console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                return undefined;
+            }
+        }
         const installationId = user?.installationId;
         if (!installationId) {
-            console.error(`Error: Git User not found or no installationId - ensure GitHub App is installed to access private source code: ${email}`);
-            return res.status(401).send('Unauthorized');
+            console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+            res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+            return undefined;
         }
 
         const secretStore = 'boost/GitHubApp';
@@ -414,26 +444,32 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
     
         // Public access failed, switch to authenticated access
         try {
-            const user = await getUser(email);
+            // try by the repo org first, then by the user
+            let user = await getUser(owner);
+            if (!user) {
+                user = await getUser(email);
+                if (!user) {
+                    console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                    res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                    return undefined;
+                }
+            }
             const installationId = user?.installationId;
             if (!installationId) {
-                console.error(`Error: Git User not found or no installationId - ensure GitHub App is installed to access private source code: ${email}`);
-                return res.status(401).send('Unauthorized');
+                console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                return undefined;
             }
 
             const secretStore = 'boost/GitHubApp';
             const secretKeyPrivateKey = secretStore + '/' + 'private-key';
             const privateKey = await getSingleSecret(secretKeyPrivateKey);
 
-            const octokit = new Octokit({
-                authStrategy: createAppAuth,
-                auth: {
-                    appId: BoostGitHubAppId,
-                    privateKey: privateKey,
-                    installationId: installationId,
-                }
+            const app = new App({
+                appId: BoostGitHubAppId,
+                privateKey: privateKey,
             });
-
+            const octokit = await app.getInstallationOctokit(Number(installationId));
             // Fetch repository details to get the default branch
             const repoDetails = await octokit.rest.repos.get({
                 owner: owner,
