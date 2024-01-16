@@ -37,6 +37,12 @@ interface QuickBlueprintInput {
     code?: string;
 }
 
+interface AIFunctionResponse {
+    account: any;
+    details: any;
+    status: number;
+}
+
 export class BlueprintGenerator extends Generator {
     constructor(serviceEndpoint: string, email: string, projectData: UserProjectData) {
         super(serviceEndpoint, email, projectData, ProjectDataType.ArchitecturalBlueprint);
@@ -105,7 +111,7 @@ readonly defaultBlueprint =
 
                 const draftOutput : DraftBlueprintOutput = await this.createDraftBlueprint(filteredFileList);
 
-                this.data = this.sampleBlueprint;
+                this.data = draftOutput.draftBlueprint;
 
                 // we're going to save our resulting data, so we can run sampled code
                 await this.saveScratchData(JSON.stringify(draftOutput));
@@ -200,7 +206,7 @@ readonly defaultBlueprint =
             filelist: fileList,
             projectName: this.projectData.name
         };
-        const response = await fetch(this.serviceEndpoint + `/api/ai/${this.projectData.org}/${Services.DraftBlueprint}`, {
+        const response = await fetch(this.serviceEndpoint + `/api/proxy/ai/${this.projectData.org}/${Services.DraftBlueprint}`, {
             method: 'POST',
             headers: await signedAuthHeader(this.email),
             body: JSON.stringify(draftInput)
@@ -208,11 +214,20 @@ readonly defaultBlueprint =
         if (!response.ok) {
             throw new Error(`Unable to draft blueprint: ${response.status}`);
         }
-        return await response.json();
+
+        const draftOutputResponse : AIFunctionResponse = await response.json();
+
+        // check if the draft blueprint call succeeded, but the AI analysis failed
+        if (draftOutputResponse.status !== 1) {
+            throw new GeneratorProcessingError('Unable to generate draft blueprint', this.currentStage);
+        }
+
+        const draftOutput : DraftBlueprintOutput = draftOutputResponse.details;
+        return draftOutput;
     }
 
     async createSampledCodeBlueprint(inputData: QuickBlueprintInput) : Promise<string> {
-        const response = await fetch(this.serviceEndpoint + `/api/ai/${this.projectData.org}/${Services.QuickBlueprint}`, {
+        const response = await fetch(this.serviceEndpoint + `/api/proxy/ai/${this.projectData.org}/${Services.QuickBlueprint}`, {
             method: 'POST',
             headers: await signedAuthHeader(this.email),
             body: JSON.stringify(inputData)
