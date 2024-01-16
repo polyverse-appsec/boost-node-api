@@ -154,7 +154,8 @@ export class Generator {
         const authHeader = await signedAuthHeader(this.email);
 
         const encodedFilename = encodeURIComponent(filename);
-        const response = await fetch(this.resourceUri + `/user/${this.projectData.org}/connectors/github/file?uri=${encodedFilename}`, {
+        const encodedRepo = encodeURIComponent(this.projectData.resources[0].uri);
+        const response = await fetch(this.resourceUri + `/user/${this.projectData.org}/connectors/github/file?repo=${encodedRepo}?path=${encodedFilename}`, {
             method: 'GET',
             headers: {
                 ...authHeader

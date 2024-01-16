@@ -10,15 +10,30 @@ import { App } from "octokit";
 
 const BoostGitHubAppId = "472802";
 
-export async function getFileFromRepo(email: string, uri: URL, req: Request, res: Response, allowPrivateAccess: boolean): Promise<any> {
-    const [, owner, repo, ...path] = uri.pathname.split('/');
+export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: URL, pathUri: string, req: Request, res: Response, allowPrivateAccess: boolean): Promise<any> {
+    let owner: string;
+    let repo: string;
+    let pathParts: string[];
 
-    if (!owner || !repo || path.length === 0) {
-        console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
+    if (fullFileUri) {
+        // Extract owner, repo, and path from fullFileUri
+        [, owner, repo, ...pathParts] = fullFileUri.pathname.split('/');
+    } else {
+        // Extract owner and repo from repoUri
+        // Assume repoUri is like "https://github.com/owner/repo"
+        [, owner, repo] = repoUri.pathname.split('/');
+        // Use pathUri as the path
+        pathParts = pathUri.split('/');
+    }
+
+    // Check if owner, repo, and pathParts are valid
+    if (!owner || !repo || pathParts.length === 0) {
+        console.error(`Error: Invalid GitHub.com resource URI: ${fullFileUri || repoUri}`);
         return res.status(400).send('Invalid URI');
     }
 
-    const filePath = path.join('/');
+    // Convert pathParts array back to a string path if necessary
+    const filePath = pathParts.join('/');
     const filePathWithoutBranch = filePath.replace(/^blob\/(main|master)\//, '');
 
     // Inline function to get file content

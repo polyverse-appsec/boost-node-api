@@ -11,6 +11,7 @@ Polyverse Boost ReST API (Backend)
 ### Enhancements
 - Consistent return of 404 if Project not found/created when accessing Project data (e.g. resource, generator, goals, etc)
 - Support PUT in addition to existing POST for /api/user_project/{org}/{project}
+- Enable /user/{org}/connectors/github/file (GET) to retrieve a file based on repo and path instead of full URI
 
 ### Bug Fixes
 - Enable any resource with github.com as the domain to work (was failing if the resource was www.github.com)

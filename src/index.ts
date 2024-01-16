@@ -238,28 +238,61 @@ app.get(`${api_root_endpoint}${user_resource_file}`, async (req: Request, res: R
     }
 
     if (!req.query.uri) {
-        console.error(`URI is required`);
-        return res.status(400).send('URI is required');
-    }
-
-    let uriString = req.query.uri as string;
-
-    // Check if the URI is encoded, decode it if necessary
-    if (uriString.match(/%[0-9a-f]{2}/i)) {
-        try {
-            uriString = decodeURIComponent(uriString);
-        } catch (error) {
-            console.error(`Invalid encoded URI: ${uriString}`);
-            return res.status(400).send('Invalid encoded URI');
+        if (!req.query.repo && !req.query.path) {
+            console.error(`URI is required`);
+            return res.status(400).send('URI or Repo/Path is required');
         }
     }
 
-    let uri;
-    try {
-        uri = new URL(uriString as string);
-    } catch (error) {
-        console.error(`Invalid URI: ${uriString}`);
-        return res.status(400).send('Invalid URI');
+    let uriString = req.query.uri as string;
+    let repoString = req.query.repo as string;
+    let pathString = req.query.path as string;
+
+    let uri = undefined;
+    let repo = undefined;
+    let path: string = '';
+    if (uriString) {
+        // Check if the URI is encoded, decode it if necessary
+        if (uriString.match(/%[0-9a-f]{2}/i)) {
+            try {
+                uriString = decodeURIComponent(uriString);
+            } catch (error) {
+                console.error(`Invalid encoded URI: ${uriString}`);
+                return res.status(400).send('Invalid encoded URI');
+            }
+        }
+
+        try {
+            uri = new URL(uriString as string);
+        } catch (error) {
+            console.error(`Invalid URI: ${uriString}`);
+            return res.status(400).send('Invalid URI');
+        }
+    } else if (repoString && pathString) {
+        if (repoString.match(/%[0-9a-f]{2}/i)) {
+            try {
+                repoString = decodeURIComponent(repoString);
+            } catch (error) {
+                console.error(`Invalid encoded repo: ${repoString}`);
+                return res.status(400).send('Invalid encoded repo');
+            }
+        }
+        try {
+            repo = new URL(repoString as string);
+        } catch (error) {
+            console.error(`Invalid repo: ${repoString}`);
+            return res.status(400).send('Invalid repo');
+        }
+        if (pathString.match(/%[0-9a-f]{2}/i)) {
+            try {
+                path = decodeURIComponent(pathString);
+            } catch (error) {
+                console.error(`Invalid encoded path: ${pathString}`);
+                return res.status(400).send('Invalid encoded path');
+            }
+        } else {
+            path = pathString;
+        }
     }
 
     const { org } = req.params;
@@ -271,7 +304,7 @@ app.get(`${api_root_endpoint}${user_resource_file}`, async (req: Request, res: R
     const accountStatus : UserAccountState = await localSelfDispatch(email, req.get('X-Signed-Identity')!, req, `user/${org}/account`, 'GET');
     const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
 
-    getFileFromRepo(email, uri, req, res, privateAccessAllowed);
+    getFileFromRepo(email, uri!, repo!, path, req, res, privateAccessAllowed);
 });
 
 const user_resource_folders = `/user/:org/connectors/github/folders`;
