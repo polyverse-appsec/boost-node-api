@@ -237,6 +237,7 @@ readonly defaultBlueprint =
         if (!response.ok) {
             throw new Error(`Unable to build blueprint from project samples: ${response.status}`);
         }
-        return await response.text();
+        const responseData = await response.json();
+        return responseData;
     }
 }
