@@ -1093,6 +1093,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
             try {
                 currentGeneratorState.status = TaskStatus.Processing;
+                currentGeneratorState.last_updated = undefined; // get a refreshed last updated timestamp 
                 await updateGeneratorState(currentGeneratorState);
 
                 // Launch the processing task
