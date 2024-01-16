@@ -155,7 +155,8 @@ export class Generator {
 
         const encodedFilename = encodeURIComponent(filename);
         const encodedRepo = encodeURIComponent(this.projectData.resources[0].uri);
-        const response = await fetch(this.resourceUri + `/user/${this.projectData.org}/connectors/github/file?repo=${encodedRepo}?path=${encodedFilename}`, {
+        const getFileEndpoint = `${this.serviceEndpoint}/api/user/${this.projectData.org}/connectors/github/file?repo=${encodedRepo}&path=${encodedFilename}`;
+        const response = await fetch(getFileEndpoint, {
             method: 'GET',
             headers: {
                 ...authHeader
