@@ -9,10 +9,11 @@ Polyverse Boost ReST API (Backend)
 - Add API /api/user_project/{org}/{project}/data/{resource}/generator (DELETE) to reset a generator
 
 ### Enhancements
-- N/A
+- Consistent return of 404 if Project not found/created when accessing Project data (e.g. resource, generator, goals, etc)
+- Support PUT in addition to existing POST for /api/user_project/{org}/{project}
 
 ### Bug Fixes
-- N/A
+- Enable any resource with github.com as the domain to work (was failing if the resource was www.github.com)
 
 ## Version 0.8.1: January 15th, 2024
 

@@ -124,14 +124,26 @@ export async function loadProjectDataResource(
 }
 
 const postOrPutUserProjectDataResource = async (req: Request, res: Response) => {
+    const { org, project } = req.params;
+
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+
+        return res.status(400).send('Invalid resource path');
+    }
+
     const email = await validateUser(req, res);
     if (!email) {
         return;
     }
 
-    const projectData = await loadProjectData(email, req, res) as UserProjectData;
-    if (projectData instanceof Response) {
-        return projectData;
+    const projectData = await loadProjectData(email, org, project) as UserProjectData;
+    if (!projectData) {
+        return res.status(404).send('Project not found');
     }
 
     const uri = new URL(projectData.resources[0].uri);
@@ -142,7 +154,7 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
     const repoName = pathSegments.pop();
     const ownerName = pathSegments.pop();
     if (!repoName || !ownerName) {
-        throw new Error(`Invalid URI: ${uri}`);
+        return res.status(400).send(`Invalid URI: ${uri}`);
     }
 
     // we store the project data under the owner (instead of email) so all users in the org can see the data
@@ -166,23 +178,11 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
     return res.status(200).send();
 };
 
-async function loadProjectData(email: string, req: Request, res: Response): Promise<UserProjectData | Response> {
-    const { org, project } = req.params;
-
-    if (!org || !project) {
-        if (!org) {
-            console.error(`Org is required`);
-        } else if (!project) {
-            console.error(`Project is required`);
-        }
-
-        return res.status(400).send('Invalid resource path');
-    }
-
+async function loadProjectData(email: string, org: string, project: string): Promise<UserProjectData | undefined> {
     let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
     if (!projectData) {
         console.error(`loadProjectData: not found: ${org}/${project}`);
-        return res.status(404).send('Project not found');
+        return undefined;
     }
     projectData = JSON.parse(projectData) as UserProjectData;
     console.log(`loadProjectData: retrieved data`);
@@ -368,7 +368,13 @@ async function validateProjectRepositories(email: string, org: string, resources
 
         // for now, we'll validate that the resource is a valid GitHub resource
         //      and we can access it with this user account plan
-        if (resourceUri.hostname.toLowerCase() !== 'github.com') {
+        // Split the hostname by '.' and check the last two parts
+        const hostnameParts = resourceUri.hostname.toLowerCase().split('.');
+        const topLevelDomain = hostnameParts[hostnameParts.length - 1];
+        const secondLevelDomain = hostnameParts[hostnameParts.length - 2];
+
+        // Validate that the resource is from github.com
+        if (!(secondLevelDomain === 'github' && topLevelDomain === 'com')) {
             console.error(`Invalid URI: ${resource.uri}`);
             return res.status(400).send('Invalid Resource - must be Github');
         }
@@ -418,7 +424,10 @@ app.patch(`${api_root_endpoint}${user_project_org_project}`, async (req: Request
         updates.guidelines = body.guidelines;
     }
   
-    const projectData = await loadProjectData(email, req, res) as UserProjectData; 
+    const projectData : UserProjectData = await loadProjectData(email, org, project) as UserProjectData;
+    if (!projectData) {
+        return res.status(404).send('Project not found');
+    }
     Object.assign(projectData, updates);
     const storedProjectString = JSON.stringify(projectData);
 
@@ -430,7 +439,7 @@ app.patch(`${api_root_endpoint}${user_project_org_project}`, async (req: Request
         .send();
 });
 
-app.post(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
+const postOrPutUserProject = async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -501,7 +510,12 @@ app.post(`${api_root_endpoint}${user_project_org_project}`, async (req: Request,
         .status(200)
         .contentType('application/json')
         .send(storedProject);
-});
+}
+
+// route for both project PUT and POST
+app.route(`${api_root_endpoint}${user_project_org_project}`)
+    .post(postOrPutUserProject)
+    .put(postOrPutUserProject);
 
 app.get(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
@@ -509,9 +523,19 @@ app.get(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, 
         return;
     }
 
-    const projectData = await loadProjectData(email, req, res) as UserProjectData;
-    if (projectData instanceof Response) {
-        return projectData;
+    const { org, project } = req.params;
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+        return res.status(400).send('Invalid resource path');
+    }
+
+    const projectData = await loadProjectData(email, org, project) as UserProjectData;
+    if (!projectData) {
+        return res.status(404).send('Project not found');
     }
 
     return res
@@ -695,9 +719,19 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (
         return;
     }
 
-    const projectData = await loadProjectData(email, req, res) as UserProjectData;
-    if (projectData instanceof Response) {
-        return projectData;
+    const { org, project } = req.params;
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+        return res.status(400).send('Invalid resource path');
+    }
+
+    const projectData = await loadProjectData(email, org, project) as UserProjectData;
+    if (!projectData) {
+        return res.status(404).send('Project not found');
     }
 
     const uri = new URL(projectData.resources[0].uri);
@@ -732,9 +766,19 @@ app.delete(`${api_root_endpoint}${user_project_org_project_data_resource}`, asyn
         return;
     }
 
-    const projectData = await loadProjectData(email, req, res) as UserProjectData;
-    if (projectData instanceof Response) {
-        return projectData;
+    const { org, project } = req.params;
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+        return res.status(400).send('Invalid resource path');
+    }
+
+    const projectData = await loadProjectData(email, org, project) as UserProjectData;
+    if (!projectData) {
+        return res.status(404).send('Project not found');
     }
 
     const uri = new URL(projectData.resources[0].uri);
@@ -771,9 +815,19 @@ app.delete(`${api_root_endpoint}${user_project_org_project_data_resource_generat
         return;
     }
 
-    const projectData = await loadProjectData(email, req, res) as UserProjectData;
-    if (projectData instanceof Response) {
-        return projectData;
+    const { org, project } = req.params;
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+        return res.status(400).send('Invalid resource path');
+    }
+
+    const projectData = await loadProjectData(email, org, project) as UserProjectData;
+    if (!projectData) {
+        return res.status(404).send('Project not found');
     }
 
     const uri = new URL(projectData.resources[0].uri);
@@ -804,9 +858,19 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_resource_generator}
         return;
     }
 
-    const projectData = await loadProjectData(email, req, res) as UserProjectData;
-    if (projectData instanceof Response) {
-        return projectData;
+    const { org, project } = req.params;
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+        return res.status(400).send('Invalid resource path');
+    }
+
+    const projectData = await loadProjectData(email, org, project) as UserProjectData;
+    if (!projectData) {
+        return res.status(404).send('Project not found');
     }
 
     const uri = new URL(projectData.resources[0].uri);
@@ -848,9 +912,20 @@ app.patch(`${api_root_endpoint}${user_project_org_project_data_resource_generato
         return res;
     }
 
-    const loadedProjectData = await loadProjectData(email, req, res) as UserProjectData | Response;
-    if (loadedProjectData instanceof Response) {
-        return loadedProjectData as Response;
+    const { org, project } = req.params;
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+
+        return res.status(400).send('Invalid resource path');
+    }
+
+    const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
+    if (!loadedProjectData) {
+        return res.status(404).send('Project not found');
     }
     const projectData = loadedProjectData as UserProjectData;
 
@@ -921,9 +996,20 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
         return res;
     }
 
-    const loadedProjectData = await loadProjectData(email, req, res) as UserProjectData | Response;
-    if (loadedProjectData instanceof Response) {
-        return loadedProjectData as Response;
+    const { org, project } = req.params;
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+
+        return res.status(400).send('Invalid resource path');
+    }
+
+    const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
+    if (!loadedProjectData) {
+        return res.status(404).send('Project not found');
     }
     const projectData = loadedProjectData as UserProjectData;
 
@@ -1132,9 +1218,20 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
         return;
     }
 
-    const userProjectData = await loadProjectData(email, req, res) as UserProjectData;
-    if (userProjectData instanceof Response) {
-        return userProjectData;
+    const { org, project } = req.params;
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+
+        return res.status(400).send('Invalid resource path');
+    }
+
+    const userProjectData = await loadProjectData(email, org, project) as UserProjectData;
+    if (!userProjectData) {
+        return res.status(404).send('Project not found');
     }
 
     if (!userProjectData.resources || userProjectData.resources.length === 0) {
@@ -1216,9 +1313,20 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_references}`, async
         return;
     }
 
-    const projectData = await loadProjectData(email, req, res) as UserProjectData;
-    if (projectData instanceof Response) {
-        return projectData;
+    const { org, project } = req.params;
+    if (!org || !project) {
+        if (!org) {
+            console.error(`Org is required`);
+        } else if (!project) {
+            console.error(`Project is required`);
+        }
+
+        return res.status(400).send('Invalid resource path');
+    }
+
+    const projectData = await loadProjectData(email, org, project) as UserProjectData;
+    if (!projectData) {
+        return res.status(404).send('Project not found');
     }
 
     if (!projectData.resources || projectData.resources.length === 0) {

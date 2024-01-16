@@ -21,9 +21,9 @@ class End2EndTestSuite(unittest.TestCase):
 
         # cleanup resources
         response = requests.delete(f"{self.TARGET_URL}/api/user_project/{self.ORG}/{self.PROJECT}/data/blueprint", headers=headers)
-        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.status_code == 200 or response.status_code == 404)
         response = requests.delete(f"{self.TARGET_URL}/api/user_project/{self.ORG}/{self.PROJECT}/data/blueprint/generator", headers=headers)
-        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.status_code == 200 or response.status_code == 404)
 
         # response = requests.delete(f"{self.BASE_URL}/api/user_project/org123/project456/data_references", headers=headers)
         # self.assertEqual(response.status_code, 200)
