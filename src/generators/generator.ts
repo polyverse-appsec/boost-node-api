@@ -50,8 +50,14 @@ export class Generator {
             }
         });
 
+        // if we got 404 Not Found, that's OK - we'll just start with an empty string
+        if (response.status === 404) {
+            console.log(`No ${this.dataType} data found via Load`);
+            return;
+        }
+
         if (!response.ok) {
-            throw new Error(`Unable to Save Generated Resource: ${response.status}`);
+            throw new Error(`Unable to Load Generated Resource: ${response.status}`);
         }
         this.data = await response.text();
 

@@ -133,6 +133,8 @@ readonly defaultBlueprint =
 
                 const draftOutput : DraftBlueprintOutput = JSON.parse(loadedDraftOutputRaw);
 
+                await this.load(); // load the resource data before re-processing it
+
                 const inputData : QuickBlueprintInput = {
                     draftBlueprint: this.data,
                     filelist: draftOutput.prioritizedListOfSourceFilesToAnalyze,
