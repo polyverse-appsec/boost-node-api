@@ -50,7 +50,7 @@ app.use((err : any, req : Request, res : Response) => {
 
 export async function localSelfDispatch(email: string, originalIdentityHeader: string, initialRequest: Request, path: string, httpVerb: string, body?: any): Promise<any> {
 
-    let selfEndpoint = `${initialRequest.protocol}://${initialRequest.get('host')}/${api_root_endpoint}/${path}`;
+    let selfEndpoint = `${initialRequest.protocol}://${initialRequest.get('host')}${api_root_endpoint}/${path}`;
     // if we're running locally, then we'll use http:// no matter what
     if (initialRequest.get('host')!.includes('localhost')) {
         selfEndpoint = `http://${initialRequest.get('host')}${api_root_endpoint}/${path}`;
