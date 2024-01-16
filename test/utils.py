@@ -3,14 +3,17 @@ import time
 import boto3
 
 
-def get_signed_headers(email):
+def get_signed_headers(email, expire=False):
     private_key = get_private_key()
 
     # create an unsigned object that expires in 60 seconds from now (unix system time + 60 seconds)
     expiration_unix_time = int(time.time()) + 60
 
-    # create an unsigned object that expires in 15 seconds from now (unix system time + 15 seconds)
-    unsigedIdentity = {"email": email, "expires": expiration_unix_time}
+    if expire:
+        # create an unsigned object that expires in 15 seconds from now (unix system time + 15 seconds)
+        unsigedIdentity = {"email": email, "expires": expiration_unix_time}
+    else:
+        unsigedIdentity = {"email": email}
 
     # Create the JWT token
     signedIdentity = jwt.encode(unsigedIdentity, private_key, algorithm='RS256')

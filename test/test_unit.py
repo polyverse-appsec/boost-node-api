@@ -14,7 +14,7 @@ class UnitTestSuite(unittest.TestCase):
     def test_strong_authn(self):
         print("Running test: Strong authentication")
 
-        signedHeaders = get_signed_headers(self.EMAIL)
+        signedHeaders = get_signed_headers(self.EMAIL, True)
 
         data = {"resources": ["resource1", "resource2"]}
         response = requests.post(f"{self.TARGET_URL}/api/user_project/org123/project456", json=data, headers=signedHeaders)
