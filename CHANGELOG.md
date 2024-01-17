@@ -10,7 +10,7 @@ Polyverse Boost ReST API (Backend)
 - Added Architectural Spec Generator (e.g. AI spec/class analyzer) via /api/user_project/{org}/{project}/data/aispec/generator (POST)
 
 ### Enhancements
-- N/A
+- Improved Logging for Proxy Requests to AI Service
 
 ### Bug Fixes
 - N/A

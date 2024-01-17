@@ -1611,6 +1611,8 @@ const handleProxyRequest = async (req: Request, res: Response) => {
         return res.status(401).send('Unauthorized');
     }
 
+    console.log(`Proxy request by ${email}: ${endpoint}`);
+
     const signedIdentity = await signedAuthHeader(email, org);
 
     let externalEndpoint;
@@ -1635,6 +1637,8 @@ const handleProxyRequest = async (req: Request, res: Response) => {
 
     try {
         const response = await fetch(externalEndpoint, fetchOptions);
+
+        console.log(`Proxy response: ${response.status} ${response.statusText}`);
 
         if (response.ok) {
             const responseObject = await response.json();
