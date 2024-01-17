@@ -3,11 +3,12 @@ service: boost-api
 provider:
   name: aws
   runtime: nodejs20.x
-  stage: dev
+  stage: ${opt:stage, 'dev'}  # Use the stage specified in the command line, default to 'dev'
   region: us-west-2
   environment:
     APP_VERSION: 0.8.2
     ENABLE_UNSIGNED_AUTHN: 1
+    DYNAMO_DB_ANALYSIS: "Boost.AnalysisDataStore.${self:provider.stage}" # Dynamic table name based on stage
   iam:
     role:
       statements:
@@ -19,7 +20,7 @@ provider:
             - dynamodb:PutItem
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
-          Resource: "arn:aws:dynamodb:us-west-2:*:table/Boost.AnalysisDataStore"
+          Resource: "arn:aws:dynamodb:us-west-2:*:table/${self:provider.environment.DYNAMO_DB_ANALYSIS}"
         - Effect: Allow
           Action:
             - dynamodb:Query
@@ -44,7 +45,6 @@ functions:
       - httpApi: '*'
     url:
       invokeMode: RESPONSE_STREAM
-
 
 plugins:
   - serverless-offline

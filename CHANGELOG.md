@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.8.3: January 16th, 2024
+
+### New Features
+- Support for Dev, Test, and Prod Stages of Deployment (and Operational Analysis DB)
+
+### Enhancements
+- N/A
+
+### Bug Fixes
+- N/A
+
 ## Version 0.8.2: January 16th, 2024
 
 ### New Features
