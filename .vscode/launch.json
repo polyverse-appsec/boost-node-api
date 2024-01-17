@@ -15,7 +15,10 @@
                 "NODE_ENV": "development"
             },
             "console": "integratedTerminal",
-            "sourceMaps": true
+            "sourceMaps": true,
+            "skipFiles": [
+                "node_modules/@smithy/**",
+            ]
         },
         {
             "name": "Upload User Project Data",
