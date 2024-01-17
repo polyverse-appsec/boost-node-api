@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.9.0: January 17th, 2024
+## Version 0.8.2: January 16th, 2024
 
 ### New Features
 - Add API /api/user_project/{org}/{project}/data/{resource}/generator (DELETE) to reset a generator
