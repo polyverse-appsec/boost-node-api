@@ -1,1 +1,1 @@
-# boost-node-api
+# boost-rest-api

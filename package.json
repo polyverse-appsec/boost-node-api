@@ -1,5 +1,5 @@
 {
-  "name": "boost-serverless",
+  "name": "boost-rest-api",
   "version": "0.8.3",
   "main": "build/index.js",
   "scripts": {

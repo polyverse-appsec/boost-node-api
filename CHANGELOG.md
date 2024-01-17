@@ -9,7 +9,7 @@ Polyverse Boost ReST API (Backend)
 - Support for Dev, Test, and Prod Stages of Deployment (and Operational Analysis DB)
 
 ### Enhancements
-- N/A
+- Service renamed to: boost-rest-api for clarification
 
 ### Bug Fixes
 - N/A
