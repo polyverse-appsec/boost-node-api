@@ -5,7 +5,7 @@
   "scripts": {
     "test": "pytest",
     "build": "tsc",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc --watch -p ./"
   },
   "keywords": [],
   "author": "",
