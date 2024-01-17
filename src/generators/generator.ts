@@ -3,6 +3,7 @@ import { UserProjectData } from "../types/UserProjectData";
 import { GeneratorState, TaskStatus } from "../types/GeneratorState";
 import { signedAuthHeader } from "../auth";
 import { saveProjectDataResource, loadProjectDataResource } from "..";
+import { FileContent } from "../github";
 
 
 export class GeneratorProcessingError extends Error {
@@ -175,5 +176,65 @@ export class Generator {
     get resourceUri() : string {
         const resourceUri : URL = new URL(`${this.serviceEndpoint}/api/user_project/${this.projectData.org}/${this.projectData.name}/data/${this.dataType}`);
         return resourceUri.href;
+    }
+
+    async getFilenameList() : Promise<string[]> {
+        const encodedUri = encodeURIComponent(this.projectData.resources[0].uri);
+        const getFilesEndpoint = this.serviceEndpoint + `/api/user/${this.projectData.org}/connectors/github/files?uri=${encodedUri}`;
+        const response = await fetch(getFilesEndpoint, {
+            method: 'GET',
+            headers: await signedAuthHeader(this.email)
+        });
+        if (response.ok) {
+            return await response.json() as Promise<string[]>;
+        }
+        throw new Error(`Unable to get file list: ${response.status}`);
+    }
+
+    async getProjectSource() : Promise<FileContent[]> {
+        const encodedUri = encodeURIComponent(this.projectData.resources[0].uri);
+        const getFullSourceEndpoint = this.serviceEndpoint + `/api/user/${this.projectData.org}/connectors/github/fullsource?uri=${encodedUri}`;
+        const response = await fetch(getFullSourceEndpoint, {
+            method: 'GET',
+            headers: await signedAuthHeader(this.email)
+        });
+        if (response.ok) {
+            return await response.json() as Promise<FileContent[]>;
+        }
+        throw new Error(`Unable to get project source: ${response.status}`);
+    }
+
+    async getBoostIgnoreFileSpecs() : Promise<string[]> {
+        const response = await fetch(this.serviceEndpoint + `/api/user_project/${this.projectData.org}/${this.projectData.name}/config/.boostignore`, {
+            method: 'GET',
+            headers: await signedAuthHeader(this.email)
+        });
+        if (response.ok) {
+            return await response.json() as Promise<string[]>;
+        }
+
+        // for now - if we fail to get the boostignore specs, just return an empty list since its only
+        //      used to build a basic blueprint
+        // throw new Error(`Unable to get boostignore file specs: ${response.status}`);
+        return [];
+    }
+
+    async getFilteredFileList(): Promise<string[]> {
+        await this.updateProgress('Scanning Files from GitHub Repo');
+
+        const fileList = await this.getFilenameList();
+
+        // need to filter the fileList based on the boostignore (similar to gitignore)
+        // files in the filelist look like "foo/bar/baz.txt"
+        // file specs in boost ignore look like "**/*.txt" - which should ignore all text files
+        //      in all folders. Or "node_modules/" which should ignore all files in the node_modules root folder.
+        //      Or ".gitignore" which should ignore file named .gitignore in the root directory
+        await this.updateProgress('Filtered File List for .boostignore');
+        
+        const boostIgnoreFileSpecs = await this.getBoostIgnoreFileSpecs();
+        const boostIgnore = require('ignore')().add(boostIgnoreFileSpecs);
+        const filteredFileList = fileList.filter((file) => !boostIgnore.ignores(file));
+
+        return filteredFileList;
     }
 }

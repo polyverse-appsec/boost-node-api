@@ -329,7 +329,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
     }
 }
 
-interface FileContent {
+export interface FileContent {
     path: string;
     source: string;
 }
@@ -444,7 +444,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
         // Attempt to retrieve the repository source publicly
         const publicArchiveUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${defaultBranch}`;
 
-        const fileContents = await downloadAndExtractRepo(publicArchiveUrl);
+        const fileContents : FileContent[]= await downloadAndExtractRepo(publicArchiveUrl);
         return res
             .status(200)
             .contentType('application/json')
@@ -494,7 +494,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
             
             const archiveUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${defaultBranch}`;
         
-            const fileContents = await downloadAndExtractRepo(archiveUrl);
+            const fileContents : FileContent[] = await downloadAndExtractRepo(archiveUrl);
             return res
                 .status(200)
                 .contentType('application/json')

@@ -12,7 +12,8 @@ import {
     getFolderPathsFromRepo,
     getFileFromRepo,
     getFilePathsFromRepo,
-    getDetailsFromRepo
+    getDetailsFromRepo,
+    getFullSourceFromRepo,
 } from './github';
 import { uploadProjectDataForAIAssistant } from './openai';
 import { UserProjectData } from './types/UserProjectData';
@@ -20,6 +21,7 @@ import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
 import { ProjectResource } from './types/ProjectResource';
 import axios from 'axios';
 import { ProjectDataReference } from './types/ProjectDataReference';
+import { Generator } from './generators/generator';
 
 import { 
     defaultBoostIgnorePaths,
@@ -33,6 +35,7 @@ import { ProjectDataFilename, ProjectDataType } from './types/ProjectData';
 import { BlueprintGenerator } from './generators/blueprint';
 import { Services, Endpoints } from './boost-python-api/endpoints';
 import { GeneratorProcessingError } from './generators/generator';
+import { ProjectSourceGenerator } from './generators/projectsource';
 
 export const app = express();
 
@@ -231,8 +234,8 @@ function checkPrivateAccessAllowed(accountStatus: UserAccountState): boolean {
     return accountStatus.enabled && accountStatus.plan === 'premium';
 }
 
-const user_resource_file = `/user/:org/connectors/github/file`;
-app.get(`${api_root_endpoint}${user_resource_file}`, async (req: Request, res: Response) => {
+const user_org_connectors_github_file = `/user/:org/connectors/github/file`;
+app.get(`${api_root_endpoint}${user_org_connectors_github_file}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -308,8 +311,8 @@ app.get(`${api_root_endpoint}${user_resource_file}`, async (req: Request, res: R
     getFileFromRepo(email, uri!, repo!, path, req, res, privateAccessAllowed);
 });
 
-const user_resource_folders = `/user/:org/connectors/github/folders`;
-app.get(`${api_root_endpoint}${user_resource_folders}`, async (req: Request, res: Response) => {
+const user_org_connectors_github_folders = `/user/:org/connectors/github/folders`;
+app.get(`${api_root_endpoint}${user_org_connectors_github_folders}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -348,8 +351,8 @@ app.get(`${api_root_endpoint}${user_resource_folders}`, async (req: Request, res
     getFolderPathsFromRepo(email, uri, req, res, privateAccessAllowed);
 });
 
-const user_resource_files = `/user/:org/connectors/github/files`;
-app.get(`${api_root_endpoint}${user_resource_files}`, async (req: Request, res: Response) => {
+const user_org_connectors_github_files = `/user/:org/connectors/github/files`;
+app.get(`${api_root_endpoint}${user_org_connectors_github_files}`, async (req: Request, res: Response) => {
     const email = await validateUser(req, res);
     if (!email) {
         return;
@@ -387,6 +390,48 @@ app.get(`${api_root_endpoint}${user_resource_files}`, async (req: Request, res: 
 
     getFilePathsFromRepo(email, uri, req, res, privateAccessAllowed);
 });
+
+
+const user_org_connectors_github_fullsource = `/user/:org/connectors/github/fullsource`;
+app.get(`${api_root_endpoint}${user_org_connectors_github_fullsource}`, async (req: Request, res: Response) => {
+    const email = await validateUser(req, res);
+    if (!email) {
+        return;
+    }
+
+    if (!req.query.uri) {
+        console.error(`URI is required`);
+        return res.status(400).send('URI is required');
+    }
+
+    let uriString = req.query.uri as string;
+
+    // Check if the URI is encoded, decode it if necessary
+    if (uriString.match(/%[0-9a-f]{2}/i)) {
+        try {
+            uriString = decodeURIComponent(uriString);
+        } catch (error) {
+            console.error(`Invalid encoded URI: ${uriString}`);
+            return res.status(400).send('Invalid encoded URI');
+        }
+    }
+
+    let uri;
+    try {
+        uri = new URL(uriString as string);
+    } catch (error) {
+        console.error(`Invalid URI: ${uriString}`);
+        return res.status(400).send('Invalid URI');
+    }
+
+    const { org } = req.params;
+
+    const accountStatus : UserAccountState = await localSelfDispatch(email, req.get('X-Signed-Identity')!, req, `user/${org}/account`, 'GET');
+    const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
+
+    getFullSourceFromRepo(email, uri, req, res, privateAccessAllowed);
+});
+
 
 async function validateProjectRepositories(email: string, org: string, resources: ProjectResource[], req: Request, res: Response) : Promise<Response | undefined> {
 
@@ -1240,16 +1285,20 @@ async function processStage(serviceEndpoint: string, email: string, project: Use
     if (stage) {
         console.log(`Processing ${resource} stage ${stage}...`);
     }
+    let thisGenerator : Generator;
     switch (resource) {
         case ProjectDataType.ProjectSource:
-            throw new Error(`Not implemented: ${resource}`);
+            thisGenerator = new ProjectSourceGenerator(serviceEndpoint, email, project);
+            break;
         case ProjectDataType.ProjectSpecification:
             throw new Error(`Not implemented: ${resource}`);
         case ProjectDataType.ArchitecturalBlueprint:
-            return new BlueprintGenerator(serviceEndpoint, email, project).generate(stage);
+            thisGenerator = new BlueprintGenerator(serviceEndpoint, email, project);
+            break;
         default:
             throw new Error(`Invalid resource: ${resource}`);
     }
+    return thisGenerator.generate(stage);
 }
 
 const user_project_org_project_data_references = `/user_project/:org/:project/data_references`;

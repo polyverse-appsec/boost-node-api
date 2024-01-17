@@ -3,11 +3,23 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.9.0: January 16th, 2024
+
+### New Features
+- Added Project Source Generator (e.g. full source download/combine) via /api/user_project/{org}/{project}/data/projectsource/generator (POST)
+
+### Enhancements
+- N/A
+
+### Bug Fixes
+- N/A
+
 ## Version 0.8.3: January 16th, 2024
 
 ### New Features
 - Support for Dev, Test, and Prod Stages of Deployment (and Operational Analysis DB)
     - Operational DB is set via environment variable DYNAMO_DB_ANALYSIS (default to Dev)
+- Added Project Source Generator (e.g. full source download/combine) via /api/user_project/{org}/{project}/data/projectsource/generator (POST)
 
 ### Enhancements
 - Service renamed to: boost-rest-api for clarification

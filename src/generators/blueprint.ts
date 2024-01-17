@@ -107,20 +107,9 @@ readonly defaultBlueprint =
             break;
         case BlueprintStage.FileScan:
             {
-                await this.updateProgress('Scanning Files from GitHub Repo');
+                const filteredFileList : string[] = await this.getFilteredFileList();
 
-                const fileList = await this.getFilenameList();
-
-                // need to filter the fileList based on the boostignore (similar to gitignore)
-                // files in the filelist look like "foo/bar/baz.txt"
-                // file specs in boost ignore look like "**/*.txt" - which should ignore all text files
-                //      in all folders. Or "node_modules/" which should ignore all files in the node_modules root folder.
-                //      Or ".gitignore" which should ignore file named .gitignore in the root directory
-                const boostIgnoreFileSpecs = await this.getBoostIgnoreFileSpecs();
-                const boostIgnore = require('ignore')().add(boostIgnoreFileSpecs);
-                const filteredFileList = fileList.filter((file) => !boostIgnore.ignores(file));
-
-                await this.updateProgress('Filtered File List for .boostignore');
+                await this.updateProgress('Analyzing Files with AI');
 
                 const draftOutput : DraftBlueprintOutput = await this.createDraftBlueprint(filteredFileList);
 
@@ -186,34 +175,6 @@ readonly defaultBlueprint =
         await this.updateProgress('Finished Stage ' + stage);
 
         return nextStage;
-    }
-
-    async getFilenameList() : Promise<string[]> {
-        const encodedUri = encodeURIComponent(this.projectData.resources[0].uri);
-        const getFilesEndpoint = this.serviceEndpoint + `/api/user/${this.projectData.org}/connectors/github/files?uri=${encodedUri}`;
-        const response = await fetch(getFilesEndpoint, {
-            method: 'GET',
-            headers: await signedAuthHeader(this.email)
-        });
-        if (response.ok) {
-            return await response.json() as Promise<string[]>;
-        }
-        throw new Error(`Unable to get file list: ${response.status}`);
-    }
-
-    async getBoostIgnoreFileSpecs() : Promise<string[]> {
-        const response = await fetch(this.serviceEndpoint + `/api/user_project/${this.projectData.org}/${this.projectData.name}/config/.boostignore`, {
-            method: 'GET',
-            headers: await signedAuthHeader(this.email)
-        });
-        if (response.ok) {
-            return await response.json() as Promise<string[]>;
-        }
-
-        // for now - if we fail to get the boostignore specs, just return an empty list since its only
-        //      used to build a basic blueprint
-        // throw new Error(`Unable to get boostignore file specs: ${response.status}`);
-        return [];
     }
 
     async createDraftBlueprint(fileList: string[]) : Promise<DraftBlueprintOutput> {
