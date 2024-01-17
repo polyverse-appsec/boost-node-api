@@ -416,25 +416,30 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
 
     const downloadAndExtractRepo = async (url: string, authToken: string): Promise<FileContent[]> => {
         try {
-            const params : any = authToken?
-                {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    },
-                    responseType: 'arraybuffer'
-                }:
-                {
-                    responseType: 'arraybuffer'
-                };
+            const params: any = authToken ? {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                },
+                responseType: 'arraybuffer'
+            } : {
+                responseType: 'arraybuffer'
+            };
             const response = await axios.get(url, params);
             const zip = new AdmZip(response.data);
             const zipEntries = zip.getEntries();
     
-            return zipEntries.map(entry => ({
-                path: entry.entryName,
-                source: entry.getData().toString('utf8')
-            }));
+            // Assuming the first entry is the root folder and get its name
+            const rootFolderName = zipEntries[0].entryName;
+    
+            // Skip the first entry and filter out directories
+            return zipEntries.slice(1).filter(entry => !entry.isDirectory).map(entry => {
+                const relativePath = entry.entryName.replace(rootFolderName, '');
+                return {
+                    path: relativePath,
+                    source: entry.getData().toString('utf8')
+                };
+            });
         } catch (error) {
             console.error(`Error downloading or extracting repository:`, error);
             throw error;
