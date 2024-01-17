@@ -414,14 +414,23 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
         return res.status(400).send('Invalid URI');
     }
 
-    const downloadAndExtractRepo = async (url: string): Promise<FileContent[]> => {
+    const downloadAndExtractRepo = async (url: string, authToken: string): Promise<FileContent[]> => {
         try {
-            const response = await axios.get(url, {
-                responseType: 'arraybuffer'
-            });
+            const params : any = authToken?
+                {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    },
+                    responseType: 'arraybuffer'
+                }:
+                {
+                    responseType: 'arraybuffer'
+                };
+            const response = await axios.get(url, params);
             const zip = new AdmZip(response.data);
             const zipEntries = zip.getEntries();
-
+    
             return zipEntries.map(entry => ({
                 path: entry.entryName,
                 source: entry.getData().toString('utf8')
@@ -444,7 +453,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
         // Attempt to retrieve the repository source publicly
         const publicArchiveUrl = `https://api.github.com/repos/${owner}/${repo}/zipball/${defaultBranch}`;
 
-        const fileContents : FileContent[]= await downloadAndExtractRepo(publicArchiveUrl);
+        const fileContents : FileContent[]= await downloadAndExtractRepo(publicArchiveUrl, '');
         return res
             .status(200)
             .contentType('application/json')
@@ -492,9 +501,17 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
             });
             const defaultBranch = repoDetails.data.default_branch;
             
-            const archiveUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${defaultBranch}`;
-        
-            const fileContents : FileContent[] = await downloadAndExtractRepo(archiveUrl);
+            const archiveUrl = `https://api.github.com/repos/${owner}/${repo}/zipball/${defaultBranch}`;
+
+                    // Generate the installation access token
+            const installationAccessToken : any = await octokit.auth({ type: "installation" });
+            
+            // Ensure we have the token
+            if (!installationAccessToken?.token) {
+                throw new Error('Failed to retrieve installation access token');
+            }
+
+            const fileContents : FileContent[] = await downloadAndExtractRepo(archiveUrl, installationAccessToken.token);
             return res
                 .status(200)
                 .contentType('application/json')
