@@ -92,6 +92,8 @@ readonly fileArchitecturalSpecificationEntry =
                     this.data += this.fileArchitecturalSpecificationEntry
                             .replace('{relativeFileName}', fileContent.path)
                             .replace('{architecturalSpec}', 'No Specification avaialable');
+
+                    await this.updateProgress(`Failed to Build AI Spec for ${fileContent.path} due to ${err}`);
                 }
             }
 
