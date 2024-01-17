@@ -6,7 +6,7 @@ import { ProjectDataReference } from './types/ProjectDataReference';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 
-export async function uploadProjectDataForAIAssistant(projectName: string, uri: URL, dataTypeId: string, simpleFilename: string, projectData: string, req: Request, res: Response) : Promise<ProjectDataReference> {
+export async function uploadProjectDataForAIAssistant(projectName: string, uri: URL, dataTypeId: string, simpleFilename: string, projectData: string) : Promise<ProjectDataReference> {
 
     if (!projectData) {
         throw new Error('Invalid project data');

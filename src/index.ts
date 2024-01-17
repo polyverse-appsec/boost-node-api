@@ -1371,7 +1371,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
             console.log(`${user_project_org_project_data_references}: retrieved project data for ${projectDataTypes[i]}`);
 
             try {
-                const storedProjectDataId = await uploadProjectDataForAIAssistant(`${userProjectData.org}_${userProjectData.name}`, uri, projectDataTypes[i], projectDataNames[i], projectData, req, res);
+                const storedProjectDataId = await uploadProjectDataForAIAssistant(`${userProjectData.org}_${userProjectData.name}`, uri, projectDataTypes[i], projectDataNames[i], projectData);
                 console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${storedProjectDataId}`);
 
                 projectDataFileIds.push(storedProjectDataId);
