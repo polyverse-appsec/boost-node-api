@@ -43,6 +43,16 @@ interface AIFunctionResponse {
     status: number;
 }
 
+interface AIResponse {
+    account: any;
+    chunked: boolean;
+    truncated: boolean;
+}
+
+interface QuickBlueprintOutput extends AIResponse {
+    blueprint: string;
+}
+
 export class BlueprintGenerator extends Generator {
     constructor(serviceEndpoint: string, email: string, projectData: UserProjectData) {
         super(serviceEndpoint, email, projectData, ProjectDataType.ArchitecturalBlueprint);
@@ -237,7 +247,7 @@ readonly defaultBlueprint =
         if (!response.ok) {
             throw new Error(`Unable to build blueprint from project samples: ${response.status}`);
         }
-        const responseData = await response.json();
-        return responseData;
+        const responseData : QuickBlueprintOutput = await response.json();
+        return responseData.blueprint;
     }
 }
