@@ -7,6 +7,7 @@ Polyverse Boost ReST API (Backend)
 
 ### New Features
 - Support for Dev, Test, and Prod Stages of Deployment (and Operational Analysis DB)
+    - Operational DB is set via environment variable DYNAMO_DB_ANALYSIS (default to Dev)
 
 ### Enhancements
 - Service renamed to: boost-rest-api for clarification

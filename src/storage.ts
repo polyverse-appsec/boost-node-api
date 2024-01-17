@@ -4,7 +4,9 @@ import { DeleteCommand, DeleteCommandInput, DynamoDBDocumentClient, GetCommand, 
 const client = new DynamoDBClient({ region: "us-west-2" });
 const dynamoDB = DynamoDBDocumentClient.from(client);
 
-const analysisDatastoreTableName = 'Boost.AnalysisDataStore';
+// look for environment variable DYNAMO_DB_ANALYSIS for the table name.
+//  if not found, use the default table name Boost.AnalysisDataStore.dev
+const analysisDatastoreTableName = process.env.DYNAMO_DB_ANALYSIS || "Boost.AnalysisDataStore.dev";
 
 export enum SourceType {
     GitHub = 'github',
