@@ -3,7 +3,7 @@ import requests
 
 from utils import get_signed_headers
 
-from constants import TARGET_URL, EMAIL, ORG
+from constants import TARGET_URL, EMAIL, ORG, PREMIUM_EMAIL
 
 
 class UnitTestSuite(unittest.TestCase):
@@ -42,13 +42,13 @@ class UnitTestSuite(unittest.TestCase):
 
     def test_retrieve_file_private_access(self):
         print("Running test: Retrieve a private file from the team's project")
-        signedHeaders = get_signed_headers("stephen@polyverse.com")
+        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
         response = requests.get(f"{TARGET_URL}/api/user/org123/connectors/github/file?uri=https://github.com/polyverse-appsec/sara/blob/main/README.md", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
     def test_retrieve_file_private_access_repo_path(self):
         print("Running test: Retrieve a private file from the team's project based on repo and path")
-        signedHeaders = get_signed_headers("stephen@polyverse.com")
+        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
         response = requests.get(f"{TARGET_URL}/api/user/org123/connectors/github/file?repo=https://github.com/polyverse-appsec/sara/&path=README.md", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
