@@ -987,9 +987,19 @@ app.patch(`${api_root_endpoint}${user_project_org_project_data_resource_generato
     }
 
     const input : GeneratorState = JSON.parse(body);
-    let userGeneratorRequest : GeneratorState = {
-        status: input.status
-    };
+    if (input.status !== currentGeneratorState.status) {
+        console.error(`Invalid PATCH status: ${input.status}`);
+        return res.status(400).send(`Invalid PATCH status: ${input.status}`)
+    }
+    if (input.last_updated) {
+        currentGeneratorState.last_updated = input.last_updated;
+    }
+    if (input.status_details) {
+        currentGeneratorState.status_details = input.status_details;
+    }
+    if (input.stage) {
+        currentGeneratorState.stage = input.stage;
+    }
 
     const updateGeneratorState = async (generatorState: GeneratorState) => {
         if (!generatorState.last_updated) {
@@ -1004,18 +1014,14 @@ app.patch(`${api_root_endpoint}${user_project_org_project_data_resource_generato
 
     // if we're only updating the timestamp on the processing, then don't kick off any new work
     if (currentGeneratorState.status === TaskStatus.Processing) {
-        if (userGeneratorRequest.last_updated && currentGeneratorState.status_details) {
-            currentGeneratorState.last_updated = userGeneratorRequest.last_updated;
-            currentGeneratorState.status_details = userGeneratorRequest.status_details;
 
-            console.log(`${user_project_org_project_data_resource_generator}: updated processing task: ${JSON.stringify(currentGeneratorState)}`);
-            await updateGeneratorState(currentGeneratorState);
+        console.log(`${user_project_org_project_data_resource_generator}: updated processing task: ${JSON.stringify(currentGeneratorState)}`);
+        await updateGeneratorState(currentGeneratorState);
 
-            return res
-                .status(200)
-                .contentType('application/json')
-                .send(currentGeneratorState);
-        }
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send(currentGeneratorState);
     } else {
         // patch is only supported for processing tasks
         console.error(`Invalid PATCH status: ${currentGeneratorState.status}`);
