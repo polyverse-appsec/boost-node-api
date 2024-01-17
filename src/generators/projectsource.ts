@@ -1,8 +1,8 @@
-import { Generator, GeneratorProcessingError } from './generator';
 import { ProjectDataType } from '../types/ProjectData';
 import { UserProjectData } from '../types/UserProjectData';
 import { Stages } from '../types/GeneratorState';
 import { FileContent } from '../github';
+import { Generator } from './generator';
 
 enum ProjectSourceStage {
     ProjectInfo= 'Default',

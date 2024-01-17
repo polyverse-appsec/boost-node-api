@@ -7,6 +7,7 @@ Polyverse Boost ReST API (Backend)
 
 ### New Features
 - Added Project Source Generator (e.g. full source download/combine) via /api/user_project/{org}/{project}/data/projectsource/generator (POST)
+- Added Architectural Spec Generator (e.g. AI spec/class analyzer) via /api/user_project/{org}/{project}/data/aispec/generator (POST)
 
 ### Enhancements
 - N/A
