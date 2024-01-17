@@ -3,6 +3,7 @@ import { ProjectDataType } from '../types/ProjectData';
 import { UserProjectData } from '../types/UserProjectData';
 import { Services } from '../boost-python-api/endpoints';
 import { signedAuthHeader } from '../auth';
+import { Stages } from '../types/GeneratorState';
 
 enum BlueprintStage {
     Default = 'Default',
@@ -11,7 +12,7 @@ enum BlueprintStage {
     // TODO: Add more thorough blueprint
     //    - Sample files identified in Chat
     //    - Sample files for key architectural areas (auth, data, UI, etc)
-    Complete = 'Complete'
+    Complete = Stages.Complete,
 
 }
 

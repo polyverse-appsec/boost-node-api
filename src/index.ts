@@ -37,6 +37,7 @@ import { GeneratorProcessingError } from './generators/generator';
 export const app = express();
 
 app.use(express.json()); // Make sure to use express.json middleware to parse JSON request body
+app.use(express.text()); // Make sure to use express.text middleware to parse text request body
 
 const api_root_endpoint : string = '/api';
 

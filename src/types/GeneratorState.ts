@@ -6,7 +6,7 @@ export enum TaskStatus {
 }
 
 export enum Stages {
-    Complete = 'complete',
+    Complete = 'Complete',
 }
 
 export interface GeneratorState {
