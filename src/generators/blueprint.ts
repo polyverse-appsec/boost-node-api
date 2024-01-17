@@ -5,6 +5,7 @@ import { Services } from '../boost-python-api/endpoints';
 import { signedAuthHeader } from '../auth';
 import { Stages } from '../types/GeneratorState';
 import { AIResponse }  from '../boost-python-api/AIResponse';
+import { AIFunctionResponse } from '../boost-python-api/AIFunctionResponse';
 
 enum BlueprintStage {
     Default = 'Default',

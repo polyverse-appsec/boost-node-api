@@ -36,6 +36,7 @@ import { BlueprintGenerator } from './generators/blueprint';
 import { Services, Endpoints } from './boost-python-api/endpoints';
 import { GeneratorProcessingError } from './generators/generator';
 import { ProjectSourceGenerator } from './generators/projectsource';
+import { ArchitecturalSpecificationGenerator } from './generators/aispec';
 
 export const app = express();
 
@@ -1291,7 +1292,7 @@ async function processStage(serviceEndpoint: string, email: string, project: Use
             thisGenerator = new ProjectSourceGenerator(serviceEndpoint, email, project);
             break;
         case ProjectDataType.ProjectSpecification:
-            throw new Error(`Not implemented: ${resource}`);
+            thisGenerator = new ArchitecturalSpecificationGenerator(serviceEndpoint, email, project);
         case ProjectDataType.ArchitecturalBlueprint:
             thisGenerator = new BlueprintGenerator(serviceEndpoint, email, project);
             break;
