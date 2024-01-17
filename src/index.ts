@@ -1293,6 +1293,7 @@ async function processStage(serviceEndpoint: string, email: string, project: Use
             break;
         case ProjectDataType.ProjectSpecification:
             thisGenerator = new ArchitecturalSpecificationGenerator(serviceEndpoint, email, project);
+            break;
         case ProjectDataType.ArchitecturalBlueprint:
             thisGenerator = new BlueprintGenerator(serviceEndpoint, email, project);
             break;
