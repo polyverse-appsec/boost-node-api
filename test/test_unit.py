@@ -46,6 +46,18 @@ class UnitTestSuite(unittest.TestCase):
         response = requests.get(f"{TARGET_URL}/api/user/org123/connectors/github/file?uri=https://github.com/polyverse-appsec/sara/blob/main/README.md", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
+    def test_retrieve_fullsource_public_repo_access(self):
+        print("Running test: Retrieve full source from a public repo")
+        signedHeaders = get_signed_headers(EMAIL)
+        response = requests.get(f"{TARGET_URL}/api/user/org123/connectors/github/fullsource?uri=https://github.com/public-apis/public-apis", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+    def test_retrieve_fullsource_private_repo_access(self):
+        print("Running test: Retrieve full source from a private repo")
+        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
+        response = requests.get(f"{TARGET_URL}/api/user/org123/connectors/github/fullsource?uri=https://github.com/polyverse-appsec/sara", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
     def test_retrieve_file_private_access_repo_path(self):
         print("Running test: Retrieve a private file from the team's project based on repo and path")
         signedHeaders = get_signed_headers(PREMIUM_EMAIL)

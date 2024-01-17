@@ -442,7 +442,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
         const defaultBranch = repoDetails.data.default_branch;
 
         // Attempt to retrieve the repository source publicly
-        const publicArchiveUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${defaultBranch}`;
+        const publicArchiveUrl = `https://api.github.com/repos/${owner}/${repo}/zipball/${defaultBranch}`;
 
         const fileContents : FileContent[]= await downloadAndExtractRepo(publicArchiveUrl);
         return res
