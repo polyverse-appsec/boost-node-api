@@ -77,6 +77,9 @@ readonly fileArchitecturalSpecificationEntry =
                 totalSpecs++;
 
                 try {
+
+                    await this.updateProgress('Building AI Specification for ' + fileContent.path);
+
                     const architecturalSpec : string = await this.createArchitecturalSpecification(fileContent.source);
 
                     this.data += this.fileArchitecturalSpecificationEntry
