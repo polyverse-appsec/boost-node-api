@@ -1,13 +1,15 @@
 import argparse
+import json
 import requests
 import jwt
 import boto3
 import subprocess
+import time
 
 
-REMOTE_URL = "https://pt5sl5vwfjn6lsr2k6szuvfhnq0vaxhl.lambda-url.us-west-2.on.aws"
+REMOTE_URL = "https://3c27qu2ddje63mw2dmuqp6oa7u0ergex.lambda-url.us-west-2.on.aws"  # Dev_url
 LOCAL_URL = "http://localhost:3000"
-BASE_URL = LOCAL_URL
+BASE_URL = REMOTE_URL
 
 python_cmd = "python3"  # or "python"
 
@@ -49,7 +51,7 @@ def create_project(email, organization, github_uri, project_name=None):
 
     data = {"resources": [{"uri": github_uri}]}
 
-    response = requests.post(f"{REMOTE_URL}/api/user_project/{organization}/{project_name}", json=data, headers=get_headers(email))
+    response = requests.post(f"{BASE_URL}/api/user_project/{organization}/{project_name}", json=data, headers=get_headers(email))
     return response
 
 
@@ -70,24 +72,91 @@ def read_file(file_path):
 def post_data(email, organization, project_name, resource_name, data):
 
     payload = {"resources": data}
-    response = requests.post(f"{REMOTE_URL}/api/user_project/{organization}/{project_name}/data/{resource_name}",
+    response = requests.post(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_name}",
                              data=payload, headers=get_headers(email))
     return response
 
 
 def post_data_references(email, organization, project_name):
 
-    post_response = requests.post(f"{REMOTE_URL}/api/user_project/{organization}/{project_name}/data_references/", headers=get_headers(email))
+    post_response = requests.post(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data_references/", headers=get_headers(email))
     if post_response.status_code != 200:
         print(f"Failed to process data references: {post_response.status_code}, {post_response.text}")
         return
 
     # GET request to retrieve processed data
-    get_response = requests.get(f"{REMOTE_URL}/api/user_project/{organization}/{project_name}/data_references/", headers=get_headers(email))
+    get_response = requests.get(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data_references/", headers=get_headers(email))
     if get_response.status_code == 200:
         print(get_response.text)
     else:
         print(f"Failed to retrieve data references: {get_response.status_code}, {get_response.text}")
+
+def helper_task_generator_launch(email, organization, project_name, resource_type):
+        print(f"Launching a generator for a {resource_type} resource")
+
+        headers = get_headers(email)
+
+        # cleanup resources
+        response = requests.delete(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_type}", headers=headers)
+        response = requests.delete(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_type}/generator", headers=headers)
+
+        # response = requests.delete(f"{self.BASE_URL}/api/user_project/org123/project456/data_references", headers=headers)
+        # self.assertEqual(response.status_code, 200)
+
+        response = requests.get(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_type}/generator", headers=headers)
+        response_dict = response.json()    
+        parsed_dict = json.loads(response_dict['body'])
+        #print("Response body is :", parsed_dict['status'])
+        
+        if parsed_dict['status'] != "idle":
+            print("Generator is not idle, so test results may be compromised - continuing anyway")
+
+            # try to idle the task generator
+            response = requests.post(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_type}/generator", json={"status": "idle"}, headers=headers)
+
+            # check the generator state to make sure its idle
+            response = requests.get(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_type}/generator", headers=headers)
+
+        # start the task generator
+        response = requests.post(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_type}/generator", json={"status": "processing"}, headers=headers)
+
+        # we need to make sure the resource is generated immediately - even if further updates will happen
+        response = requests.get(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_type}", headers=headers)
+        data = response.text
+
+        # we'll loop until the generator is idle or in an error state - for 30 seconds max
+        #       every second, we'll do a GET and check its state
+        #       if it's idle, we'll break out of the loop and pass the test
+        #       if it's in an error state, we'll break out of the loop and fail the test
+        #       if it's still processing, we'll continue looping
+        #       each loop, we'll print the current generator state
+        # for i in range(48):
+        i = 0
+        while True:
+            i += 1
+            print(f"Checking {resource_type} Resource/Generator #{i}")
+
+            response = requests.get(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_type}/generator", headers=headers)
+            response_dict = response.json()    
+            parsed_dict = json.loads(response_dict['body'])
+
+            print(f"Check {i}:\n\t{response.json()}")
+
+            # if the generator is idle or an error, we'll exit the loop
+            # otherwise, keep 'processing'
+            if parsed_dict["status"] == "idle":
+                break
+            if parsed_dict["status"] == "error":
+                break
+
+            # make sure the blueprint resource is still available
+            response = requests.get(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_type}", headers=headers)
+
+            # wait a couple seconds before re-sampling
+            time.sleep(5)
+
+        response = requests.get(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_type}", headers=headers)
+        print("Generated File Data: ", resource_type)
 
 
 def main():
@@ -95,7 +164,7 @@ def main():
     parser.add_argument('--email', type=str, help='Email of the user')
     parser.add_argument('--organization', nargs='?', type=str, help='Organization name')
     parser.add_argument('--github_uri', type=str, help='URI to GitHub repository')
-    parser.add_argument('--path_to_summarizer', type=str, help='Path to summarizer folder')
+    # parser.add_argument('--path_to_summarizer', type=str, help='Path to summarizer folder')
     parser.add_argument('--project_name', nargs='?', type=str, help='Project name (optional)')
     args = parser.parse_args()
 
@@ -126,27 +195,31 @@ def main():
     if response.status_code == 200:
         print("Project created successfully. Running additional scripts...")
 
+        helper_task_generator_launch(args.email, args.organization, args.project_name, "projectsource")
+        helper_task_generator_launch(args.email, args.organization, args.project_name, "aispec")
+        helper_task_generator_launch(args.email, args.organization, args.project_name, "blueprint")
         # run_script(args.path_to_summarizer, "--rawonly")
-        subprocess.run([python_cmd, args.path_to_summarizer, "--rawonly"], check=True, capture_output=True, text=True)
-        print("Raw files generated successfully.")
+        # subprocess.run([python_cmd, args.path_to_summarizer, "--rawonly"], check=True, capture_output=True, text=True)
+        # print("Raw files generated successfully.")
 
         # run_script(args.path_to_summarizer, "")
-        subprocess.run([python_cmd, args.path_to_summarizer], check=True, capture_output=True, text=True)
-        print("Processed summary files generated successfully.")
+        # subprocess.run([python_cmd, args.path_to_summarizer], check=True, capture_output=True, text=True)
+        # print("Processed summary files generated successfully.")
 
         # Post files to openai
-        for output_file, resource_name in [
-            ("allfiles_combined.md", "projectsource"),
-            ("aispec.md", "aispec"),
-            # placeholder blueprint code, make sure you have a blueprint.md file in this directory before running
-            ("blueprint.md", "blueprint"),
-        ]:
-            file_content = read_file(output_file)
-            post_response = post_data(args.email, args.organization, args.project_name, resource_name, file_content)
-            print(f"POST to {resource_name}: {post_response.status_code}, {post_response.text}")
+        # for output_file, resource_name in [
+        #     ("allfiles_combined.md", "projectsource"),
+        #     ("aispec.md", "aispec"),
+        #     # placeholder blueprint code, make sure you have a blueprint.md file in this directory before running
+        #     ("blueprint.md", "blueprint"),
+        # ]:
+        #     file_content = read_file(output_file)
+        #     post_response = post_data(args.email, args.organization, args.project_name, resource_name, file_content)
+        #     print(f"POST to {resource_name}: {post_response.status_code}, {post_response.text}")
 
         # Poke openai to process the files
         post_data_references(args.email, args.organization, args.project_name)
+        print("Successfully finished script! Created project, generated files, and posted to openai.")
 
     else:
         print(f"Failed to create project. Server responded with: {response.status_code}, {response.text}")

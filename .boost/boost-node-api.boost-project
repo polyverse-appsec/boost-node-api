@@ -3,7 +3,7 @@
   "summary": {
     "projectName": "boost-node-api",
     "summaryUrl": ".boost/boost-node-api.summary.boost-notebook",
-    "filesToAnalyze": 21,
+    "filesToAnalyze": 34,
     "filesAnalyzed": 0,
     "issues": [
       "No summary file found at .boost/boost-node-api.summary.boost-notebook"
@@ -39,36 +39,9 @@
       "issueCells": 0,
       "sections": {}
     },
-    "README.md": {
-      "sourceRelFile": "README.md",
-      "notebookRelFile": ".boost/README.md.boost-notebook",
-      "totalCells": 0,
-      "completedCells": 0,
-      "errorCells": 0,
-      "issueCells": 0,
-      "sections": {}
-    },
-    "CHANGELOG.md": {
-      "sourceRelFile": "CHANGELOG.md",
-      "notebookRelFile": ".boost/CHANGELOG.md.boost-notebook",
-      "totalCells": 0,
-      "completedCells": 0,
-      "errorCells": 0,
-      "issueCells": 0,
-      "sections": {}
-    },
     "serverless.yml": {
       "sourceRelFile": "serverless.yml",
       "notebookRelFile": ".boost/serverless.yml.boost-notebook",
-      "totalCells": 0,
-      "completedCells": 0,
-      "errorCells": 0,
-      "issueCells": 0,
-      "sections": {}
-    },
-    "tsconfig.json": {
-      "sourceRelFile": "tsconfig.json",
-      "notebookRelFile": ".boost/tsconfig.json.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
@@ -201,9 +174,153 @@
       "issueCells": 0,
       "sections": {}
     },
-    "src\\scripts\\create_project.py": {
-      "sourceRelFile": "src\\scripts\\create_project.py",
-      "notebookRelFile": ".boost/src/scripts/create_project.py.boost-notebook",
+    "test\\utils.py": {
+      "sourceRelFile": "test\\utils.py",
+      "notebookRelFile": ".boost/test/utils.py.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "test\\test_unit.py": {
+      "sourceRelFile": "test\\test_unit.py",
+      "notebookRelFile": ".boost/test/test_unit.py.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "test\\test_e2e.py": {
+      "sourceRelFile": "test\\test_e2e.py",
+      "notebookRelFile": ".boost/test/test_e2e.py.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "test\\test_badinputs.py": {
+      "sourceRelFile": "test\\test_badinputs.py",
+      "notebookRelFile": ".boost/test/test_badinputs.py.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "test\\test_ai.py": {
+      "sourceRelFile": "test\\test_ai.py",
+      "notebookRelFile": ".boost/test/test_ai.py.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "test\\constants.py": {
+      "sourceRelFile": "test\\constants.py",
+      "notebookRelFile": ".boost/test/constants.py.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\utility\\fileConstants.ts": {
+      "sourceRelFile": "src\\utility\\fileConstants.ts",
+      "notebookRelFile": ".boost/src/utility/fileConstants.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\types\\ProjectData.ts": {
+      "sourceRelFile": "src\\types\\ProjectData.ts",
+      "notebookRelFile": ".boost/src/types/ProjectData.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\types\\GeneratorState.ts": {
+      "sourceRelFile": "src\\types\\GeneratorState.ts",
+      "notebookRelFile": ".boost/src/types/GeneratorState.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\generators\\projectsource.ts": {
+      "sourceRelFile": "src\\generators\\projectsource.ts",
+      "notebookRelFile": ".boost/src/generators/projectsource.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\generators\\generator.ts": {
+      "sourceRelFile": "src\\generators\\generator.ts",
+      "notebookRelFile": ".boost/src/generators/generator.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\generators\\blueprint.ts": {
+      "sourceRelFile": "src\\generators\\blueprint.ts",
+      "notebookRelFile": ".boost/src/generators/blueprint.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\generators\\aispec.ts": {
+      "sourceRelFile": "src\\generators\\aispec.ts",
+      "notebookRelFile": ".boost/src/generators/aispec.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\boost-python-api\\endpoints.ts": {
+      "sourceRelFile": "src\\boost-python-api\\endpoints.ts",
+      "notebookRelFile": ".boost/src/boost-python-api/endpoints.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "scripts\\create_project.py": {
+      "sourceRelFile": "scripts\\create_project.py",
+      "notebookRelFile": ".boost/scripts/create_project.py.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\boost-python-api\\AIResponse.ts": {
+      "sourceRelFile": "src\\boost-python-api\\AIResponse.ts",
+      "notebookRelFile": ".boost/src/boost-python-api/AIResponse.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\boost-python-api\\AIFunctionResponse.ts": {
+      "sourceRelFile": "src\\boost-python-api\\AIFunctionResponse.ts",
+      "notebookRelFile": ".boost/src/boost-python-api/AIFunctionResponse.ts.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,
