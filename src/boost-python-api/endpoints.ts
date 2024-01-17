@@ -2,7 +2,7 @@ export enum Services {
     QuickBlueprint = 'quick-blueprint',
     DraftBlueprint = 'draft-blueprint',
 
-    Summarizer = 'summarizer',
+    Summarizer = 'codesummarizer',
 
     CustomerPortal = 'customer_portal',
 }

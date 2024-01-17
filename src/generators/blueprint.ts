@@ -4,6 +4,7 @@ import { UserProjectData } from '../types/UserProjectData';
 import { Services } from '../boost-python-api/endpoints';
 import { signedAuthHeader } from '../auth';
 import { Stages } from '../types/GeneratorState';
+import { AIResponse }  from '../boost-python-api/AIResponse';
 
 enum BlueprintStage {
     Default = 'Default',
@@ -36,18 +37,6 @@ interface QuickBlueprintInput {
 
     projectFile?: string;
     code?: string;
-}
-
-interface AIFunctionResponse {
-    account: any;
-    details: any;
-    status: number;
-}
-
-interface AIResponse {
-    account: any;
-    chunked: boolean;
-    truncated: boolean;
 }
 
 interface QuickBlueprintOutput extends AIResponse {
