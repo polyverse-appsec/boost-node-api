@@ -111,9 +111,6 @@ export class Generator {
             throw new Error(`Invalid URI: ${uri}`);
         }
 
-        await saveProjectDataResource(this.email, ownerName, repoName, this.dataType, '', this.data);
-
-        /*
         const authHeader = await signedAuthHeader(this.email);
         const response = await fetch(this.resourceUri, {
             method: 'PUT',
@@ -127,7 +124,6 @@ export class Generator {
         if (!response.ok) {
             throw new Error(`Unable to Save Generated Resource: ${response.status}`);
         }
-        */
 
         console.log(`Saved ${this.dataType} data`);
     }
@@ -140,7 +136,7 @@ export class Generator {
         }
 
         const authHeader = await signedAuthHeader(this.email);
-        await fetch(this.resourceUri + `/generator`, {
+        const response = await fetch(this.resourceUri + `/generator`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -148,6 +144,9 @@ export class Generator {
             },
             body: JSON.stringify(state)
         });
+        if (!response.ok) {
+            console.log(`Unable to update ${this.dataType} resource generator progress: ${statusUpdate}`);
+        }
     }
 
     async loadProjectFile(filename: string) : Promise<string> {
@@ -169,11 +168,12 @@ export class Generator {
             return '';
         }
 
-        return await response.text();
+        const result : string = await response.text();
+        return result;
     }
 
     get resourceUri() : string {
-        const resourceUri : URL = new URL(`${this.serviceEndpoint}/api/${this.projectData.org}/${this.projectData.name}/data/${this.dataType}`);
+        const resourceUri : URL = new URL(`${this.serviceEndpoint}/api/user_project/${this.projectData.org}/${this.projectData.name}/data/${this.dataType}`);
         return resourceUri.href;
     }
 }
