@@ -12,9 +12,12 @@ Polyverse Boost ReST API (Backend)
 - Consistent return of 404 if Project not found/created when accessing Project data (e.g. resource, generator, goals, etc)
 - Support PUT in addition to existing POST for /api/user_project/{org}/{project}
 - Enable /user/{org}/connectors/github/file (GET) to retrieve a file based on repo and path instead of full URI
+- Add support for text/plain content type handler for Boost Service (e.g. writing Resource data)
 
 ### Bug Fixes
 - Enable any resource with github.com as the domain to work (was failing if the resource was www.github.com)
+- Many bugfixes for Blueprint generator to complete successfully
+- Fixes to Resource Generator Patch and PUT/POST Service APIs to correctly update last_updated timestamp
 
 ## Version 0.8.1: January 15th, 2024
 
