@@ -107,7 +107,7 @@ readonly defaultBlueprint =
             break;
         case BlueprintStage.FileScan:
             {
-                await this.updateProgress('Scanning Files');
+                await this.updateProgress('Scanning Files from GitHub Repo');
 
                 const fileList = await this.getFilenameList();
 
@@ -119,6 +119,8 @@ readonly defaultBlueprint =
                 const boostIgnoreFileSpecs = await this.getBoostIgnoreFileSpecs();
                 const boostIgnore = require('ignore')().add(boostIgnoreFileSpecs);
                 const filteredFileList = fileList.filter((file) => !boostIgnore.ignores(file));
+
+                await this.updateProgress('Filtered File List for .boostignore');
 
                 const draftOutput : DraftBlueprintOutput = await this.createDraftBlueprint(filteredFileList);
 
