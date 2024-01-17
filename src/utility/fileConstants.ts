@@ -15,6 +15,8 @@ export const defaultBoostIgnorePaths = [
     boostIncludeFilename,
 
     'chat/', // exclude all chat files by default
+
+    '.boost/', // exclude the .boost folder
 ];
 
 export const boostFilterFiles = [
