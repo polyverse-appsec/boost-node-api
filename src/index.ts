@@ -1125,6 +1125,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
                 // In case of error, set status to error
                 currentGeneratorState.status = TaskStatus.Error;
+                currentGeneratorState.last_updated = undefined; // get a refreshed last updated timestamp
 
                 await updateGeneratorState(currentGeneratorState);
 
