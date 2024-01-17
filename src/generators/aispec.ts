@@ -23,7 +23,7 @@ interface SummarizerOutput extends AIResponse {
 
 export class ArchitecturalSpecificationGenerator extends Generator {
     constructor(serviceEndpoint: string, email: string, projectData: UserProjectData) {
-        super(serviceEndpoint, email, projectData, ProjectDataType.ProjectSource);
+        super(serviceEndpoint, email, projectData, ProjectDataType.ProjectSpecification);
     }
 
 readonly defaultArchitecturalSpecification =
