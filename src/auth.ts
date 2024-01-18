@@ -50,7 +50,7 @@ export async function validateUser(req: Request, res: Response): Promise<string 
 
             email = normalizeEmail(identity.email);
         } catch (err) {
-            console.error(`Unauthorized: Invalid signed identity`);
+            console.error(`Unauthorized: Invalid signed identity: ${err}`);
             res.status(401).send('Unauthorized');
             return undefined;
         }
