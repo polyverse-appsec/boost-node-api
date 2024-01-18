@@ -7,7 +7,7 @@ import {
     convertToSourceType,
     deleteProjectData
 } from './storage';
-import { validateUser, signedAuthHeader } from './auth';
+import { validateUser, signedAuthHeader, getSignedIdentityFromHeader } from './auth';
 import {
     getFolderPathsFromRepo,
     getFileFromRepo,
@@ -302,11 +302,12 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_file}`, async (req: Re
 
     const { org } = req.params;
 
-    if (!req.get('X-Signed-Identity')) {
+    const signedIdentity = getSignedIdentityFromHeader(req);
+    if (!signedIdentity) {
         console.error(`Unauthorized: Signed Header missing`);
         return res.status(401).send('Unauthorized');
     }
-    const accountStatus : UserAccountState = await localSelfDispatch(email, req.get('X-Signed-Identity')!, req, `user/${org}/account`, 'GET');
+    const accountStatus : UserAccountState = await localSelfDispatch(email, signedIdentity, req, `user/${org}/account`, 'GET');
     const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
 
     getFileFromRepo(email, uri!, repo!, path, req, res, privateAccessAllowed);
@@ -346,7 +347,14 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_folders}`, async (req:
 
     const { org } = req.params;
 
-    const accountStatus : UserAccountState = await localSelfDispatch(email, req.get('X-Signed-Identity')!, req, `user/${org}/account`, 'GET');
+    const signedIdentity = getSignedIdentityFromHeader(req);
+    if (!signedIdentity) {
+        console.error(`Missing signed identity - after User Validation passed`);
+        return res
+            .status(401)
+            .send('Unauthorized');
+    }
+    const accountStatus : UserAccountState = await localSelfDispatch(email, signedIdentity, req, `user/${org}/account`, 'GET');
     const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
 
     getFolderPathsFromRepo(email, uri, req, res, privateAccessAllowed);
@@ -386,7 +394,14 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_files}`, async (req: R
 
     const { org } = req.params;
 
-    const accountStatus : UserAccountState = await localSelfDispatch(email, req.get('X-Signed-Identity')!, req, `user/${org}/account`, 'GET');
+    const signedIdentity = getSignedIdentityFromHeader(req);
+    if (!signedIdentity) {
+        console.error(`Missing signed identity - after User Validation passed`);
+        return res
+            .status(401)
+            .send('Unauthorized');
+    }
+    const accountStatus : UserAccountState = await localSelfDispatch(email, signedIdentity, req, `user/${org}/account`, 'GET');
     const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
 
     getFilePathsFromRepo(email, uri, req, res, privateAccessAllowed);
@@ -427,7 +442,14 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_fullsource}`, async (r
 
     const { org } = req.params;
 
-    const accountStatus : UserAccountState = await localSelfDispatch(email, req.get('X-Signed-Identity')!, req, `user/${org}/account`, 'GET');
+    const signedIdentity = getSignedIdentityFromHeader(req);
+    if (!signedIdentity) {
+        console.error(`Missing signed identity - after User Validation passed`);
+        return res
+            .status(401)
+            .send('Unauthorized');
+    }
+    const accountStatus : UserAccountState = await localSelfDispatch(email, signedIdentity, req, `user/${org}/account`, 'GET');
     const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
 
     getFullSourceFromRepo(email, uri, req, res, privateAccessAllowed);
@@ -459,7 +481,14 @@ async function validateProjectRepositories(email: string, org: string, resources
             return res.status(400).send('Invalid Resource - must be Github');
         }
         // get the account status
-        const accountStatus = await localSelfDispatch(email, req.get('X-Signed-Identity')!, req, `user/${org}/account`, 'GET');
+        const signedIdentity = getSignedIdentityFromHeader(req);
+        if (!signedIdentity) {
+            console.error(`Missing signed identity - after User Validation passed`);
+            return res
+                .status(401)
+                .send('Unauthorized');
+        }
+        const accountStatus = await localSelfDispatch(email, signedIdentity, req, `user/${org}/account`, 'GET');
 
         // verify this account (and org pair) can access this resource
         const allowPrivateAccess = checkPrivateAccessAllowed(accountStatus);
@@ -1684,8 +1713,14 @@ app.get(`${api_root_endpoint}${user_org_account}`, async (req, res) => {
         return res.status(401).send('Unauthorized');
     }
 
-    const identityHeader = req.headers['x-signed-identity'] as string;
-    const result = await localSelfDispatch(email, identityHeader, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
+    const signedIdentity = getSignedIdentityFromHeader(req);
+    if (!signedIdentity) {
+        console.error(`Missing signed identity - after User Validation passed`);
+        return res
+            .status(401)
+            .send('Unauthorized');
+    }
+    const result = await localSelfDispatch(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
 
     return res
         .status(200)

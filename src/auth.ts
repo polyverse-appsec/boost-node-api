@@ -113,3 +113,16 @@ export async function signedAuthHeader(email: string, organization?: string): Pr
     const signedToken = jwt.sign(unsignedIdentity, signingKey, { algorithm: 'RS256' });
     return { 'X-Signed-Identity': signedToken}
 }
+
+export function getSignedIdentityFromHeader(req: Request): string | undefined {
+    // we need to look for any cased variant of x-signed-identity in the header
+    const signedIdentityHeader = Object.keys(req.headers).find(key => key.toLowerCase() === 'x-signed-identity');
+    if (!signedIdentityHeader) {
+        return undefined;
+    }
+
+    // Extract the JWT from the identity blob
+    const identityJWT = req.headers[signedIdentityHeader] as string;
+
+    return identityJWT;
+}
