@@ -128,12 +128,15 @@ export async function loadProjectDataResource(
     return await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, path, resource);
 }
 
+const logRequest = (req: Request) => {
+    if (process.env.DEPLOYMENT_STAGE === 'dev') {
+        console.log(`Request: ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`);
+    }
+}
+
 const postOrPutUserProjectDataResource = async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const { org, project } = req.params;
@@ -249,10 +252,7 @@ function checkPrivateAccessAllowed(accountStatus: UserAccountState): boolean {
 const user_org_connectors_github_file = `/user/:org/connectors/github/file`;
 app.get(`${api_root_endpoint}${user_org_connectors_github_file}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -339,10 +339,7 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_file}`, async (req: Re
 const user_org_connectors_github_folders = `/user/:org/connectors/github/folders`;
 app.get(`${api_root_endpoint}${user_org_connectors_github_folders}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
     
     try {
         const email = await validateUser(req, res);
@@ -397,10 +394,7 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_folders}`, async (req:
 const user_org_connectors_github_files = `/user/:org/connectors/github/files`;
 app.get(`${api_root_endpoint}${user_org_connectors_github_files}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -456,10 +450,7 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_files}`, async (req: R
 const user_org_connectors_github_fullsource = `/user/:org/connectors/github/fullsource`;
 app.get(`${api_root_endpoint}${user_org_connectors_github_fullsource}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -558,10 +549,7 @@ async function validateProjectRepositories(email: string, org: string, resources
 const user_project_org_project = `/user_project/:org/:project`;
 app.patch(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -616,10 +604,7 @@ app.patch(`${api_root_endpoint}${user_project_org_project}`, async (req: Request
 
 const postOrPutUserProject = async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -705,10 +690,7 @@ app.route(`${api_root_endpoint}${user_project_org_project}`)
 
 app.get(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -745,10 +727,7 @@ app.get(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, 
 
 app.delete(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -788,10 +767,7 @@ interface ProjectGoals {
 const user_project_org_project_goals = `/user_project/:org/:project/goals`;
 app.delete(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -824,10 +800,7 @@ app.delete(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: 
 
 app.post(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -890,10 +863,7 @@ app.post(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Re
 
 app.get(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -935,10 +905,7 @@ app.get(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Req
 const user_project_org_project_config_boostignore = `/user_project/:org/:project/config/.boostignore`;
 app.get(`${api_root_endpoint}${user_project_org_project_config_boostignore}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -973,10 +940,7 @@ app.get(`${api_root_endpoint}${user_project_org_project_config_boostignore}`, as
 const user_project_org_project_data_resource = `/user_project/:org/:project/data/:resource`;
 app.get(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1031,10 +995,7 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (
 
 app.delete(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1091,10 +1052,7 @@ app.route(`${api_root_endpoint}${user_project_org_project_data_resource}`)
 const user_project_org_project_data_resource_generator = `/user_project/:org/:project/data/:resource/generator`;
 app.delete(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1145,10 +1103,7 @@ app.delete(`${api_root_endpoint}${user_project_org_project_data_resource_generat
 
 app.get(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1210,10 +1165,7 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_resource_generator}
 // for updating the generator task status
 app.patch(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1311,10 +1263,7 @@ app.patch(`${api_root_endpoint}${user_project_org_project_data_resource_generato
 
 const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1552,10 +1501,7 @@ const user_project_org_project_data_references = `/user_project/:org/:project/da
 
 const userProjectDataReferences = async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1658,10 +1604,7 @@ app.route(`${api_root_endpoint}${user_project_org_project_data_references}`)
 
 app.get(`${api_root_endpoint}${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1712,10 +1655,7 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_references}`, async
 
 app.delete(`${api_root_endpoint}${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1749,10 +1689,7 @@ app.delete(`${api_root_endpoint}${user_project_org_project_data_references}`, as
 const files_source_owner_project_path_analysisType = `/files/:source/:owner/:project/:pathBase64/:analysisType`;
 app.delete(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, async (req, res) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1803,10 +1740,7 @@ app.delete(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`
 
 app.get(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, async (req, res) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1856,10 +1790,7 @@ app.get(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, a
 
 app.post(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, async (req, res) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1899,10 +1830,7 @@ app.post(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, 
 const proxy_ai_endpoint = "/proxy/ai/:org/:endpoint";
 const handleProxyRequest = async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     try {
         const org = req.params.org;
@@ -1984,10 +1912,7 @@ interface UserAccountState {
 const user_org_account = `/user/:org/account`;
 app.get(`${api_root_endpoint}${user_org_account}`, async (req, res) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     const org = req.params.org;
 
@@ -2014,10 +1939,7 @@ app.get(`${api_root_endpoint}${user_org_account}`, async (req, res) => {
 const user_profile = `/user/profile`;
 app.delete(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     const email = await validateUser(req, res);
     if (!email) {
@@ -2040,10 +1962,7 @@ interface UserProfile {
 
 app.put(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     const email = await validateUser(req, res);
     if (!email) {
@@ -2084,10 +2003,7 @@ app.put(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Respons
 
 app.get(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Response) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     const email = await validateUser(req, res);
     if (!email) {
@@ -2110,10 +2026,7 @@ app.get(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Respons
 
 app.get("/test", (req: Request, res: Response, next) => {
 
-    // log the uri for the request
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request URI: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    logRequest(req);
 
     return res
         .status(200)
