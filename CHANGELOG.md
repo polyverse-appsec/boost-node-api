@@ -13,7 +13,7 @@ Polyverse Boost ReST API (Backend)
 - Improved Logging for Proxy Requests to AI Service
 
 ### Bug Fixes
-- N/A
+- Fix case sensitivity in X-Signed-Identity header lookup - causing Auth failures for valid headers
 
 ## Version 0.8.3: January 16th, 2024
 

@@ -18,7 +18,10 @@ export async function validateUser(req: Request, res: Response): Promise<string 
     //   - we'll get the signing algorithm (e.g. RS256)
     //   - we'll use the signing key and algorithm to verify the signature of the identity blob
     //   - we'll decode the identity blob to get the email address
-    if (req.headers['x-signed-identity']) {
+
+    // we need to look for any cased variant of x-signed-identity in the header
+    const signedIdentityHeader = Object.keys(req.headers).find(key => key.toLowerCase() === 'x-signed-identity');
+    if (signedIdentityHeader) {
         let signingKey = process.env.JWT_SIGNING_KEY;
         if (!signingKey) {
             signingKey = await getSingleSecret('boost-sara/sara-client-public-key');
@@ -29,13 +32,14 @@ export async function validateUser(req: Request, res: Response): Promise<string 
             return undefined;
         }
     
-        let signingAlgorithm = req.headers['x-signing-algorithm'] as jwt.Algorithm;
+        const signedAlgorithmHeader = Object.keys(req.headers).find(key => key.toLowerCase() === 'x-signing-algorithm');
+        let signingAlgorithm = signedAlgorithmHeader?req.headers[signedAlgorithmHeader] as jwt.Algorithm:undefined;
         if (!signingAlgorithm) {
             signingAlgorithm = 'RS256';
         }
     
         // Extract the JWT from the identity blob
-        const identityJWT = req.headers['x-signed-identity'] as string;
+        const identityJWT = req.headers[signedIdentityHeader] as string;
 
         // Verify the JWT signature directly
         try {
@@ -50,7 +54,7 @@ export async function validateUser(req: Request, res: Response): Promise<string 
 
             email = normalizeEmail(identity.email);
         } catch (err) {
-            console.error(`Unauthorized: Invalid signed identity: ${err}`);
+            console.error(`Unauthorized: Invalid signed identity: ${err} - Identity Header: ${identityJWT}`);
             res.status(401).send('Unauthorized');
             return undefined;
         }
@@ -58,7 +62,8 @@ export async function validateUser(req: Request, res: Response): Promise<string 
 
     // if no signed identity then extract the X-User-Account from the header
     if (!email) {
-        if (!req.headers['x-user-account']) {
+        const userAccountHeader = Object.keys(req.headers).find(key => key.toLowerCase() === 'x-user-account');
+        if (!userAccountHeader || !req.headers[userAccountHeader]) {
             console.error(`Unauthorized: Email is required`);
             res.status(401).send('Unauthorized');
             return undefined;
@@ -70,7 +75,7 @@ export async function validateUser(req: Request, res: Response): Promise<string 
             return undefined;
         }
 
-        email = normalizeEmail(req.headers['x-user-account'] as string);
+        email = normalizeEmail(req.headers[userAccountHeader] as string);
     }
 
     console.log(`User authenticated: ${email}`);
