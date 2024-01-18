@@ -53,7 +53,7 @@ app.use((err : any, req : Request, res : Response) => {
 });
 */
 
-export async function localSelfDispatch(email: string, originalIdentityHeader: string, initialRequest: Request, path: string, httpVerb: string, body?: any): Promise<any> {
+export async function localSelfDispatch<T>(email: string, originalIdentityHeader: string, initialRequest: Request, path: string, httpVerb: string, body?: any): Promise<T> {
 
     let selfEndpoint = `${initialRequest.protocol}://${initialRequest.get('host')}${api_root_endpoint}/${path}`;
     // if we're running locally, then we'll use http:// no matter what
@@ -72,7 +72,7 @@ export async function localSelfDispatch(email: string, originalIdentityHeader: s
     });
     if (response.ok) {
         const objectResponse = await response.json();
-        return objectResponse.body?objectResponse.body:objectResponse;
+        return objectResponse.body?JSON.parse(objectResponse.body):objectResponse as T;
     }
 
     throw new Error(`Request ${selfEndpoint} failed with status ${response.status}`);
@@ -326,7 +326,7 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_file}`, async (req: Re
             console.error(`Unauthorized: Signed Header missing`);
             return res.status(401).send('Unauthorized');
         }
-        const accountStatus : UserAccountState = await localSelfDispatch(email, signedIdentity, req, `user/${org}/account`, 'GET');
+        const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
         const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
 
         getFileFromRepo(email, uri!, repo!, path, req, res, privateAccessAllowed);
@@ -382,7 +382,7 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_folders}`, async (req:
                 .status(401)
                 .send('Unauthorized');
         }
-        const accountStatus : UserAccountState = await localSelfDispatch(email, signedIdentity, req, `user/${org}/account`, 'GET');
+        const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
         const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
 
         getFolderPathsFromRepo(email, uri, req, res, privateAccessAllowed);
@@ -437,7 +437,7 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_files}`, async (req: R
                 .status(401)
                 .send('Unauthorized');
         }
-        const accountStatus : UserAccountState = await localSelfDispatch(email, signedIdentity, req, `user/${org}/account`, 'GET');
+        const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
         const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
 
         getFilePathsFromRepo(email, uri, req, res, privateAccessAllowed);
@@ -493,7 +493,7 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_fullsource}`, async (r
                 .status(401)
                 .send('Unauthorized');
         }
-        const accountStatus : UserAccountState = await localSelfDispatch(email, signedIdentity, req, `user/${org}/account`, 'GET');
+        const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
         const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
 
         getFullSourceFromRepo(email, uri, req, res, privateAccessAllowed);
@@ -536,9 +536,7 @@ async function validateProjectRepositories(email: string, org: string, resources
                 .status(401)
                 .send('Unauthorized');
         }
-        const accountStatus : UserAccountState = await localSelfDispatch(email, signedIdentity, req, `user/${org}/account`, 'GET');
-        console.log(`validateProjectRepositories: accountStatus: ${JSON.stringify(accountStatus)}`);
-        console.log(`validateProjectRepositories: signedIdentity: ${signedIdentity}`);
+        const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
 
         // verify this account (and org pair) can access this resource
         const allowPrivateAccess = checkPrivateAccessAllowed(accountStatus);
@@ -1931,7 +1929,7 @@ app.get(`${api_root_endpoint}${user_org_account}`, async (req, res) => {
             .status(401)
             .send('Unauthorized');
     }
-    const accountStatus : UserAccountState = await localSelfDispatch(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
+    const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
 
     return res
         .status(200)
