@@ -49,6 +49,10 @@ def get_headers(email):
 
 def create_project(email, organization, github_uri, project_name=None):
 
+    # check account status
+    response = requests.get(f"{BASE_URL}/api/user/{organization}/account", headers=get_headers(email))
+    print(f"Account Status: ${response.json()}")
+
     data = {"resources": [{"uri": github_uri}]}
 
     response = requests.post(f"{BASE_URL}/api/user_project/{organization}/{project_name}", json=data, headers=get_headers(email))
