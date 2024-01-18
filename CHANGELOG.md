@@ -16,6 +16,8 @@ Polyverse Boost ReST API (Backend)
 
 ### Bug Fixes
 - Fix case sensitivity in X-Signed-Identity header lookup - causing Auth failures for valid headers
+- Fix account API to return JSON instead of raw HTTP response for GET /api/user/{org}/account - also causing project creation errors
+- Fix serialization issue with internal HTTP dispatch - impacting account lookups
 
 ## Version 0.8.3: January 16th, 2024
 

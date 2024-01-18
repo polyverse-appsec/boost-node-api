@@ -68,10 +68,11 @@ export async function localSelfDispatch(email: string, originalIdentityHeader: s
             'Content-Type': 'application/json',
             'X-Signed-Identity': originalIdentityHeader,
         },
-        body: JSON.stringify(body)?body:undefined,
+        body: body?JSON.stringify(body):undefined,
     });
     if (response.ok) {
-        return await response.json();
+        const objectResponse = await response.json();
+        return objectResponse.body?objectResponse.body:objectResponse;
     }
 
     throw new Error(`Request ${selfEndpoint} failed with status ${response.status}`);
@@ -535,7 +536,9 @@ async function validateProjectRepositories(email: string, org: string, resources
                 .status(401)
                 .send('Unauthorized');
         }
-        const accountStatus = await localSelfDispatch(email, signedIdentity, req, `user/${org}/account`, 'GET');
+        const accountStatus : UserAccountState = await localSelfDispatch(email, signedIdentity, req, `user/${org}/account`, 'GET');
+        console.log(`validateProjectRepositories: accountStatus: ${JSON.stringify(accountStatus)}`);
+        console.log(`validateProjectRepositories: signedIdentity: ${signedIdentity}`);
 
         // verify this account (and org pair) can access this resource
         const allowPrivateAccess = checkPrivateAccessAllowed(accountStatus);
@@ -1928,12 +1931,12 @@ app.get(`${api_root_endpoint}${user_org_account}`, async (req, res) => {
             .status(401)
             .send('Unauthorized');
     }
-    const result = await localSelfDispatch(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
+    const accountStatus : UserAccountState = await localSelfDispatch(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
 
     return res
         .status(200)
         .contentType('application/json')
-        .send(result);
+        .send(accountStatus);
 });
 
 const user_profile = `/user/profile`;
