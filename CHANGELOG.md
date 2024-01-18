@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.9.0: January 16th, 2024
+## Version 0.9.0: January 18th, 2024
 
 ### New Features
 - Added Project Source Generator (e.g. full source download/combine) via /api/user_project/{org}/{project}/data/projectsource/generator (POST)
@@ -11,6 +11,8 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Improved Logging for Proxy Requests to AI Service
+- Add DEPLOYMENT_STAGE environment variable to specify the deployment stage (e.g. dev, test, prod)
+- Add Server HTTP Request logging when DEPLOYMENT_STAGE is set to dev
 
 ### Bug Fixes
 - Fix case sensitivity in X-Signed-Identity header lookup - causing Auth failures for valid headers
