@@ -3,8 +3,7 @@ import { UserProjectData } from '../types/UserProjectData';
 import { Stages } from '../types/GeneratorState';
 import { FileContent } from '../github';
 import { Generator } from './generator';
-import ignore from 'ignore';
-
+const ignore = require('ignore');
 
 enum ProjectSourceStage {
     ProjectInfo= 'Default',

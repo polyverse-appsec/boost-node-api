@@ -6,7 +6,7 @@ import { FileContent } from '../github';
 import { AIResponse } from '../boost-python-api/AIResponse';
 import { Services } from '../boost-python-api/endpoints';
 import { signedAuthHeader } from '../auth';
-import ignore from 'ignore';
+const ignore = require('ignore');
 
 enum ArchitecturalSpecificationStage {
     ProjectInfo= 'Default',
