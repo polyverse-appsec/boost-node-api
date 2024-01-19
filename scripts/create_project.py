@@ -97,7 +97,7 @@ def helper_task_generator_launch(email, organization, project_name, resource_typ
     response_dict = response.json()
     parsed_dict = json.loads(response_dict['body'])
 
-    if parsed_dict['status'] != "idle":
+    if parsed_dict['status'] == "processing":
         print("Generator is not idle, please wait for processing to finish")
         print(f"Generator status: {parsed_dict}")
 
