@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.9.2: January 19th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Ensure we return 500 status code for exceptions thrown in all REST APIs
+
+### Bug Fixes
+- N/A
+
 ## Version 0.9.1: January 18th, 2024
 
 ### New Features

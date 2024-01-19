@@ -62,20 +62,24 @@ export async function localSelfDispatch<T>(email: string, originalIdentityHeader
     }
 
     // convert above to fetch
+    if (body) {
+        body = JSON.stringify(body);
+    }
     const response = await fetch(selfEndpoint, {
         method: httpVerb,
         headers: {
             'Content-Type': 'application/json',
             'X-Signed-Identity': originalIdentityHeader,
         },
-        body: body?JSON.stringify(body):undefined,
+        body: body?body:undefined,
     });
     if (response.ok) {
         const objectResponse = await response.json();
         return objectResponse.body?JSON.parse(objectResponse.body):objectResponse as T;
     }
 
-    throw new Error(`Request ${selfEndpoint} failed with status ${response.status}`);
+    const errorBody = await response.text();
+    throw new Error(`Request ${selfEndpoint} failed with status ${response.status}: ${errorBody}`);
 }
 
 async function splitAndStoreData(
@@ -673,6 +677,26 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProjectString);
 
         console.log(`${user_project_org_project}: stored data`);
+
+        // kickoff project processing now, by creating the project resources, then initiating the first
+        //      data store upload
+        const signedIdentity = (await signedAuthHeader(email))[`X-Signed-Identity`];
+
+        const resourcesToGenerate : ProjectDataType[] = [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification];
+        for (const resource of resourcesToGenerate) {
+            const startProcessing = {"status": "processing"};
+            const newGeneratorState = await localSelfDispatch<void>(
+                email,
+                signedIdentity, 
+                req,
+                `user_project/${org}/${project}/data/${resource}/generator`,
+                'PUT',
+                startProcessing);
+            console.log(`New Generator State: ${JSON.stringify(newGeneratorState)}`);
+        }
+
+        const existingDataReferences = await localSelfDispatch<void>(email, signedIdentity, req, `user_project/${org}/${project}/data_references`, 'PUT');
+        console.log(`Existing Data References: ${JSON.stringify(existingDataReferences)}`);
 
         return res
             .status(200)
@@ -1915,26 +1939,32 @@ app.get(`${api_root_endpoint}${user_org_account}`, async (req, res) => {
 
     logRequest(req);
 
-    const org = req.params.org;
+    try {
 
-    const email = await validateUser(req, res);
-    if (!email) {
-        return res.status(401).send('Unauthorized');
-    }
+        const org = req.params.org;
 
-    const signedIdentity = getSignedIdentityFromHeader(req);
-    if (!signedIdentity) {
-        console.error(`Missing signed identity - after User Validation passed`);
+        const email = await validateUser(req, res);
+        if (!email) {
+            return res.status(401).send('Unauthorized');
+        }
+
+        const signedIdentity = getSignedIdentityFromHeader(req);
+        if (!signedIdentity) {
+            console.error(`Missing signed identity - after User Validation passed`);
+            return res
+                .status(401)
+                .send('Unauthorized');
+        }
+        const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
+
         return res
-            .status(401)
-            .send('Unauthorized');
+            .status(200)
+            .contentType('application/json')
+            .send(accountStatus);
+    } catch (error) {
+        console.error(`Handler Error: ${user_org_account}`, error);
+        return res.status(500).send('Internal Server Error');
     }
-    const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
-
-    return res
-        .status(200)
-        .contentType('application/json')
-        .send(accountStatus);
 });
 
 const user_profile = `/user/profile`;
@@ -1942,17 +1972,23 @@ app.delete(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Resp
 
     logRequest(req);
 
-    const email = await validateUser(req, res);
-    if (!email) {
-        return;
+    try {
+
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        await deleteProjectData(email, SourceType.General, 'user', '', '', 'profile');
+        console.log(`${user_profile}: deleted data`);
+
+        return res
+            .status(200)
+            .send();
+    } catch (error) {
+        console.error(`Handler Error: ${user_profile}`, error);
+        return res.status(500).send('Internal Server Error');
     }
-
-    await deleteProjectData(email, SourceType.General, 'user', '', '', 'profile');
-    console.log(`${user_profile}: deleted data`);
-
-    return res
-        .status(200)
-        .send();
 });
 
 interface UserProfile {
@@ -1965,74 +2001,91 @@ app.put(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Respons
 
     logRequest(req);
 
-    const email = await validateUser(req, res);
-    if (!email) {
-        return;
-    }
+    try {
 
-    // if req body is not a string, then we need to convert back into a normal string
-    let body = req.body;
-    if (typeof body !== 'string') {
-        if (Buffer.isBuffer(body)) {
-            body = Buffer.from(body).toString('utf8');
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
         }
-        else if (Array.isArray(body)) {
-            body = Buffer.from(body).toString('utf8');
-        } else {
-            body = JSON.stringify(body);
+
+        // if req body is not a string, then we need to convert back into a normal string
+        let body = req.body;
+        if (typeof body !== 'string') {
+            if (Buffer.isBuffer(body)) {
+                body = Buffer.from(body).toString('utf8');
+            }
+            else if (Array.isArray(body)) {
+                body = Buffer.from(body).toString('utf8');
+            } else {
+                body = JSON.stringify(body);
+            }
         }
+        if (body === '') {
+            console.error(`${user_profile}: empty body`);
+            return res.status(400).send('Missing body');
+        }
+
+        const newProfileData = JSON.parse(body) as UserProfile;
+        const profileData: UserProfile = {};
+        profileData.name = newProfileData.name;
+        profileData.title = newProfileData.title;
+        profileData.details = newProfileData.details;
+        await storeProjectData(email, SourceType.General, 'user', '', '', 'profile', JSON.stringify(profileData));
+
+        console.log(`${user_profile}: stored data`);
+
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send(profileData);
+    } catch (error) {
+        console.error(`Handler Error: ${user_profile}`, error);
+        return res.status(500).send('Internal Server Error');
     }
-    if (body === '') {
-        console.error(`${user_profile}: empty body`);
-        return res.status(400).send('Missing body');
-    }
-
-    const newProfileData = JSON.parse(body) as UserProfile;
-    const profileData: UserProfile = {};
-    profileData.name = newProfileData.name;
-    profileData.title = newProfileData.title;
-    profileData.details = newProfileData.details;
-    await storeProjectData(email, SourceType.General, 'user', '', '', 'profile', JSON.stringify(profileData));
-
-    console.log(`${user_profile}: stored data`);
-
-    return res
-        .status(200)
-        .contentType('application/json')
-        .send(profileData);
 });
 
 app.get(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
-    const email = await validateUser(req, res);
-    if (!email) {
-        return;
+    try {
+
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const profileRaw = await getProjectData(email, SourceType.General, 'user', '', '', 'profile');
+        let profileData: UserProfile = {};
+        if (profileRaw) {
+            profileData = JSON.parse(profileRaw) as UserProfile;
+        }
+
+        console.log(`${user_profile}: retrieved data`);
+
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send(profileData);
+    } catch (error) {
+        console.error(`Handler Error: ${user_profile}`, error);
+        return res.status(500).send('Internal Server Error');
     }
-
-    const profileRaw = await getProjectData(email, SourceType.General, 'user', '', '', 'profile');
-    let profileData: UserProfile = {};
-    if (profileRaw) {
-        profileData = JSON.parse(profileRaw) as UserProfile;
-    }
-
-    console.log(`${user_profile}: retrieved data`);
-
-    return res
-        .status(200)
-        .contentType('application/json')
-        .send(profileData);
 });
 
 app.get("/test", (req: Request, res: Response, next) => {
 
-    logRequest(req);
+    try {
+        logRequest(req);
 
-    return res
-        .status(200)
-        .contentType("text/plain")
-        .send("Test HTTP Ack");
+        return res
+            .status(200)
+            .contentType("text/plain")
+            .send("Test HTTP Ack");
+    } catch (error) {
+        console.error(`Handler Error: /test`, error);
+        return res.status(500).send('Internal Server Error');
+    }
 });
 
 module.exports.handler = serverless(app);
