@@ -6,6 +6,7 @@ import { FileContent } from '../github';
 import { AIResponse } from '../boost-python-api/AIResponse';
 import { Services } from '../boost-python-api/endpoints';
 import { signedAuthHeader } from '../auth';
+import ignore from 'ignore';
 
 enum ArchitecturalSpecificationStage {
     ProjectInfo= 'Default',
@@ -61,7 +62,7 @@ readonly fileArchitecturalSpecificationEntry =
             // we're going to start empty file contents to be fast, then we'll
             //      update the contents later
             const boostIgnoreFileSpecs = await this.getBoostIgnoreFileSpecs();
-            const boostIgnore = require('ignore')().add(boostIgnoreFileSpecs);
+            const boostIgnore = ignore().add(boostIgnoreFileSpecs);
 
             await this.updateProgress('Filtering File Paths for .boostignore');
 

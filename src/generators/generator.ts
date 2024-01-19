@@ -4,6 +4,7 @@ import { GeneratorState, TaskStatus } from "../types/GeneratorState";
 import { signedAuthHeader } from "../auth";
 import { saveProjectDataResource, loadProjectDataResource } from "..";
 import { FileContent } from "../github";
+import ignore from "ignore";
 
 
 export class GeneratorProcessingError extends Error {
@@ -232,7 +233,7 @@ export class Generator {
         await this.updateProgress('Filtered File List for .boostignore');
         
         const boostIgnoreFileSpecs = await this.getBoostIgnoreFileSpecs();
-        const boostIgnore = require('ignore')().add(boostIgnoreFileSpecs);
+        const boostIgnore = ignore().add(boostIgnoreFileSpecs);
         const filteredFileList = fileList.filter((file) => !boostIgnore.ignores(file));
 
         return filteredFileList;

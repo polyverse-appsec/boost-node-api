@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.9.1: January 18th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- N/A
+
+### Bug Fixes
+- Fixed missing 'ignore' import causing file filtering generator stages to fail
+
 ## Version 0.9.0: January 18th, 2024
 
 ### New Features

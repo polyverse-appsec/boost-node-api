@@ -3,6 +3,8 @@ import { UserProjectData } from '../types/UserProjectData';
 import { Stages } from '../types/GeneratorState';
 import { FileContent } from '../github';
 import { Generator } from './generator';
+import ignore from 'ignore';
+
 
 enum ProjectSourceStage {
     ProjectInfo= 'Default',
@@ -72,7 +74,7 @@ readonly fileSourceEntry =
                 // we're going to start empty file contents to be fast, then we'll
                 //      update the contents later
                 const boostIgnoreFileSpecs = await this.getBoostIgnoreFileSpecs();
-                const boostIgnore = require('ignore')().add(boostIgnoreFileSpecs);
+                const boostIgnore = ignore().add(boostIgnoreFileSpecs);
 
                 await this.updateProgress('Filtering File Paths for .boostignore');
 
