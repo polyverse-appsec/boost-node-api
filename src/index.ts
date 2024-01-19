@@ -677,7 +677,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProjectString);
 
         console.log(`${user_project_org_project}: stored data`);
-
+/*
         // kickoff project processing now, by creating the project resources, then initiating the first
         //      data store upload
         const signedIdentity = (await signedAuthHeader(email))[`X-Signed-Identity`];
@@ -697,7 +697,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
 
         const existingDataReferences = await localSelfDispatch<void>(email, signedIdentity, req, `user_project/${org}/${project}/data_references`, 'PUT');
         console.log(`Existing Data References: ${JSON.stringify(existingDataReferences)}`);
-
+*/
         return res
             .status(200)
             .contentType('application/json')
