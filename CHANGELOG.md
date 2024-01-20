@@ -10,6 +10,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Ensure we return 500 status code for exceptions thrown in all REST APIs
+- Enable auto-discovery on project creation
 
 ### Bug Fixes
 - Fix ignore Module import syntax - was incorrect when deployed in AWS
