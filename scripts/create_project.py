@@ -9,7 +9,7 @@ import time
 
 REMOTE_URL = "https://3c27qu2ddje63mw2dmuqp6oa7u0ergex.lambda-url.us-west-2.on.aws"  # Dev_url
 LOCAL_URL = "http://localhost:3000"
-BASE_URL = REMOTE_URL
+BASE_URL = LOCAL_URL
 
 python_cmd = "python3"  # or "python"
 
@@ -95,11 +95,10 @@ def helper_task_generator_launch(email, organization, project_name, resource_typ
 
     response = requests.get(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_type}/generator", headers=headers)
     response_dict = response.json()
-    parsed_dict = json.loads(response_dict['body'])
 
-    if parsed_dict['status'] != "idle":
+    if response_dict['status'] != "idle":
         print("Generator is not idle, please wait for processing to finish")
-        print(f"Generator status: {parsed_dict}")
+        print(f"Generator status: {response_dict}")
 
         exit(1)
 
@@ -120,15 +119,14 @@ def helper_task_generator_launch(email, organization, project_name, resource_typ
 
         response = requests.get(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_type}/generator", headers=headers)
         response_dict = response.json()
-        parsed_dict = json.loads(response_dict['body'])
 
         print(f"Check {i}:\n\t{response.json()}")
 
         # if the generator is idle or an error, we'll exit the loop
         # otherwise, keep 'processing'
-        if parsed_dict["status"] == "idle":
+        if response_dict["status"] == "idle":
             break
-        if parsed_dict["status"] == "error":
+        if response_dict["status"] == "error":
             break
 
         # make sure the blueprint resource is still available

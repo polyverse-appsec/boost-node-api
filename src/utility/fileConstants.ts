@@ -14,6 +14,9 @@ export const defaultBoostIgnorePaths = [
     boostIgnoreFilename,
     boostIncludeFilename,
 
+    'package-lock.json',
+    'pnpm-lock.yaml',
+
     'chat/', // exclude all chat files by default
 
     '.boost/', // exclude the .boost folder

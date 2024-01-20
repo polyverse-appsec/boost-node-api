@@ -113,6 +113,10 @@ export class Generator {
             throw new Error(`Invalid URI: ${uri}`);
         }
 
+        //console.log("Data that is too big: " + this.data);
+        // const dataSize = Buffer.byteLength(this.data, 'utf-8');
+        // console.log("AYOOO Data size: " + dataSize);
+
         const authHeader = await signedAuthHeader(this.email);
         const response = await fetch(this.resourceUri, {
             method: 'PUT',
