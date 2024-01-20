@@ -13,6 +13,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Bug Fixes
 - Fix ignore Module import syntax - was incorrect when deployed in AWS
+- Fix local dispatch service calls - impacting generators, account lookup and discovery
 
 ## Version 0.9.1: January 18th, 2024
 

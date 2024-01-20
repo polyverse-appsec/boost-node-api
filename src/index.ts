@@ -53,7 +53,7 @@ app.use((err : any, req : Request, res : Response) => {
 });
 */
 
-export async function localSelfDispatch<T>(email: string, originalIdentityHeader: string, initialRequest: Request, path: string, httpVerb: string, body?: any): Promise<T> {
+export async function localSelfDispatch<T>(email: string, originalIdentityHeader: string, initialRequest: Request, path: string, httpVerb: string, bodyContent?: any): Promise<T> {
 
     let selfEndpoint = `${initialRequest.protocol}://${initialRequest.get('host')}${api_root_endpoint}/${path}`;
     // if we're running locally, then we'll use http:// no matter what
@@ -61,25 +61,30 @@ export async function localSelfDispatch<T>(email: string, originalIdentityHeader
         selfEndpoint = `http://${initialRequest.get('host')}${api_root_endpoint}/${path}`;
     }
 
-    // convert above to fetch
-    if (body) {
-        body = JSON.stringify(body);
-    }
-    const response = await fetch(selfEndpoint, {
+    const fetchOptions : RequestInit = {
         method: httpVerb,
         headers: {
             'Content-Type': 'application/json',
             'X-Signed-Identity': originalIdentityHeader,
-        },
-        body: body?body:undefined,
-    });
-    if (response.ok) {
-        const objectResponse = await response.json();
-        return objectResponse.body?JSON.parse(objectResponse.body):objectResponse as T;
+        }
+    };
+
+    if (['POST', 'PUT'].includes(httpVerb) && bodyContent) {
+        fetchOptions.body = JSON.stringify(bodyContent);
     }
 
-    const errorBody = await response.text();
-    throw new Error(`Request ${selfEndpoint} failed with status ${response.status}: ${errorBody}`);
+    const response = await fetch(selfEndpoint, fetchOptions);
+
+    if (response.ok) {
+        if (['GET'].includes(httpVerb)) {
+        const objectResponse = await response.json();
+            return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
+        } else {
+            return {} as T;
+        }
+    }
+
+    throw new Error(`Request ${selfEndpoint} failed with status ${response.status}: ${response.statusText}`);
 }
 
 async function splitAndStoreData(
