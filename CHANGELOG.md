@@ -3,6 +3,20 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.9.2: January 19th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Ensure we return 500 status code for exceptions thrown in all REST APIs
+- Enable auto-discovery on project creation
+- Change generator timeout to 1 sec (from 2 secs.) to initiate processing start (to avoid cascading delays)
+
+### Bug Fixes
+- Fix ignore Module import syntax - was incorrect when deployed in AWS
+- Fix local dispatch service calls - impacting generators, account lookup and discovery
+
 ## Version 0.9.1: January 18th, 2024
 
 ### New Features

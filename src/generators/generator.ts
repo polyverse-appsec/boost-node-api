@@ -4,8 +4,7 @@ import { GeneratorState, TaskStatus } from "../types/GeneratorState";
 import { signedAuthHeader } from "../auth";
 import { saveProjectDataResource, loadProjectDataResource } from "..";
 import { FileContent } from "../github";
-import ignore from "ignore";
-
+const ignore = require('ignore');
 
 export class GeneratorProcessingError extends Error {
     stage: string;
