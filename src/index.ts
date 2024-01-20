@@ -64,13 +64,16 @@ export async function localSelfDispatch<T>(email: string, originalIdentityHeader
     const fetchOptions : RequestInit = {
         method: httpVerb,
         headers: {
-            'Content-Type': 'application/json',
             'X-Signed-Identity': originalIdentityHeader,
         }
     };
 
     if (['POST', 'PUT'].includes(httpVerb) && bodyContent) {
         fetchOptions.body = JSON.stringify(bodyContent);
+        fetchOptions.headers = {
+            ...fetchOptions.headers,
+            'Content-Type': 'application/json'
+        };
     }
 
     const response = await fetch(selfEndpoint, fetchOptions);
@@ -683,27 +686,15 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
 
         console.log(`${user_project_org_project}: stored data`);
 
-        // kickoff project processing now, by creating the project resources, then initiating the first
-        //      data store upload
-        const resourcesToGenerate : ProjectDataType[] = [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification];
-        for (const resource of resourcesToGenerate) {
-            const startProcessing = {"status": "processing"};
-
-            const signedIdentity = (await signedAuthHeader(email))[`X-Signed-Identity`];
-
-            const newGeneratorState = await localSelfDispatch<void>(
-                email,
-                signedIdentity, 
-                req,
-                `user_project/${org}/${project}/data/${resource}/generator`,
-                'PUT',
-                startProcessing);
-            console.log(`New Generator State: ${JSON.stringify(newGeneratorState)}`);
-        }
-
         const signedIdentity = (await signedAuthHeader(email))[`X-Signed-Identity`];
-        const existingDataReferences = await localSelfDispatch<void>(email, signedIdentity, req, `user_project/${org}/${project}/data_references`, 'PUT');
-        console.log(`Existing Data References: ${JSON.stringify(existingDataReferences)}`);
+
+        // get the path of the project data uri - excluding the api root endpoint
+        const projectDataPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
+        try {
+            await localSelfDispatch<void>(email, signedIdentity, req, `${projectDataPath}/discovery`, 'POST');
+        } catch (error) {
+            console.error(`Unable to launch discovery for ${projectDataPath}`, error);
+        }
 
         return res
             .status(200)
@@ -795,6 +786,54 @@ app.delete(`${api_root_endpoint}${user_project_org_project}`, async (req: Reques
 interface ProjectGoals {
     goals?: string;
 }
+
+const user_project_org_project_discovery = `/user_project/:org/:project/discovery`;
+app.post(`${api_root_endpoint}${user_project_org_project_discovery}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        // take the original request uri and remove the trailing /discovery to get the project data
+        const originalUri = req.originalUrl;
+        const projectDataUri = originalUri.substring(0, originalUri.lastIndexOf('/discovery'));
+        // get the path of the project data uri - excluding the api root endpoint
+        const projectDataPath = projectDataUri.substring(projectDataUri.indexOf("user_project"));
+
+        // kickoff project processing now, by creating the project resources, then initiating the first
+        //      data store upload
+        const resourcesToGenerate : ProjectDataType[] = [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification];
+        for (const resource of resourcesToGenerate) {
+            const startProcessing = {"status": "processing"};
+
+            const signedIdentity = (await signedAuthHeader(email))[`X-Signed-Identity`];
+
+            const newGeneratorState = await localSelfDispatch<void>(
+                email,
+                signedIdentity, 
+                req,
+                `${projectDataPath}/data/${resource}/generator`,
+                'PUT',
+                startProcessing);
+            console.log(`New Generator State: ${JSON.stringify(newGeneratorState)}`);
+        }
+
+        const signedIdentity = (await signedAuthHeader(email))[`X-Signed-Identity`];
+        const existingDataReferences = await localSelfDispatch<void>(email, signedIdentity, req, `${projectDataPath}/data_references`, 'PUT');
+        console.log(`Existing Data References: ${JSON.stringify(existingDataReferences)}`);
+
+        return res
+            .status(200)
+            .send();
+    } catch (error) {
+        console.error(`Handler Error: ${user_project_org_project_discovery}`, error);
+        return res.status(500).send('Internal Server Error');
+    }    
+});
 
 const user_project_org_project_goals = `/user_project/:org/:project/goals`;
 app.delete(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Request, res: Response) => {
