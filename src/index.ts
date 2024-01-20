@@ -1437,9 +1437,9 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                                 'Content-Type': 'application/json',
                                 ...authHeader,
                             },
-                            timeout: 2000 })
+                            timeout: 1000 })
                         .then(response => {
-                            // if the new task stage completes in 2 seconds, we'll wait...
+                            // if the new task stage completes in 1 seconds, we'll wait...
                             console.log(`${user_project_org_project_data_resource_generator}: Async Processing completed for ${newProcessingRequest}: `, response.status);
                         })
                             // otherwise, we'll move on

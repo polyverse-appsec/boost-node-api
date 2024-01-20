@@ -11,6 +11,7 @@ Polyverse Boost ReST API (Backend)
 ### Enhancements
 - Ensure we return 500 status code for exceptions thrown in all REST APIs
 - Enable auto-discovery on project creation
+- Change generator timeout to 1 sec (from 2 secs.) to initiate processing start (to avoid cascading delays)
 
 ### Bug Fixes
 - Fix ignore Module import syntax - was incorrect when deployed in AWS
