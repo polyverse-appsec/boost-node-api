@@ -1432,7 +1432,8 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     }
 
                     const authHeader = await signedAuthHeader(email);
-                    axios.put(selfEndpoint, newProcessingRequest, {
+                    // we're going to wait for completion or 1 second to pass
+                    await axios.put(selfEndpoint, newProcessingRequest, {
                             headers: {
                                 'Content-Type': 'application/json',
                                 ...authHeader,
