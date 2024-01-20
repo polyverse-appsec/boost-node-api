@@ -12,7 +12,7 @@ Polyverse Boost ReST API (Backend)
 - Ensure we return 500 status code for exceptions thrown in all REST APIs
 
 ### Bug Fixes
-- N/A
+- Fix ignore Module import syntax - was incorrect when deployed in AWS
 
 ## Version 0.9.1: January 18th, 2024
 
