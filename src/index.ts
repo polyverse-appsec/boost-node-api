@@ -76,7 +76,14 @@ export async function localSelfDispatch<T>(email: string, originalIdentityHeader
         };
     }
 
-    const response = await fetch(selfEndpoint, fetchOptions);
+    let response;
+    
+    try {
+        response = await fetch(selfEndpoint, fetchOptions);
+    } catch (error) {
+        console.error(`Request ${httpVerb} ${selfEndpoint} failed with error ${error}`);
+        throw error;
+    }
 
     if (response.ok) {
         if (['GET'].includes(httpVerb)) {
