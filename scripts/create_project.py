@@ -95,10 +95,11 @@ def helper_task_generator_launch(email, organization, project_name, resource_typ
 
     response = requests.get(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_type}/generator", headers=headers)
     response_dict = response.json()
+    parsed_dict = json.loads(response_dict['body'])
 
-    if response_dict['status'] != "idle":
+    if parsed_dict['status'] != "idle":
         print("Generator is not idle, please wait for processing to finish")
-        print(f"Generator status: {response_dict}")
+        print(f"Generator status: {parsed_dict}")
 
         exit(1)
 
@@ -119,14 +120,15 @@ def helper_task_generator_launch(email, organization, project_name, resource_typ
 
         response = requests.get(f"{BASE_URL}/api/user_project/{organization}/{project_name}/data/{resource_type}/generator", headers=headers)
         response_dict = response.json()
+        parsed_dict = json.loads(response_dict['body'])
 
         print(f"Check {i}:\n\t{response.json()}")
 
         # if the generator is idle or an error, we'll exit the loop
         # otherwise, keep 'processing'
-        if response_dict["status"] == "idle":
+        if parsed_dict["status"] == "idle":
             break
-        if response_dict["status"] == "error":
+        if parsed_dict["status"] == "error":
             break
 
         # make sure the blueprint resource is still available
