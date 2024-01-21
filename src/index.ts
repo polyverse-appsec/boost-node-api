@@ -819,14 +819,20 @@ app.post(`${api_root_endpoint}${user_project_org_project_discovery}`, async (req
 
             const signedIdentity = (await signedAuthHeader(email))[`X-Signed-Identity`];
 
-            const newGeneratorState = await localSelfDispatch<void>(
-                email,
-                signedIdentity, 
-                req,
-                `${projectDataPath}/data/${resource}/generator`,
-                'PUT',
-                startProcessing);
-            console.log(`New Generator State: ${JSON.stringify(newGeneratorState)}`);
+            const generatorPath = `${projectDataPath}/data/${resource}/generator`;
+            try {
+                const newGeneratorState = await localSelfDispatch<void>(
+                    email,
+                    signedIdentity, 
+                    req,
+                    generatorPath,
+                    'PUT',
+                    startProcessing);
+                console.log(`New Generator State: ${JSON.stringify(newGeneratorState)}`);
+            } catch (error) {
+                console.error(`Discovery unable to launch generator (continuing) for ${generatorPath}`, error);
+                continue;
+            }
         }
 
         const signedIdentity = (await signedAuthHeader(email))[`X-Signed-Identity`];
