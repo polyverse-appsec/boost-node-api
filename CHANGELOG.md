@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.9.2: January 19th, 2024
+## Version 0.9.2: January 22nd, 2024
 
 ### New Features
 - Added helper REST API /api/user_project/{org}/{project}/discovery (POST) to initiate discovery process
