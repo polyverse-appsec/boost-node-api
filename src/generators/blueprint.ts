@@ -149,6 +149,15 @@ readonly defaultBlueprint =
                         inputData.projectFile = projectFile;
                     }
                 }
+                if (!inputData.code && !inputData.projectFile) {
+                    throw new GeneratorProcessingError('Unable to load project files', BlueprintStage.FileScan);
+                } else if (!inputData.code) {
+                    console.error('Unable to find code file, using project file only');
+                    inputData.code = 'No Code Provided';
+                } else if (!inputData.projectFile) {
+                    console.error('Unable to find project file, using code only');
+                    inputData.projectFile = 'No Project File Provided';
+                }
 
                 await this.updateProgress('Rebuilding Blueprint from Sampled Project Files');
 
