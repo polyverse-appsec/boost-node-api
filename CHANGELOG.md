@@ -12,6 +12,7 @@ Polyverse Boost ReST API (Backend)
 - Ensure we return 500 status code for exceptions thrown in all REST APIs
 - Enable auto-discovery on project creation
 - Change generator timeout to 1 sec (from 2 secs.) to initiate processing start (to avoid cascading delays)
+- Make Blueprint generator resilient to missing either code or project file sample - but not both
 
 ### Bug Fixes
 - Fix ignore Module import syntax - was incorrect when deployed in AWS
