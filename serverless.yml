@@ -6,7 +6,7 @@ provider:
   stage: ${opt:stage, 'dev'}  # Use the stage specified in the command line, default to 'dev'
   region: us-west-2
   environment:
-    APP_VERSION: 0.9.2
+    APP_VERSION: ${file(./package.json):version}
     ENABLE_UNSIGNED_AUTHN: 1
     DYNAMO_DB_ANALYSIS: "Boost.AnalysisDataStore.${self:provider.stage}" # Dynamic table name based on stage
     DEPLOYMENT_STAGE: "${self:provider.stage}"
