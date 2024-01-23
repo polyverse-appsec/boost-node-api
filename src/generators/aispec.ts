@@ -68,15 +68,19 @@ readonly fileArchitecturalSpecificationEntry =
 
             // track the # of spec creation errors... if too high, we'll abort and retry
             let numberOfErrors : number = 0;
-            let totalSpecs : number = 0;
+
+            const filteredFileContents : FileContent[] = [];
 
             for (const fileContent of fileContents) {
                 if (boostIgnore.ignores(fileContent.path)) {
                     continue;
                 }
 
-                totalSpecs++;
+                filteredFileContents.push(fileContent);
+            }
 
+            let currentErrorStreak : number = 0;
+            for (const fileContent of filteredFileContents) {
                 try {
 
                     await this.updateProgress('Building AI Specification for ' + fileContent.path);
@@ -86,9 +90,36 @@ readonly fileArchitecturalSpecificationEntry =
                     this.data += this.fileArchitecturalSpecificationEntry
                             .replace('{relativeFileName}', fileContent.path)
                             .replace('{architecturalSpec}', architecturalSpec);
+                    currentErrorStreak = 0;
+
                 } catch (err) {
                     console.log(`Error creating architectural specification for ${fileContent.path}: ${err}`);
                     numberOfErrors++;
+                    currentErrorStreak++;
+
+                    // if we have 5 errors in a row, we'll abort and retry later - assume major network glitch
+                    if (currentErrorStreak > 5) {
+                        throw new GeneratorProcessingError(
+                            `Too many errors creating architectural specifications: ${currentErrorStreak} errors in a row`,
+                            ArchitecturalSpecificationStage.FileSummarization);
+                    }
+
+                    // if we have higher than 25% errors, we'll abort and retry
+                    //    we throw here - which marks the generator in error state with reason, and enables
+                    //    caller or groomer to restart this stage
+                    // For very small projects (less than 10 files), we'll be less tolerant of errors
+                    //    since a couple errors can dramatically skew the results
+                    else if (filteredFileContents.length > 10) {
+                        if (numberOfErrors > (filteredFileContents.length / 4)) {
+                            throw new GeneratorProcessingError(
+                                `Too many errors creating architectural specifications: ${numberOfErrors} errors out of ${filteredFileContents.length} files`,
+                                ArchitecturalSpecificationStage.FileSummarization);
+                        }
+                    } else if (numberOfErrors > 2) {
+                        throw new GeneratorProcessingError(
+                            `Too many errors creating architectural specifications: ${numberOfErrors} errors out of ${filteredFileContents.length} files`,
+                            ArchitecturalSpecificationStage.FileSummarization);
+                    }
 
                     this.data += this.fileArchitecturalSpecificationEntry
                             .replace('{relativeFileName}', fileContent.path)
@@ -96,23 +127,6 @@ readonly fileArchitecturalSpecificationEntry =
 
                     await this.updateProgress(`Failed to Build AI Spec for ${fileContent.path} due to ${err}`);
                 }
-            }
-
-            // if we have higher than 25% errors, we'll abort and retry
-            //    we throw here - which marks the generator in error state with reason, and enables
-            //    caller or groomer to restart this stage
-            // For very small projects (less than 10 files), we'll be less tolerant of errors
-            //    since a couple errors can dramatically skew the results
-            if (totalSpecs > 10) {
-                if (numberOfErrors > (totalSpecs / 4)) {
-                    throw new GeneratorProcessingError(
-                        `Too many errors creating architectural specifications: ${numberOfErrors} errors out of ${totalSpecs} files`,
-                        ArchitecturalSpecificationStage.FileSummarization);
-                }
-            } else if (numberOfErrors > 2) {
-                throw new GeneratorProcessingError(
-                    `Too many errors creating architectural specifications: ${numberOfErrors} errors out of ${totalSpecs} files`,
-                    ArchitecturalSpecificationStage.FileSummarization);
             }
 
             nextStage = ArchitecturalSpecificationStage.Complete;

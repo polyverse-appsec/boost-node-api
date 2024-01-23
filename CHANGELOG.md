@@ -12,6 +12,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Disabled unsigned authentication headers (x-user-account) - only signed JWT is supported now
+- Abort early if generation of Architectural Spec by AI is failing frequently or a continuous series of failures
 
 ### Bug Fixes
 - N/A
