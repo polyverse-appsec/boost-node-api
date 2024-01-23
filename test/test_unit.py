@@ -1,9 +1,10 @@
 import unittest
 import requests
+import datetime
 
 from utils import get_signed_headers
 
-from constants import TARGET_URL, EMAIL, ORG, PREMIUM_EMAIL
+from constants import TARGET_URL, EMAIL, ORG, PREMIUM_EMAIL, PUBLIC_PROJECT, PUBLIC_PROJECT_NAME
 
 
 class UnitTestSuite(unittest.TestCase):
@@ -144,3 +145,33 @@ class UnitTestSuite(unittest.TestCase):
         data = {"resources": [{"uri": "https://github.com/sindresorhus/awesome"}]}
         response = requests.patch(f"{TARGET_URL}/api/user_project/org123/project456", json=data, headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
+
+    def test_api_version(self):
+        print("Running test: check version of service")
+        signedHeaders = get_signed_headers(EMAIL)
+        response = requests.get(f"{TARGET_URL}/api/status", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotEqual(response.json()['version'], None)
+        self.assertEqual(response.json()['type'], 'dev')
+        self.assertEqual(response.json()['status'], 'available')
+
+    def test_check_resource_status(self):
+        print("Running test: Store data in the user's project")
+        data = {"resources": [{"uri": PUBLIC_PROJECT}]}
+        signedHeaders = get_signed_headers(EMAIL)
+
+        # get current time in seconds / unix time
+        now = datetime.datetime.now()
+        unixtime = int(now.timestamp())
+
+        response = requests.post(f"{TARGET_URL}/api/user_project/{ORG}/{PUBLIC_PROJECT_NAME}-test", json=data, headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+        response = requests.get(f"{TARGET_URL}/api/user_project/{ORG}/{PUBLIC_PROJECT_NAME}-test/data/blueprint", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotEqual(response.text, None)
+
+        response = requests.get(f"{TARGET_URL}/api/user_project/{ORG}/{PUBLIC_PROJECT_NAME}-test/data/blueprint/status", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotEqual(response.json()['last_updated'], None)
+        self.assertGreater(response.json()['last_updated'], unixtime)
