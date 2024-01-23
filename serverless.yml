@@ -7,7 +7,6 @@ provider:
   region: us-west-2
   environment:
     APP_VERSION: ${file(./package.json):version}
-    ENABLE_UNSIGNED_AUTHN: 1
     DYNAMO_DB_ANALYSIS: "Boost.AnalysisDataStore.${self:provider.stage}" # Dynamic table name based on stage
     DEPLOYMENT_STAGE: "${self:provider.stage}"
   iam:
