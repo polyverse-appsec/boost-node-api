@@ -103,10 +103,10 @@ readonly defaultBlueprint =
 
                 const draftOutput : DraftBlueprintOutput = await this.createDraftBlueprint(filteredFileList);
 
-                this.data = draftOutput.draftBlueprint;
-
                 // we're going to save our resulting data, so we can run sampled code
                 await this.saveScratchData(JSON.stringify(draftOutput));
+
+                this.data = draftOutput.draftBlueprint;
 
                 nextStage = BlueprintStage.SampledCode;
             }
