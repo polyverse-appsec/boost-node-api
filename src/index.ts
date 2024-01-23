@@ -18,7 +18,7 @@ import {
 import { uploadProjectDataForAIAssistant } from './openai';
 import { UserProjectData } from './types/UserProjectData';
 import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
-import { ProjectResource } from './types/ProjectResource';
+import { ProjectResource, ResourceStatus } from './types/ProjectResource';
 import axios from 'axios';
 import { ProjectDataReference } from './types/ProjectDataReference';
 import { Generator } from './generators/generator';
@@ -856,16 +856,19 @@ app.post(`${api_root_endpoint}${user_project_org_project_discovery}`, async (req
 });
 
 enum ProjectStatus {
-    Unknown = 'Unknown',                        // project not found
-    ResourcesAvailable = 'Resources Available', // project found, but no resources
-    Synchronizing = 'Synchronizing',            // resources found, incomplete generation
-    Complete = 'complete',                      // resources generated, but not uploaded
-    Synchronized = 'synchronized'               // fully synchronized
+    Unknown = 'Unknown',                                    // project not found
+    ResourcesMissing = 'Resources Missing',                 // project uris found, but not resources
+    // ResourcesOutOfDate = 'Resources Out of Date',        // Resources out of date with source (e.g. newer source)
+    ResourcesIncomplete = 'Resources Incomplete',           // resources found, but not completely generated
+    ResourcesNotSynchronized = 'Resources Not Synchronized',// resources completely generated, but not synchronized to OpenAI
+    AIResourcesOutOfDate = 'AI Data Out of Date',           // resources synchronized to OpenAI, but newer resources available
+    Synchronized = 'Fully Synchronized'                     // All current resources completely synchronized to OpenAI
 }
 
 interface ProjectStatusState {
     status: ProjectStatus;
-    lastSynchronized?: number;
+    synchronized: boolean;
+    last_synchronized?: number;
 }
 
 const user_project_org_project_status = `/user_project/:org/:project/status`;
@@ -880,8 +883,141 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
         }
 
         const projectStatus : ProjectStatusState = {
-            status: ProjectStatus.Unknown
+            status: ProjectStatus.Unknown,
+            last_synchronized: undefined,
+            synchronized: false
         };
+
+        // get the resource uri for this project
+        const requestUri = req.originalUrl;
+        const projectDataUri = requestUri.substring(0, requestUri.lastIndexOf('/status'));
+
+        // first we're going to see if the files have been synchronized to AI store ever
+        let dataReferences : ProjectDataReference[] = [];
+        try {
+            dataReferences = await localSelfDispatch<ProjectDataReference[]>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data_references`, 'GET');
+        } catch (error) {
+            // if we get an error, then we'll assume the project doesn't exist
+            console.error(`Project Data References not found; Project may not exist or hasn't been discovered yet`);
+
+            // we can continue on, since we're just missing the last synchronized time - which probably didn't happen anyway
+        }
+        for (const dataReference of dataReferences) {
+            if (dataReference.last_updated) {
+                // pick the newest last_updated date - so we report the last updated date of the most recent resource sync
+                if (!projectStatus.last_synchronized || projectStatus.last_synchronized < dataReference.last_updated) {
+                    projectStatus.last_synchronized = dataReference.last_updated;
+                }
+                break;
+            }
+        }
+
+        // get the project data
+        let projectData : UserProjectData;
+        try {
+            projectData = await localSelfDispatch<UserProjectData>(email, getSignedIdentityFromHeader(req)!, req, projectDataUri, 'GET');
+        } catch (error) {
+            // if we get an error, then we'll assume the project doesn't exist
+            console.error(`Project Data not found; Treat project as unknown`);
+            projectStatus.status = ProjectStatus.Unknown;
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(projectStatus);
+        }
+
+        // if we have no resources, then we're done - report it as synchronized - since we have no data :)
+        if (projectData.resources.length === 0) {
+            projectStatus.status = ProjectStatus.Synchronized;
+            console.log(`Project Status: No GitHub resources found - reporting ${JSON.stringify(projectStatus)}`);
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(projectStatus);
+        }
+
+        for (const resource of [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification]) {
+            // check if this resource exists, and get its timestamp
+            let resourceStatus : ResourceStatusState;
+            try {
+                resourceStatus = await localSelfDispatch<ResourceStatusState>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data/${resource}/status`, 'GET');
+            } catch (error) {
+                // we're missing a resource, so we'll report and bail
+                projectStatus.status = ProjectStatus.ResourcesMissing;
+                console.error(`Project Status: Missing ${resource} - reporting ${JSON.stringify(projectStatus)}`);
+                return res
+                    .status(200)
+                    .contentType('application/json')
+                    .send(projectStatus);
+            }
+        }
+
+        let lastResourceCompletedGenerationTime: number | undefined = undefined;
+        for (const resource of [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification]) {
+            let generatorStatus : GeneratorState;
+            try {
+                generatorStatus = await localSelfDispatch<GeneratorState>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data/${resource}/generator`, 'GET');
+            } catch (error) {
+                // if generator fails, we'll assume the resource isn't available either
+                projectStatus.status = ProjectStatus.ResourcesMissing;
+                console.error(`Project Status: Missing ${resource} Generator - reporting ${JSON.stringify(projectStatus)}`);
+                return res
+                    .status(200)
+                    .contentType('application/json')
+                    .send(projectStatus);
+            }
+            if (generatorStatus.stage !== Stages.Complete) {
+                // if the generator is not completed, then we're not using the best resource data
+                //      so even if we've synchronized, its only partial resource data (e.g. partial source, or incomplete blueprint)
+                projectStatus.status = ProjectStatus.ResourcesIncomplete;
+                console.error(`Project Status: Incomplete ${resource} Generator - reporting ${JSON.stringify(projectStatus)}`);
+                return res
+                    .status(200)
+                    .contentType('application/json')
+                    .send(projectStatus);
+            }
+            // if we've gotten here, then the generator is complete, so we'll use the last completed time
+            if (!lastResourceCompletedGenerationTime || !generatorStatus.last_updated ||
+                 lastResourceCompletedGenerationTime < generatorStatus.last_updated) {
+                    // store the latest completion time
+                lastResourceCompletedGenerationTime = generatorStatus.last_updated;
+            }
+        }
+        // if all resources were completed, but we didn't get an updated time, then we're in uncharted territory- bail
+        if (!lastResourceCompletedGenerationTime) {
+            projectStatus.status = ProjectStatus.ResourcesIncomplete;
+            console.error(`Project Status: Invalid Generator State/Timestamp - reporting ${JSON.stringify(projectStatus)}`);
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(projectStatus);
+        }
+
+        // now that our resources have completed generation, we want to make sure the data_references timestamp is AFTER the generators completed
+        //      otherwise, we'll report that the resources are not synchronized
+        if (!projectStatus.last_synchronized) {
+            // if we've never synchronized the data, then report not synchronized
+            projectStatus.status = ProjectStatus.ResourcesNotSynchronized;
+            console.error(`Project Status: Resources Completed Generation but not Uploaded to AI Servers - reporting ${JSON.stringify(projectStatus)}`);
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(projectStatus);
+        }
+
+        // now we have completed resources and previously synchronized data, so now we'll check if the resource data is newer than the
+        //      last synchronized time for the AI server upload
+        if (projectStatus.last_synchronized < lastResourceCompletedGenerationTime) {
+            // if the last resource completed generation time is newer than the last synchronized time, then we're out of date
+            projectStatus.status = ProjectStatus.AIResourcesOutOfDate;
+            console.error(`Project Status: Resources Completed Generation but not Uploaded to AI Servers - reporting ${JSON.stringify(projectStatus)}`);
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(projectStatus);
+        }
+        // we're all good - all data is up to date, resources completely generated and fully synchronized to AI Servers
+        projectStatus.status = ProjectStatus.Synchronized;
 
         return res
             .status(200)
