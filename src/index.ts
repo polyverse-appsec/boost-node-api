@@ -209,7 +209,14 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
 
         await saveProjectDataResource(email, ownerName, repoName, resource, '', body);
 
+        const resourceStatus : ResourceStatusState = {
+            last_updated: Math.floor(Date.now() / 1000)
+        }
+
+        await storeProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status", JSON.stringify(resourceStatus));
+
         console.log(`${user_project_org_project_data_resource}: stored data`);
+
         return res.status(200).send();
     } catch (error) {
         console.error(`Handler Error: ${user_project_org_project_data_resource}`, error);
@@ -848,6 +855,43 @@ app.post(`${api_root_endpoint}${user_project_org_project_discovery}`, async (req
     }    
 });
 
+enum ProjectStatus {
+    Unknown = 'Unknown',                        // project not found
+    ResourcesAvailable = 'Resources Available', // project found, but no resources
+    Synchronizing = 'Synchronizing',            // resources found, incomplete generation
+    Complete = 'complete',                      // resources generated, but not uploaded
+    Synchronized = 'synchronized'               // fully synchronized
+}
+
+interface ProjectStatusState {
+    status: ProjectStatus;
+    lastSynchronized?: number;
+}
+
+const user_project_org_project_status = `/user_project/:org/:project/status`;
+app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const projectStatus : ProjectStatusState = {
+            status: ProjectStatus.Unknown
+        };
+
+        return res
+            .status(200)
+            .send(projectStatus);
+    } catch (error) {
+        console.error(`Handler Error: ${user_project_org_project_status}`, error);
+        return res.status(500).send('Internal Server Error');
+    }    
+});
+
 const user_project_org_project_goals = `/user_project/:org/:project/goals`;
 app.delete(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Request, res: Response) => {
 
@@ -1073,6 +1117,68 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (
         .send(resourceData);
     } catch (error) {
         console.error(`Handler Error: ${user_project_org_project_data_resource}`, error);
+        return res.status(500).send('Internal Server Error');
+    }
+});
+
+interface ResourceStatusState {
+    last_updated: number;
+}
+
+const user_project_org_project_data_resource_status = `/user_project/:org/:project/data/:resource/status`;
+app.get(`${api_root_endpoint}${user_project_org_project_data_resource_status}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const { org, project } = req.params;
+        if (!org || !project) {
+            if (!org) {
+                console.error(`Org is required`);
+            } else if (!project) {
+                console.error(`Project is required`);
+            }
+            return res.status(400).send('Invalid resource path');
+        }
+
+        const projectData = await loadProjectData(email, org, project) as UserProjectData;
+        if (!projectData) {
+            return res.status(404).send('Project not found');
+        }
+
+        const uri = new URL(projectData.resources[0].uri);
+
+        // Split the pathname by '/' and filter out empty strings
+        const pathSegments = uri.pathname.split('/').filter(segment => segment);
+
+        // The relevant part is the last segment of the path
+        const repoName = pathSegments.pop();
+        const ownerName = pathSegments.pop();
+        if (!repoName || !ownerName) {
+            throw new Error(`Invalid URI: ${uri}`);
+        }
+
+        const { _, __, resource } = req.params;
+        const resourceStatusRaw = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status");
+        if (!resourceStatusRaw) {
+            console.error(`${user_project_org_project_data_resource_status}: not found: ${ownerName}/${repoName}/data/${resource}`);
+            return res.status(404).send('Resource not found');
+        }
+
+        const resourceStatus : ResourceStatusState = JSON.parse(resourceStatusRaw);
+
+        console.log(`${user_project_org_project_data_resource_status}: retrieved data`);
+    return res
+        .status(200)
+        .contentType('application/json')
+        .send(resourceStatus);
+    } catch (error) {
+        console.error(`Handler Error: ${user_project_org_project_data_resource_status}`, error);
         return res.status(500).send('Internal Server Error');
     }
 });

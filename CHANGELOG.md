@@ -7,6 +7,8 @@ Polyverse Boost ReST API (Backend)
 
 ### New Features
 - Added REST API /api/status (GET) to get current API version and status and stage
+- Added REST API /api/user_project/{org}/{project}/data/{resource}/status (GET) to get status of a resource (e.g. last updated time)
+- Added REST API /api/user_project/{org}/{project}/status (GET) to status of the current project data
 
 ### Enhancements
 - Disabled unsigned authentication headers (x-user-account) - only signed JWT is supported now
