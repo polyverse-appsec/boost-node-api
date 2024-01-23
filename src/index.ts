@@ -2133,6 +2133,46 @@ app.get(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Respons
     }
 });
 
+interface ServiceStatusState {
+    version: string;
+    status: string;
+    type: string
+}
+
+const api_status = `/status`;
+app.get(`${api_root_endpoint}${api_status}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+        // get the version from the environment variable APP_VERSION
+        const version = process.env.APP_VERSION;
+        if (!version) {
+            console.error(`Missing APP_VERSION environment variable`);
+            return res.status(500).send('Internal Server Error');
+        }
+        const type = process.env.DEPLOYMENT_STAGE;
+        if (!type) {
+            console.error(`Missing DEPLOYMENT_STAGE environment variable`);
+            return res.status(500).send('Internal Server Error');
+        }
+
+        const status : ServiceStatusState = {
+            version: version,
+            status: 'available',
+            type: type,
+        };
+
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send(status);
+    } catch (error) {
+        console.error(`Handler Error: ${api_status}`, error);
+        return res.status(500).send('Internal Server Error');
+    }
+});
+
 app.get("/test", (req: Request, res: Response, next) => {
 
     try {

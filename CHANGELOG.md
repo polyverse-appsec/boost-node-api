@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.9.3: January 22nd, 2024
+
+### New Features
+- Added REST API /api/status (GET) to get current API version and status and stage
+
+### Enhancements
+- Disabled unsigned authentication headers (x-user-account) - only signed JWT is supported now
+
+### Bug Fixes
+- N/A
+
 ## Version 0.9.2: January 22nd, 2024
 
 ### New Features
