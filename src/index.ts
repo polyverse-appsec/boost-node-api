@@ -890,7 +890,9 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
 
         // get the resource uri for this project
         const requestUri = req.originalUrl;
-        const projectDataUri = requestUri.substring(0, requestUri.lastIndexOf('/status'));
+        const fullProjectDataUri = requestUri.substring(0, requestUri.lastIndexOf('/status'));
+        // get the relative uri from the api base
+        const projectDataUri = fullProjectDataUri.substring(fullProjectDataUri.indexOf("user_project"));
 
         // first we're going to see if the files have been synchronized to AI store ever
         let dataReferences : ProjectDataReference[] = [];
