@@ -26,7 +26,7 @@ export async function uploadProjectDataForAIAssistant(projectName: string, uri: 
 
     const projectQualifiedFullFilename = `${projectName}_${generateFilenameFromGitHubProject(ownerName, repoName)}_${simpleFilename}`;
     console.log(`store_data_for_project: AI file resource name: ${projectQualifiedFullFilename}`);
-    const openAiFile : OpenAIFileUploadResponse = await createAssistantFile(projectQualifiedFullFilename, projectData);
+    const openAiFile : OpenAIFileUploadResponse = await createAssistantFileWithRetry(projectQualifiedFullFilename, projectData);
 
     const dataResource : ProjectDataReference = {
         name: `${projectQualifiedFullFilename}`,
@@ -61,6 +61,27 @@ interface ErrorResponse {
     message: string;
 }
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const createAssistantFileWithRetry = async (dataFilename: string, data: string, maxRetries = 1, retryDelay = 2000) => {
+    let attempts = 0;
+    let lastError;
+
+    while (attempts <= maxRetries) {
+        try {
+            return await createAssistantFile(dataFilename, data);
+        } catch (error) {
+            lastError = error;
+            if (attempts < maxRetries) {
+                console.log(`Attempt ${attempts + 1} failed, retrying in ${retryDelay / 1000} seconds...`);
+                await delay(retryDelay); // Wait for specified delay before retrying
+            }
+        }
+        attempts++;
+    }
+    throw lastError;
+};
+
 const createAssistantFile = async (dataFilename: string, data: string): Promise<OpenAIFileUploadResponse> => {
     const secretData : any = await getSecretsAsObject('exetokendev');
     let openAiKey = secretData['openai-personal'];
@@ -88,7 +109,8 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
     });
 
     if (!response.ok) {
-        throw new Error(`OpenAI Upload failure for ${dataFilename} status: ${response.status}`);
+        const errorText = await response.text() || 'No error message';;
+        throw new Error(`OpenAI Upload failure for ${dataFilename} status: ${response.status}, error: ${errorText}`);
     }
 
     const responseData: OpenAIFileUploadResponse = await response.json() as OpenAIFileUploadResponse;

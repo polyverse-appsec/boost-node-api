@@ -14,6 +14,7 @@ Polyverse Boost ReST API (Backend)
 - Disabled unsigned authentication headers (x-user-account) - only signed JWT is supported now
 - Abort early if generation of Architectural Spec by AI is failing frequently or a continuous series of failures
 - Use the actual OpenAI file created timestamp on the File Ids (instead of HTTP file upload time)
+- Enable a single retry of OpenAI file upload in case of network conditions or OpenAI server issues
 
 ### Bug Fixes
 - N/A
