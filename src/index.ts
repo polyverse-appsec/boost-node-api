@@ -355,7 +355,7 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_file}`, async (req: Re
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
         const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
 
-        getFileFromRepo(email, uri!, repo!, path, req, res, privateAccessAllowed);
+        return getFileFromRepo(email, uri!, repo!, path, req, res, privateAccessAllowed);
     } catch (error) {
         console.error(`Handler Error: ${user_org_connectors_github_file}`, error);
         return res.status(500).send('Internal Server Error');
@@ -411,7 +411,7 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_folders}`, async (req:
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
         const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
 
-        getFolderPathsFromRepo(email, uri, req, res, privateAccessAllowed);
+        return getFolderPathsFromRepo(email, uri, req, res, privateAccessAllowed);
     } catch (error) {
         console.error(`Handler Error: ${user_org_connectors_github_folders}`, error);
         return res.status(500).send('Internal Server Error');
@@ -466,7 +466,7 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_files}`, async (req: R
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
         const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
 
-        getFilePathsFromRepo(email, uri, req, res, privateAccessAllowed);
+        return getFilePathsFromRepo(email, uri, req, res, privateAccessAllowed);
     } catch (error) {
         console.error(`Handler Error: ${user_org_connectors_github_files}`, error);
         return res.status(500).send('Internal Server Error');
@@ -522,7 +522,7 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_fullsource}`, async (r
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
         const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
 
-        getFullSourceFromRepo(email, uri, req, res, privateAccessAllowed);
+        return getFullSourceFromRepo(email, uri, req, res, privateAccessAllowed);
     } catch (error) {
         console.error(`Handler Error: ${user_org_connectors_github_fullsource}`, error);
         return res.status(500).send('Internal Server Error');

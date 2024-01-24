@@ -82,15 +82,13 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
             user = await getUser(email);
             if (!user) {
                 console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                return undefined;
+                return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
             }
         }
         const installationId = user?.installationId;
         if (!installationId) {
             console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-            res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-            return undefined;
+            return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
         }
 
         const secretStore = 'boost/GitHubApp';
@@ -107,6 +105,8 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
         });
 
         const fileContent = await getFileContent(octokit);
+
+        console.log(`Success Retrieving File ${filePathWithoutBranch} from Private Repo ${repo}`)
 
         return res
             .status(200)
@@ -186,15 +186,13 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
             user = await getUser(email);
             if (!user) {
                 console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                return undefined;
+                return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
             }
         }
         const installationId = user?.installationId;
         if (!installationId) {
             console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-            res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-            return undefined;
+            return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
         }
 
         const secretStore = 'boost/GitHubApp';
@@ -212,6 +210,8 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
         });
 
         const folderPaths = await getFolderPaths(octokit, owner, repo);
+
+        console.log(`Success Retrieving ${folderPaths.length} folder paths from Private Repo ${repo}`)
 
         return res
             .set('X-Resource-Access', 'private')
@@ -257,7 +257,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
                 }
             }
         } catch (error) {
-            console.error(`Error retrieving file paths from ${path}:`, error);
+            console.error(`Error retrieving file paths from ${path?"{Root Path}":path}:`, error);
             throw error;
         }
 
@@ -290,15 +290,13 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
             user = await getUser(email);
             if (!user) {
                 console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                return undefined;
+                return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
             }
         }
         const installationId = user?.installationId;
         if (!installationId) {
             console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-            res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-            return undefined;
+            return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
         }
 
         const secretStore = 'boost/GitHubApp';
@@ -315,7 +313,9 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
             }
         });
 
-        const filePaths = await getFilePaths(octokit, owner, repo);
+        const filePaths : string[] = await getFilePaths(octokit, owner, repo);
+
+        console.log(`Success Retrieving ${filePaths.length} file paths from Private Repo ${repo}`)
 
         return res
             .set('X-Resource-Access', 'private')
@@ -340,8 +340,7 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
 
     if (!owner || !repo) {
         console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
-        res.status(400).send('Invalid URI');
-        return undefined;
+        return res.status(400).send('Invalid URI');
     }
 
     const octokit = new Octokit();
@@ -354,12 +353,11 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
 
         return repoDetails.data;
     } catch (publicError) {
-        console.log('Public access failed, attempting authenticated access');
+        console.log(`Public access for ${repo} to get Repo Details, attempting authenticated access`);
 
         if (!allowPrivateAccess) {
             console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
-            res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
-            return undefined;
+            return res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
         }
     
         // Public access failed, switch to authenticated access
@@ -370,15 +368,13 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
                 user = await getUser(email);
                 if (!user) {
                     console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                    res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                    return undefined;
+                    return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
                 }
             }
             const installationId = user?.installationId;
             if (!installationId) {
                 console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                return undefined;
+                return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
             }
 
             const secretStore = 'boost/GitHubApp';
@@ -397,11 +393,12 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
                 repo: repo
             });
 
+            console.log(`Success Retrieving Repo Details from Private Repo ${repo}`)
+
             return repoDetails.data;
         } catch (authenticatedError) {
             console.error(`Error retrieving repo data via authenticated access:`, authenticatedError);
-            res.status(500).send('Internal Server Error');
-            return undefined;
+            return res.status(500).send('Internal Server Error');
         }
     }
 }
@@ -464,7 +461,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
             .contentType('application/json')
             .send(fileContents);
     } catch (publicError) {
-        console.log('Public access failed, attempting authenticated access');
+        console.log(`Public access for ${repo} to get Full Source failed, attempting authenticated access`);
 
         if (!allowPrivateAccess) {
             console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
@@ -479,15 +476,13 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
                 user = await getUser(email);
                 if (!user) {
                     console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                    res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                    return undefined;
+                    return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
                 }
             }
             const installationId = user?.installationId;
             if (!installationId) {
                 console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                return undefined;
+                return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
             }
 
             const secretStore = 'boost/GitHubApp';
@@ -513,10 +508,14 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
             
             // Ensure we have the token
             if (!installationAccessToken?.token) {
-                throw new Error('Failed to retrieve installation access token');
+                console.error('Failed to retrieve installation access token');
+                return res.status(500).send('Internal Server Error');
             }
 
             const fileContents : FileContent[] = await downloadAndExtractRepo(archiveUrl, installationAccessToken.token);
+
+            console.log(`Success Retrieving ${fileContents.length} files from Private Repo ${repo}`)
+
             return res
                 .status(200)
                 .contentType('application/json')
