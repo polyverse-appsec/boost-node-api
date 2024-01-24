@@ -6,7 +6,7 @@ Polyverse Boost ReST API (Backend)
 ## Version 0.9.4: January 24nd, 2024
 
 ### New Features
-- N/A
+- Add individual Service API to process a single Resource Generator stage /api/user_project/{org}/{project}/data/{resource}/generator/process (POST)
 
 ### Enhancements
 - Use the actual OpenAI file created timestamp on the File Ids (instead of HTTP file upload time)
