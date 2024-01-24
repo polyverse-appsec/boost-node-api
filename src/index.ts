@@ -1708,7 +1708,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     // we need to terminate the current call so we don't create a long blocking HTTP call
                     //      so we'll start a new async HTTP request - detached from the caller to continue processing
                     //      the next stage
-                    console.log(`${user_project_org_project_data_resource_generator}: starting async processing for ${currentGeneratorState}`);
+                    console.log(`${user_project_org_project_data_resource_generator}: starting async processing for ${JSON.stringify(currentGeneratorState)}`);
 
                     // create a new request object
                     const newProcessingRequest : GeneratorState = {
@@ -1825,6 +1825,73 @@ async function processStage(serviceEndpoint: string, email: string, project: Use
     }
     return thisGenerator.generate(stage);
 }
+
+interface ResourceGeneratorProcessState {
+    stage: string;
+}
+
+const user_project_org_project_data_resource_generator_process = `/user_project/:org/:project/data/:resource/generator/process`;
+app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator_process}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return res;
+        }
+
+        const { org, project } = req.params;
+        if (!org || !project) {
+            if (!org) {
+                console.error(`Org is required`);
+            } else if (!project) {
+                console.error(`Project is required`);
+            }
+
+            return res.status(400).send('Invalid resource path');
+        }
+        const { _, __, resource } = req.params;
+        if (!resource) {
+            console.error(`Resource is required`);
+            return res.status(400).send('Invalid resource path');
+        }
+
+        let body = req.body;
+        if (typeof body !== 'string') {
+            body = JSON.stringify(body);
+        }
+
+        const input : ResourceGeneratorProcessState = JSON.parse(body);
+        let resourceGeneratorProcessState : ResourceGeneratorProcessState = {
+            stage: input.stage
+        };
+
+
+        const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
+        if (!loadedProjectData) {
+            return res.status(404).send('Project not found');
+        }
+        const projectData = loadedProjectData as UserProjectData;
+
+        // Launch the processing task
+        let selfEndpoint = `${req.protocol}://${req.get('host')}`;
+        // if we're running locally, then we'll use http:// no matter what
+        if (req.get('host')!.includes('localhost')) {
+            selfEndpoint = `http://${req.get('host')}`;
+        }
+
+        const nextGeneratorState : string = await processStage(selfEndpoint, email, projectData, resource, resourceGeneratorProcessState.stage);
+
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send(nextGeneratorState);
+    } catch (error) {
+        console.error(`Handler Error: ${user_project_org_project_data_resource_generator}`, error);
+        return res.status(500).send('Internal Server Error');
+    }
+});
 
 const user_project_org_project_data_references = `/user_project/:org/:project/data_references`;
 

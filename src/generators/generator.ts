@@ -136,7 +136,7 @@ export class Generator {
             status_details: statusUpdate
         }
 
-        console.log(`Progress Update on Stage ${this.currentStage}: ${state}`)
+        console.log(`Progress Update on Stage ${this.currentStage}: ${JSON.stringify(state)}`);
 
         const authHeader = await signedAuthHeader(this.email);
         const response = await fetch(this.resourceUri + `/generator`, {
@@ -148,7 +148,7 @@ export class Generator {
             body: JSON.stringify(state)
         });
         if (!response.ok) {
-            console.log(`Unable to update ${this.dataType} resource generator progress: ${statusUpdate}`);
+            console.log(`Unable to update ${this.dataType} resource generator progress: ${JSON.stringify(state)}`);
         }
     }
 
