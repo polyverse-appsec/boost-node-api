@@ -190,7 +190,8 @@ export class Generator {
         if (response.ok) {
             return await response.json() as Promise<string[]>;
         }
-        throw new Error(`Unable to get file list: ${response.status}`);
+        const errorText = await response.text() || 'Unknown Error';
+        throw new Error(`Unable to get file list: ${response.status} - ${errorText}`);
     }
 
     async getProjectSource() : Promise<FileContent[]> {
@@ -224,19 +225,24 @@ export class Generator {
     async getFilteredFileList(): Promise<string[]> {
         await this.updateProgress('Scanning Files from GitHub Repo');
 
-        const fileList : string[] = await this.getFilenameList();
+        try {
+            const fileList : string[] = await this.getFilenameList();
 
-        // need to filter the fileList based on the boostignore (similar to gitignore)
-        // files in the filelist look like "foo/bar/baz.txt"
-        // file specs in boost ignore look like "**/*.txt" - which should ignore all text files
-        //      in all folders. Or "node_modules/" which should ignore all files in the node_modules root folder.
-        //      Or ".gitignore" which should ignore file named .gitignore in the root directory
-        await this.updateProgress('Filtered File List for .boostignore');
-        
-        const boostIgnoreFileSpecs = await this.getBoostIgnoreFileSpecs();
-        const boostIgnore = ignore().add(boostIgnoreFileSpecs);
-        const filteredFileList = fileList.filter((file) => !boostIgnore.ignores(file));
+            // need to filter the fileList based on the boostignore (similar to gitignore)
+            // files in the filelist look like "foo/bar/baz.txt"
+            // file specs in boost ignore look like "**/*.txt" - which should ignore all text files
+            //      in all folders. Or "node_modules/" which should ignore all files in the node_modules root folder.
+            //      Or ".gitignore" which should ignore file named .gitignore in the root directory
+            await this.updateProgress('Filtered File List for .boostignore');
+            
+            const boostIgnoreFileSpecs = await this.getBoostIgnoreFileSpecs();
+            const boostIgnore = ignore().add(boostIgnoreFileSpecs);
+            const filteredFileList = fileList.filter((file) => !boostIgnore.ignores(file));
 
-        return filteredFileList;
+            return filteredFileList;
+        } catch (err) {
+            console.error(`Unable to get filtered file list: ${err}`);
+            throw err;
+        }
     }
 }

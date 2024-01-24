@@ -5,7 +5,7 @@ import time
 
 from utils import get_signed_headers
 
-from constants import TARGET_URL, ORG, PREMIUM_EMAIL, PUBLIC_PROJECT, PRIVATE_PROJECT, EMAIL
+from constants import TARGET_URL, ORG, PREMIUM_EMAIL, PUBLIC_PROJECT, PRIVATE_PROJECT, EMAIL, PRIVATE_PROJECT_NAME_CHECKIN_TEST, PUBLIC_PROJECT_NAME_CHECKIN_TEST
 
 
 class BoostBackendCheckinSuite(unittest.TestCase):
@@ -56,11 +56,11 @@ class BoostBackendCheckinSuite(unittest.TestCase):
         if not private:
             signedHeaders = get_signed_headers(PREMIUM_EMAIL)
             public_git_project = PRIVATE_PROJECT
-            project_name = "checkin_test_private_repo"
+            project_name = PRIVATE_PROJECT_NAME_CHECKIN_TEST
         else:
             signedHeaders = get_signed_headers(EMAIL)
             public_git_project = PUBLIC_PROJECT
-            project_name = "checkin_test_public_repo"
+            project_name = PUBLIC_PROJECT_NAME_CHECKIN_TEST
 
         response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)

@@ -1,10 +1,11 @@
 import unittest
 import requests
 import datetime
+import json
 
 from utils import get_signed_headers
 
-from constants import TARGET_URL, EMAIL, ORG, PUBLIC_PROJECT, PUBLIC_PROJECT_NAME
+from constants import TARGET_URL, EMAIL, ORG, PUBLIC_PROJECT, PUBLIC_PROJECT_NAME, PREMIUM_EMAIL, PRIVATE_PROJECT_NAME_CHECKIN_TEST
 
 
 class UnitTestSuite(unittest.TestCase):
@@ -115,3 +116,21 @@ class UnitTestSuite(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotEqual(response.json()['last_updated'], None)
         self.assertGreater(response.json()['last_updated'], unixtime)
+
+    def test_generator_resource_projectsource_stage_filescan(self):
+        print("Running test: Generator Resource ProjectSource Stage Filescan")
+
+        project_name = PRIVATE_PROJECT_NAME_CHECKIN_TEST
+
+        data = {"stage": 'File Paths Scan'}
+        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
+
+        # response = requests.post(f"{TARGET_URL}/test", json=data, headers=signedHeaders)
+        # self.assertEqual(response.status_code, 200)
+
+        response = requests.post(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/projectsource/generator/process", json=data, headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+        response = response.text
+
+        self.assertEqual(response, 'Full Source Code Import')

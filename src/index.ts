@@ -2276,7 +2276,10 @@ const handleProxyRequest = async (req: Request, res: Response) => {
             }
         } catch (error : any) {
             // check for ECONNREFUSED error from fetch
-            if (error.errno === 'ECONNREFUSED') {
+            if (error?.errno === 'ECONNREFUSED' || error?.cause?.code === 'ECONNREFUSED') {
+                if (error.cause) { // fetch embeds tcp error in cause property of error
+                    error = error.cause;
+                }
                 console.error(`Error making proxy request - endpoint refused request: ${externalEndpoint}`, error);
                 return res.status(500).send('Internal Server Error');
             }
@@ -2491,9 +2494,26 @@ app.get("/test", (req: Request, res: Response, next) => {
         return res
             .status(200)
             .contentType("text/plain")
-            .send("Test HTTP Ack");
+            .send("Test HTTP GET Ack");
     } catch (error) {
-        console.error(`Handler Error: /test`, error);
+        console.error(`Handler Error : HTTP GET /test`, error);
+        return res.status(500).send('Internal Server Error');
+    }
+});
+
+app.post("/test", (req: Request, res: Response, next) => {
+
+    try {
+        logRequest(req);
+
+        const data = req.body;
+
+        return res
+            .status(200)
+            .contentType("text/plain")
+            .send(`Test HTTP POST Ack: ${data}`);
+    } catch (error) {
+        console.error(`Handler Error: HTTP POST /test`, error);
         return res.status(500).send('Internal Server Error');
     }
 });
