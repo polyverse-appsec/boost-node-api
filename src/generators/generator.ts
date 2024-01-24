@@ -136,6 +136,8 @@ export class Generator {
             status_details: statusUpdate
         }
 
+        console.log(`Progress Update on Stage ${this.currentStage}: ${state}`)
+
         const authHeader = await signedAuthHeader(this.email);
         const response = await fetch(this.resourceUri + `/generator`, {
             method: 'PATCH',
@@ -222,7 +224,7 @@ export class Generator {
     async getFilteredFileList(): Promise<string[]> {
         await this.updateProgress('Scanning Files from GitHub Repo');
 
-        const fileList = await this.getFilenameList();
+        const fileList : string[] = await this.getFilenameList();
 
         // need to filter the fileList based on the boostignore (similar to gitignore)
         // files in the filelist look like "foo/bar/baz.txt"
