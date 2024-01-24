@@ -1903,8 +1903,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
 
                     projectDataFileIds.push(storedProjectDataId);
                 } catch (error) {
-                    console.error(`Handler Error: ${user_project_org_project_data_references}: Unable to store project data:`, error);
-                    console.error(`Error storing project data:`, error);
+                    console.error(`Handler Error: ${user_project_org_project_data_references}: Unable to store project data on AI Servers:`, error);
                     return res.status(500).send('Internal Server Error');
                 }
             }
