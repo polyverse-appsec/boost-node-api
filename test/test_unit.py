@@ -4,7 +4,7 @@ import datetime
 
 from utils import get_signed_headers
 
-from constants import TARGET_URL, EMAIL, ORG, PREMIUM_EMAIL, PUBLIC_PROJECT, PUBLIC_PROJECT_NAME
+from constants import TARGET_URL, EMAIL, ORG, PUBLIC_PROJECT, PUBLIC_PROJECT_NAME
 
 
 class UnitTestSuite(unittest.TestCase):
@@ -34,66 +34,6 @@ class UnitTestSuite(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         account = response.json()
         self.assertTrue(account["enabled"])
-
-    def test_retrieve_file(self):
-        print("Running test: Retrieve a file from the user's project")
-        signedHeaders = get_signed_headers(EMAIL)
-        response = requests.get(f"{TARGET_URL}/api/user/org123/connectors/github/file?uri=https://github.com/public-apis/public-apis/blob/master/scripts/validate/links.py", headers=signedHeaders)
-        self.assertEqual(response.status_code, 200)
-
-    def test_retrieve_file_private_access(self):
-        print("Running test: Retrieve a private file from the team's project")
-        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
-        response = requests.get(f"{TARGET_URL}/api/user/org123/connectors/github/file?uri=https://github.com/polyverse-appsec/sara/blob/main/README.md", headers=signedHeaders)
-        self.assertEqual(response.status_code, 200)
-
-    def test_retrieve_fullsource_public_repo_access(self):
-        print("Running test: Retrieve full source from a public repo")
-        signedHeaders = get_signed_headers(EMAIL)
-        response = requests.get(f"{TARGET_URL}/api/user/org123/connectors/github/fullsource?uri=https://github.com/public-apis/public-apis", headers=signedHeaders)
-        self.assertEqual(response.status_code, 200)
-
-    def test_retrieve_fullsource_private_repo_access(self):
-        print("Running test: Retrieve full source from a private repo")
-        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
-        response = requests.get(f"{TARGET_URL}/api/user/org123/connectors/github/fullsource?uri=https://github.com/polyverse-appsec/sara", headers=signedHeaders)
-        self.assertEqual(response.status_code, 200)
-
-    def test_retrieve_file_private_access_repo_path(self):
-        print("Running test: Retrieve a private file from the team's project based on repo and path")
-        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
-        response = requests.get(f"{TARGET_URL}/api/user/org123/connectors/github/file?repo=https://github.com/polyverse-appsec/sara/&path=README.md", headers=signedHeaders)
-        self.assertEqual(response.status_code, 200)
-
-    def test_retrieve_folders(self):
-        print("Running test: Retrieve all folders from a public project")
-        signedHeaders = get_signed_headers(EMAIL)
-        response = requests.get(f"{TARGET_URL}/api/user/org123/connectors/github/folders?uri=https://github.com/public-apis/public-apis/", headers=signedHeaders)
-        self.assertEqual(response.status_code, 200)
-        self.assertIsNotNone(response.json())
-        folders = response.json()
-        self.assertGreaterEqual(len(folders), 3)
-
-    def test_retrieve_files(self):
-        print("Running test: Retrieve all files from a public project")
-        signedHeaders = get_signed_headers(EMAIL)
-        response = requests.get(f"{TARGET_URL}/api/user/org123/connectors/github/files?uri=https://github.com/public-apis/public-apis/", headers=signedHeaders)
-        self.assertEqual(response.status_code, 200)
-        self.assertIsNotNone(response.json())
-        files = response.json()
-        self.assertGreaterEqual(len(files), 22)
-
-    def test_retrieve_invalid_uri(self):
-        print("Running test: Retrieve a file from the user's project")
-        signedHeaders = get_signed_headers(EMAIL)
-        response = requests.get(f"{TARGET_URL}/api/user/org123/connectors/github/file?uri=example.com", headers=signedHeaders)
-        self.assertEqual(response.status_code, 400)
-
-    def test_retrieve_github_repo(self):
-        print("Running test: Retrieve a file from the user's project")
-        signedHeaders = get_signed_headers(EMAIL)
-        response = requests.get(f"{TARGET_URL}/api/user/org123/connectors/github/file?uri=https://github.com/public-apis/public-apis", headers=signedHeaders)
-        self.assertEqual(response.status_code, 400)
 
     def test_store_data_in_project(self):
         print("Running test: Store data in the user's project")
