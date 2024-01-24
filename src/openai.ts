@@ -26,14 +26,14 @@ export async function uploadProjectDataForAIAssistant(projectName: string, uri: 
 
     const projectQualifiedFullFilename = `${projectName}_${generateFilenameFromGitHubProject(ownerName, repoName)}_${simpleFilename}`;
     console.log(`store_data_for_project: AI file resource name: ${projectQualifiedFullFilename}`);
-    const openAiFileId = await createAssistantFile(projectQualifiedFullFilename, projectData);
+    const openAiFile : OpenAIFileUploadResponse = await createAssistantFile(projectQualifiedFullFilename, projectData);
 
     const dataResource : ProjectDataReference = {
         name: `${projectQualifiedFullFilename}`,
         type: `${dataTypeId}`,
-        id: openAiFileId,
+        id: openAiFile.id,
         // return current time in unix system time format
-        last_updated: Math.floor(Date.now() / 1000)
+        last_updated: openAiFile.created_at,
     }
 
     return dataResource;
@@ -48,7 +48,7 @@ function generateFilenameFromGitHubProject(part1: string, part2: string): string
     return `${safePart1}_${safePart2}`;
 }
 
-interface OpenAIFileUploadResponse {
+export interface OpenAIFileUploadResponse {
     id: string;
     object: string;
     bytes: number;
@@ -61,7 +61,7 @@ interface ErrorResponse {
     message: string;
 }
 
-const createAssistantFile = async (dataFilename: string, data: string): Promise<string> => {
+const createAssistantFile = async (dataFilename: string, data: string): Promise<OpenAIFileUploadResponse> => {
     const secretData : any = await getSecretsAsObject('exetokendev');
     let openAiKey = secretData['openai-personal'];
 
@@ -88,9 +88,9 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
     });
 
     if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`OpenAI Upload failure for ${dataFilename} status: ${response.status}`);
     }
 
     const responseData: OpenAIFileUploadResponse = await response.json() as OpenAIFileUploadResponse;
-    return responseData.id; // Return only the id from the response
+    return responseData; // Return only the id from the response
 };
