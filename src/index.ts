@@ -1,4 +1,6 @@
 import express, { Request, Response } from 'express';
+import bodyParser from 'body-parser';
+
 import serverless from 'serverless-http';
 import {
     getProjectData,
@@ -40,8 +42,9 @@ import { ArchitecturalSpecificationGenerator } from './generators/aispec';
 
 export const app = express();
 
-app.use(express.json()); // Make sure to use express.json middleware to parse JSON request body
-app.use(express.text()); // Make sure to use express.text middleware to parse text request body
+// set limits to 1mb for text and 10mb for json
+app.use(express.json({ limit: '10mb' })); // Make sure to use express.json middleware to parse json request body
+app.use(express.text({ limit: '1mb' })); // Make sure to use express.text middleware to parse text request body
 
 const api_root_endpoint : string = '/api';
 
@@ -475,7 +478,9 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_files}`, async (req: R
 
 
 const user_org_connectors_github_fullsource = `/user/:org/connectors/github/fullsource`;
-app.get(`${api_root_endpoint}${user_org_connectors_github_fullsource}`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}${user_org_connectors_github_fullsource}`,
+    express.text({ limit: '1mb' }),
+    async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -1373,9 +1378,12 @@ app.delete(`${api_root_endpoint}${user_project_org_project_data_resource}`, asyn
     }
 });
 
+// Middleware for parsing plain text with a limit of 1mb
+const textParserWithMbLimit = bodyParser.text({ limit: '1mb' });
+
 app.route(`${api_root_endpoint}${user_project_org_project_data_resource}`)
-   .post(postOrPutUserProjectDataResource)
-   .put(postOrPutUserProjectDataResource);
+   .post(textParserWithMbLimit, postOrPutUserProjectDataResource)
+   .put(textParserWithMbLimit, postOrPutUserProjectDataResource);
 
 const user_project_org_project_data_resource_generator = `/user_project/:org/:project/data/:resource/generator`;
 app.delete(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {

@@ -140,3 +140,51 @@ class UnitTestSuite(unittest.TestCase):
             response = response.text
 
         self.assertEqual(response, 'Full Source Code Import')
+
+    def test_generator_resource_projectsource_stage_fullsourceimport(self):
+        print("Running test: Generator Resource ProjectSource Stage Filescan")
+
+        project_name = PRIVATE_PROJECT_NAME_CHECKIN_TEST
+
+        data = {"stage": 'Full Source Code Import'}
+        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
+
+        response = requests.post(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/projectsource/generator/process", json=data, headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+        # if running locally - the result will be a string, but if running remotely, the result will be a JSON object for HTTP frame
+        #     so we need to see if we can parse the JSON, and if not, just use the string
+        try:
+            response = response.json()
+            response = response['body']
+        except json.JSONDecodeError:
+            response = response.text
+
+        self.assertEqual(response, 'Complete')
+
+    def test_resource_projectsource_oversized_payload(self):
+        print("Running test: Save Oversized ProjectSource data (simulated large payload)")
+
+        project_name = PRIVATE_PROJECT_NAME_CHECKIN_TEST
+
+        # create a 400k payload of plain text
+        data = "a" * 400000
+        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
+        # Set the 'Content-Type' header to 'text/plain'
+        signedHeaders['Content-Type'] = 'text/plain'
+
+        response = requests.put(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/projectsource", data=data, headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+        response = requests.get(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/projectsource", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+        # if running locally - the result will be a string, but if running remotely, the result will be a JSON object for HTTP frame
+        #     so we need to see if we can parse the JSON, and if not, just use the string
+        try:
+            response = response.json()
+            response = response['body']
+        except json.JSONDecodeError:
+            response = response.text
+
+        self.assertEqual(response, data)

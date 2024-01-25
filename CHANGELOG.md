@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.9.5: January 24nd, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- N/A
+
+### Bug Fixes
+- Fixed global JSON and Text Payload limits to be 10mb (JSON) and 1mb (text) to enable download and saving of large source projects (~120 files is 220k)
+
 ## Version 0.9.4: January 24nd, 2024
 
 ### New Features
