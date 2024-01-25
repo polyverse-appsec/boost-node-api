@@ -56,6 +56,8 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
         const octokit = new Octokit();
         const fileContent = await getFileContent(octokit);
 
+        console.log(`Success Retrieving File ${filePathWithoutBranch} from Public Repo ${repo}`)
+
         return res
             .status(200)
             .set('X-Resource-Access', 'public')
@@ -67,6 +69,9 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
             console.error(`Error: retrieving file via public access`, error);
             return res.status(500).send('Internal Server Error');
         }
+
+        // 404 Not Found
+        console.log(`Cannot access repo ${owner}/${repo} at path ${filePathWithoutBranch}`);
     }
 
     if (!allowPrivateAccess) {
@@ -131,31 +136,26 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
     const getFolderPaths = async (octokit: Octokit, owner: string, repo : string, path = '') : Promise<string[]> => {
         let folderPaths : string[] = [];
     
-        try {
-            const response = await octokit.rest.repos.getContent({
-                owner: owner,
-                repo: repo,
-                path: path
-            });
-    
-            if (!Array.isArray(response.data)) {
-                throw new Error('Expected directory content, got something else');
-            }
-    
-            for (const item of response.data.filter(item => !item.name.startsWith('.'))) {
-                if (item.type === 'dir') {
-                    folderPaths.push(item.path);
-    
-                    // Recursively get paths of subdirectories
-                    const subfolderPaths = await getFolderPaths(octokit, owner, repo, item.path);
-                    folderPaths = folderPaths.concat(subfolderPaths);
-                }
-            }
-        } catch (error) {
-            console.error(`Error retrieving folder paths from ${path}:`, error);
-            throw error;
+        const response = await octokit.rest.repos.getContent({
+            owner: owner,
+            repo: repo,
+            path: path
+        });
+
+        if (!Array.isArray(response.data)) {
+            throw new Error('Expected directory content, got something else');
         }
-    
+
+        for (const item of response.data.filter(item => !item.name.startsWith('.'))) {
+            if (item.type === 'dir') {
+                folderPaths.push(item.path);
+
+                // Recursively get paths of subdirectories
+                const subfolderPaths = await getFolderPaths(octokit, owner, repo, item.path);
+                folderPaths = folderPaths.concat(subfolderPaths);
+            }
+        }
+
         return folderPaths;
     };
     
@@ -169,8 +169,14 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
             .status(200)
             .contentType('application/json')
             .send(folderPaths);
-    } catch (error) {
-        console.error(`Error retrieving folders via public access:`, error);
+    } catch (error: any) {
+
+        if (error.status !== 404 && error?.response?.data?.message !== 'Not Found') {
+            console.error(`Error retrieving folder paths for ${owner} from ${repo}:`, error);
+            throw error;
+        }
+
+        console.log(`Unable to publicly retrieve folder paths for ${owner} from ${repo}:`, error);
     }
 
     if (!allowPrivateAccess) {
@@ -236,29 +242,24 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
     const getFilePaths = async (octokit : Octokit, owner : string, repo : string, path = '') : Promise<string[]> => {
         let filePaths : string[] = [];
 
-        try {
-            const response = await octokit.rest.repos.getContent({
-                owner: owner,
-                repo: repo,
-                path: path
-            });
+        const response = await octokit.rest.repos.getContent({
+            owner: owner,
+            repo: repo,
+            path: path
+        });
 
-            if (!Array.isArray(response.data)) {
-                throw new Error('Expected file content, got something else');
-            }
+        if (!Array.isArray(response.data)) {
+            throw new Error('Expected file content, got something else');
+        }
 
-            for (const item of response.data) {
-                if (item.type === 'file') {
-                    filePaths.push(item.path);
-                } else if (item.type === 'dir') {
-                    // Recursive call for directories
-                    const subPaths = await getFilePaths(octokit, owner, repo, item.path);
-                    filePaths = filePaths.concat(subPaths);
-                }
+        for (const item of response.data) {
+            if (item.type === 'file') {
+                filePaths.push(item.path);
+            } else if (item.type === 'dir') {
+                // Recursive call for directories
+                const subPaths = await getFilePaths(octokit, owner, repo, item.path);
+                filePaths = filePaths.concat(subPaths);
             }
-        } catch (error) {
-            console.error(`Error retrieving file paths from ${path?"{Root Path}":path}:`, error);
-            throw error;
         }
 
         return filePaths;
@@ -269,12 +270,20 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
         const octokit = new Octokit();
         const filePaths = await getFilePaths(octokit, owner, repo);
 
+        console.log(`Success Retrieving ${filePaths.length} file paths from Public Repo ${repo}`)
+
         return res
             .status(200)
             .contentType('application/json')
             .send(filePaths);
-    } catch (error) {
-        console.error(`Error retrieving files via public access:`, error);
+    } catch (error : any) {
+        if (error.status !== 404 && error?.response?.data?.message !== 'Not Found') {
+            console.error(`Error retrieving file paths for ${owner} to ${repo}: ${error}`);
+            throw error;
+        }
+
+        // 404 Not Found
+        console.log(`Cannot access repo ${owner}/${repo} at path via public access due to 404 Not Found`);
     }
 
     if (!allowPrivateAccess) {
@@ -324,7 +333,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
             .send(filePaths);
 
     } catch (error) {
-        console.error(`Error retrieving files via private access:`, error);
+        console.error(`Error retrieving files for ${owner} to ${repo} via private access:`, error);
         return res.status(500).send('Internal Server Error');
     }
 }
@@ -352,8 +361,13 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
         });
 
         return repoDetails.data;
-    } catch (publicError) {
-        console.log(`Public access for ${repo} to get Repo Details, attempting authenticated access`);
+    } catch (publicError: any) {
+        if (publicError.status !== 404 && publicError?.response?.data?.message !== 'Not Found') {
+            console.error(`Error retrieving repo details for ${owner} to ${repo}: ${publicError}`);
+            throw publicError;
+        }
+
+        console.log(`Public access for ${owner} to ${repo} to get Repo Details, attempting authenticated access`);
 
         if (!allowPrivateAccess) {
             console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
@@ -412,35 +426,31 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
     }
 
     const downloadAndExtractRepo = async (url: string, authToken: string): Promise<FileContent[]> => {
-        try {
-            const params: any = authToken ? {
-                headers: {
-                    'Authorization': `Bearer ${authToken}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                },
-                responseType: 'arraybuffer'
-            } : {
-                responseType: 'arraybuffer'
+
+    const params: any = authToken ? {
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Accept': 'application/vnd.github.v3+json'
+            },
+            responseType: 'arraybuffer'
+        } : {
+            responseType: 'arraybuffer'
+        };
+        const response = await axios.get(url, params);
+        const zip = new AdmZip(response.data);
+        const zipEntries = zip.getEntries();
+
+        // Assuming the first entry is the root folder and get its name
+        const rootFolderName = zipEntries[0].entryName;
+
+        // Skip the first entry and filter out directories
+        return zipEntries.slice(1).filter(entry => !entry.isDirectory).map(entry => {
+            const relativePath = entry.entryName.replace(rootFolderName, '');
+            return {
+                path: relativePath,
+                source: entry.getData().toString('utf8')
             };
-            const response = await axios.get(url, params);
-            const zip = new AdmZip(response.data);
-            const zipEntries = zip.getEntries();
-    
-            // Assuming the first entry is the root folder and get its name
-            const rootFolderName = zipEntries[0].entryName;
-    
-            // Skip the first entry and filter out directories
-            return zipEntries.slice(1).filter(entry => !entry.isDirectory).map(entry => {
-                const relativePath = entry.entryName.replace(rootFolderName, '');
-                return {
-                    path: relativePath,
-                    source: entry.getData().toString('utf8')
-                };
-            });
-        } catch (error) {
-            console.error(`Error downloading or extracting repository:`, error);
-            throw error;
-        }
+        });
     };
 
     const octokit = new Octokit();
@@ -460,7 +470,12 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
             .status(200)
             .contentType('application/json')
             .send(fileContents);
-    } catch (publicError) {
+    } catch (publicError: any) {
+        if (publicError.status !== 404 && publicError?.response?.data?.message !== 'Not Found') {
+            console.error(`Error retrieving full repo source for ${owner} to ${repo}: ${publicError}`);
+            throw publicError;
+        }
+
         console.log(`Public access for ${repo} to get Full Source failed, attempting authenticated access`);
 
         if (!allowPrivateAccess) {
