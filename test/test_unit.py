@@ -131,6 +131,12 @@ class UnitTestSuite(unittest.TestCase):
         response = requests.post(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/projectsource/generator/process", json=data, headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
-        response = response.text
+        # if running locally - the result will be a string, but if running remotely, the result will be a JSON object for HTTP frame
+        #     so we need to see if we can parse the JSON, and if not, just use the string
+        try:
+            response = response.json()
+            response = response['body']
+        except json.JSONDecodeError:
+            response = response.text
 
         self.assertEqual(response, 'Full Source Code Import')

@@ -190,7 +190,8 @@ readonly defaultBlueprint =
             throw new Error(`Unable to draft blueprint: ${response.status}`);
         }
 
-        const draftOutputResponse : AIFunctionResponse = await response.json();
+        const objectResponseRaw = await response.json();
+        const draftOutputResponse : AIFunctionResponse = (objectResponseRaw.body?JSON.parse(objectResponseRaw.body):objectResponseRaw) as AIFunctionResponse;
 
         // check if the draft blueprint call succeeded, but the AI analysis failed
         if (draftOutputResponse.status !== 1) {
@@ -210,7 +211,9 @@ readonly defaultBlueprint =
         if (!response.ok) {
             throw new Error(`Unable to build blueprint from project samples: ${response.status}`);
         }
-        const responseData : QuickBlueprintOutput = await response.json();
+
+        const objectResponseRaw = await response.json();
+        const responseData : QuickBlueprintOutput = (objectResponseRaw.body?JSON.parse(objectResponseRaw.body):objectResponseRaw) as QuickBlueprintOutput;
         return responseData.blueprint;
     }
 }

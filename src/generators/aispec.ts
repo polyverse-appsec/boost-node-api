@@ -154,7 +154,10 @@ readonly fileArchitecturalSpecificationEntry =
         if (!response.ok) {
             throw new Error(`Unable to build blueprint from project samples: ${response.status}`);
         }
-        const responseData : SummarizerOutput = await response.json();
+
+        const objectResponseRaw = await response.json();
+        const responseData : SummarizerOutput = (objectResponseRaw.body?JSON.parse(objectResponseRaw.body):objectResponseRaw) as SummarizerOutput;
+
         return responseData.analysis;
     }
 }

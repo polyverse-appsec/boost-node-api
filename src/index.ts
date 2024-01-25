@@ -87,7 +87,7 @@ export async function localSelfDispatch<T>(email: string, originalIdentityHeader
 
     if (response.ok) {
         if (['GET'].includes(httpVerb)) {
-        const objectResponse = await response.json();
+            const objectResponse = await response.json();
             return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
         } else {
             return {} as T;

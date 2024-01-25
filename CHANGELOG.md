@@ -13,7 +13,7 @@ Polyverse Boost ReST API (Backend)
 - Enable a single retry of OpenAI file upload in case of network conditions or OpenAI server issues
 
 ### Bug Fixes
-- N/A
+- Fixes for GitHub and internal dispatch calls retrieving JSON data packaged in HTTP frames
 
 ## Version 0.9.3: January 23nd, 2024
 

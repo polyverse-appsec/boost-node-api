@@ -58,10 +58,24 @@ export class Generator {
         }
 
         if (!response.ok) {
-            throw new Error(`Unable to Load Generated Resource: ${response.status}`);
+            const errorText = await response.text() || 'Unknown Error';
+            throw new Error(`Unable to Load Generated Resource: ${response.status} - ${errorText}`);
         }
-        this.data = await response.text();
+        
+        const dataResponseRaw = await response.text();
 
+        // check if this is a valid JSON response (in raw text) before we look at body property
+        //      since the body property is only set if the response is JSON
+        //
+        //      if the response is not JSON, we'll just use the raw text as the data
+        const isJson = dataResponseRaw && (dataResponseRaw[0] === '{' || dataResponseRaw[0] === '[');
+        if (isJson) {
+            console.log(`Loaded ${this.dataType} data as JSON to extra body property`);
+            const dataResponse = JSON.parse(dataResponseRaw);
+            this.data = dataResponse.body?dataResponse.body:dataResponseRaw;
+        } else {
+            this.data = dataResponseRaw;
+        }
         console.log(`Loaded ${this.dataType} data`);
     }
 
@@ -123,7 +137,8 @@ export class Generator {
         });
 
         if (!response.ok) {
-            throw new Error(`Unable to Save Generated Resource: ${response.status}`);
+            const errorText = await response.text() || 'Unknown Error';
+            throw new Error(`Unable to Save Generated Resource: ${response.status} - ${errorText}`);
         }
 
         console.log(`Saved ${this.dataType} data`);
@@ -148,7 +163,8 @@ export class Generator {
             body: JSON.stringify(state)
         });
         if (!response.ok) {
-            console.log(`Unable to update ${this.dataType} resource generator progress: ${JSON.stringify(state)}`);
+            const errorText = await response.text() || 'Unknown Error';
+            console.error(`Unable to update ${this.dataType} resource generator progress: ${JSON.stringify(state)} - ${response.status} - ${errorText}`);
         }
     }
 
@@ -167,12 +183,26 @@ export class Generator {
 
         // if we can't load the project file, just return an empty string - caller can decide if that's a fatal issue
         if (!response.ok) {
-            console.log(`Unable to load project file: ${filename} from ${this.projectData.resources[0].uri}`);
+            const errorText = await response.text() || 'Unknown Error';
+            console.log(`Unable to load project file: ${filename} from ${this.projectData.resources[0].uri} - ${response.status} - ${errorText}`);
             return '';
         }
 
-        const result : string = await response.text();
-        return result;
+
+        const dataResponseRaw = await response.text();
+
+        // check if this is a valid JSON response (in raw text) before we look at body property
+        //      since the body property is only set if the response is JSON
+        //
+        //      if the response is not JSON, we'll just use the raw text as the data
+        const isJson = dataResponseRaw && (dataResponseRaw[0] === '{' || dataResponseRaw[0] === '[');
+        if (isJson) {
+            console.log(`Loaded ${this.dataType} data as JSON to extra body property`);
+            const dataResponse = JSON.parse(dataResponseRaw);
+            return dataResponse.body?dataResponse.body:dataResponseRaw;
+        }
+
+        return dataResponseRaw;
     }
 
     get resourceUri() : string {
@@ -188,7 +218,11 @@ export class Generator {
             headers: await signedAuthHeader(this.email)
         });
         if (response.ok) {
-            return await response.json() as Promise<string[]>;
+
+            const objectResponseRaw = await response.json();
+            const responseList : string[] = (objectResponseRaw.body?JSON.parse(objectResponseRaw.body):objectResponseRaw) as string[];
+
+            return responseList;
         }
         const errorText = await response.text() || 'Unknown Error';
         throw new Error(`Unable to get file list: ${response.status} - ${errorText}`);
@@ -202,9 +236,14 @@ export class Generator {
             headers: await signedAuthHeader(this.email)
         });
         if (response.ok) {
-            return await response.json() as Promise<FileContent[]>;
+
+            const objectResponseRaw = await response.json();
+            const fileContentList : FileContent[] = (objectResponseRaw.body?JSON.parse(objectResponseRaw.body):objectResponseRaw) as FileContent[];
+    
+            return fileContentList;
         }
-        throw new Error(`Unable to get project source: ${response.status}`);
+        const errorText = await response.text() || 'Unknown Error';
+        throw new Error(`Unable to get project source: ${response.status} - ${errorText}`);
     }
 
     async getBoostIgnoreFileSpecs() : Promise<string[]> {
@@ -213,8 +252,15 @@ export class Generator {
             headers: await signedAuthHeader(this.email)
         });
         if (response.ok) {
-            return await response.json() as Promise<string[]>;
+
+            const objectResponseRaw = await response.json();
+            const ignoredFiles : string[] = (objectResponseRaw.body?JSON.parse(objectResponseRaw.body):objectResponseRaw) as string[];
+    
+            return ignoredFiles;
         }
+
+        const errorText = await response.text() || 'Unknown Error';
+        console.error(`Unable to get boostignore file specs: ${response.status} - ${errorText}`);
 
         // for now - if we fail to get the boostignore specs, just return an empty list since its only
         //      used to build a basic blueprint
