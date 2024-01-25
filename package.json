@@ -5,7 +5,11 @@
   "scripts": {
     "test": "pytest",
     "build": "tsc",
-    "watch": "tsc --watch -p ./"
+    "watch": "tsc --watch -p ./",
+    "deploy": "npm run deploy-dev",
+    "deploy-dev": "serverless deploy --stage dev",
+    "deploy-prod": "serverless deploy --stage prod",
+    "deploy-test": "serverless deploy --stage test"
   },
   "keywords": [],
   "author": "",
