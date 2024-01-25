@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.9.5: January 24nd, 2024
+## Version 0.9.5: January 24th, 2024
 
 ### New Features
 - N/A
@@ -14,7 +14,7 @@ Polyverse Boost ReST API (Backend)
 ### Bug Fixes
 - Fixed global JSON and Text Payload limits to be 10mb (JSON) and 1mb (text) to enable download and saving of large source projects (~120 files is 220k)
 
-## Version 0.9.4: January 24nd, 2024
+## Version 0.9.4: January 24th, 2024
 
 ### New Features
 - Add individual Service API to process a single Resource Generator stage /api/user_project/{org}/{project}/data/{resource}/generator/process (POST)
@@ -26,7 +26,7 @@ Polyverse Boost ReST API (Backend)
 ### Bug Fixes
 - Fixes for GitHub and internal dispatch calls retrieving JSON data packaged in HTTP frames
 
-## Version 0.9.3: January 23nd, 2024
+## Version 0.9.3: January 23rd, 2024
 
 ### New Features
 - Added REST API /api/status (GET) to get current API version and status and stage
