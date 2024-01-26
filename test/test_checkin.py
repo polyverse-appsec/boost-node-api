@@ -87,8 +87,17 @@ class BoostBackendCheckinSuite(unittest.TestCase):
                 print(f"Project is Fully Synchronized in {i * 15} seconds - {response.json()}")
                 break
             else:
-                print(f"Project status is {gotten_project_data['status']}, waiting 15 seconds")
+
                 print(f"\tFull Project Status is {response.json()}")
+
+                # if our project data is out of date on AI servers- then we can poke the AI content sync endpoint to force a sync
+                if gotten_project_data['status'] == "AI Data Out of Date":
+                    print("Forcing AI Data Sync")
+                    response = requests.post(f"{TARGET_URL}/api/user_project/polyverse-appsec/sara/data_references", headers=signedHeaders)
+                    self.assertEqual(response.status_code, 200)
+                    print("AI Sync completed - rechecking in 20 seconds")
+                else:
+                    print(f"Project status is {gotten_project_data['status']}, waiting 20 seconds")
 
             # wait 20 seconds before probing again
             time.sleep(20)
