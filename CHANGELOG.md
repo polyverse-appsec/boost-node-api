@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.9.6: January 25th, 2024
+## Version 0.9.6: January 26th, 2024
 
 ### New Features
 - N/A
@@ -12,9 +12,11 @@ Polyverse Boost ReST API (Backend)
 - Improved details status in /api/user_project/{org}/{project}/status (GET) to include all resources and generators
 - Special case detection of GitHub public access rate limiting - logged
 - Enable Premium / Paid accounts to bypass Public Repo limits to use authenticated GitHub API calls
+- Migrated Backend Service to AWS JavaScript v3 syntax (small bits of code using v2 syntax, most was v3 syntax) - reducing size of Backend Service package
 
 ### Bug Fixes
 - Report synchronized flag in /api/user_project/{org}/{project}/status (GET) to indicate if all data is synchronized to AI Servers (was always false, even when synchronized)
+- Fix issue with incorrect Dynamo table (for installation data) being used (was not setting the stage suffix on the table name)
 
 ## Version 0.9.5: January 24th, 2024
 
