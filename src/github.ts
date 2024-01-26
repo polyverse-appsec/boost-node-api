@@ -64,9 +64,15 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
             .contentType('text/plain')
             .send(fileContent);
 
-    } catch (error : any) {
-        if (error.status !== 404 && error?.response?.data?.message !== 'Not Found') {
-            console.error(`Error: retrieving file via public access`, error);
+    } catch (publicError : any) {
+        if (publicError.status !== 404 && publicError?.response?.data?.message !== 'Not Found') {
+            if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
+                // Handle rate limit exceeded error
+                const resetTime = publicError.response.headers['x-ratelimit-reset'];
+                console.error(`Rate limit exceeded for Public Access to ${repo} File ${filePathWithoutBranch}. Reset time: ${new Date(resetTime * 1000)}`);
+            } else {
+                console.error(`Error: retrieving file via public access`, publicError);
+            }
             return res.status(500).send('Internal Server Error');
         }
 
@@ -169,14 +175,19 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
             .status(200)
             .contentType('application/json')
             .send(folderPaths);
-    } catch (error: any) {
-
-        if (error.status !== 404 && error?.response?.data?.message !== 'Not Found') {
-            console.error(`Error retrieving folder paths for ${owner} from ${repo}:`, error);
-            throw error;
+    } catch (publicError: any) {
+        if (publicError.status !== 404 && publicError?.response?.data?.message !== 'Not Found') {
+            if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
+                // Handle rate limit exceeded error
+                const resetTime = publicError.response.headers['x-ratelimit-reset'];
+                console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} folder paths. Reset time: ${new Date(resetTime * 1000)}`);
+            } else {
+                console.error(`Error retrieving folder paths for ${owner} from ${repo}:`, publicError);
+            }
+            return res.status(500).send('Internal Server Error');
         }
 
-        console.log(`Unable to publicly retrieve folder paths for ${owner} from ${repo}:`, error);
+        console.log(`Unable to publicly retrieve folder paths for ${owner} from ${repo}:`, publicError);
     }
 
     if (!allowPrivateAccess) {
@@ -276,14 +287,19 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
             .status(200)
             .contentType('application/json')
             .send(filePaths);
-    } catch (error : any) {
-        if (error.status !== 404 && error?.response?.data?.message !== 'Not Found') {
-            console.error(`Error retrieving file paths for ${owner} to ${repo}: ${error}`);
-            throw error;
+    } catch (publicError : any) {
+        if (publicError.status !== 404 && publicError?.response?.data?.message !== 'Not Found') {
+            if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
+                // Handle rate limit exceeded error
+                const resetTime = publicError.response.headers['x-ratelimit-reset'];
+                console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} file paths. Reset time: ${new Date(resetTime * 1000)}`);
+            } else {
+                console.error(`Error retrieving file paths for ${owner} from ${repo}:`, publicError);
+            }
+            return res.status(500).send('Internal Server Error');
         }
 
-        // 404 Not Found
-        console.log(`Cannot access repo ${owner}/${repo} at path via public access due to 404 Not Found`);
+        console.log(`Unable to publicly retrieve file paths for ${owner} from ${repo}:`, publicError);
     }
 
     if (!allowPrivateAccess) {
@@ -366,7 +382,7 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
             if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
                 // Handle rate limit exceeded error
                 const resetTime = publicError.response.headers['x-ratelimit-reset'];
-                console.error(`Rate limit exceeded for Public Access to ${repo}. Reset time: ${new Date(resetTime * 1000)}`);
+                console.error(`Rate limit exceeded for Public Access to ${repo} Details. Reset time: ${new Date(resetTime * 1000)}`);
             } else {
                 console.error(`Error retrieving repo details for ${owner} to ${repo}: ${publicError}`);
             }
@@ -478,8 +494,14 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
             .send(fileContents);
     } catch (publicError: any) {
         if (publicError.status !== 404 && publicError?.response?.data?.message !== 'Not Found') {
-            console.error(`Error retrieving full repo source for ${owner} to ${repo}: ${publicError}`);
-            throw publicError;
+            if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
+                // Handle rate limit exceeded error
+                const resetTime = publicError.response.headers['x-ratelimit-reset'];
+                console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} full source. Reset time: ${new Date(resetTime * 1000)}`);
+            } else {
+                console.error(`Error retrieving full source for ${owner} from ${repo}:`, publicError);
+            }
+            return res.status(500).send('Internal Server Error');
         }
 
         console.log(`Public access for ${repo} to get Full Source failed, attempting authenticated access`);

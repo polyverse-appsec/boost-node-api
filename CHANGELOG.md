@@ -10,6 +10,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Improved details status in /api/user_project/{org}/{project}/status (GET) to include all resources and generators
+- Special case detection of GitHub public access rate limiting - logged
 
 ### Bug Fixes
 - Report synchronized flag in /api/user_project/{org}/{project}/status (GET) to indicate if all data is synchronized to AI Servers (was always false, even when synchronized)
