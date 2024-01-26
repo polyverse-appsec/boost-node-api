@@ -4,7 +4,9 @@ interface SecretObject {
   [key: string]: string;
 }
 
-const client = new SecretsManagerClient({ region: "us-west-2" });
+// Use the region from the serverless environment configuration
+const region = process.env.AWS_REGION || 'us-west-2'; // Fallback to 'us-west-2' if not set
+const client = new SecretsManagerClient({ region });
 
 export async function getSecretsAsObject(secretName: string): Promise<SecretObject> {
   try {
@@ -29,7 +31,7 @@ export async function getSingleSecret(secretName: string): Promise<string> {
     }
     throw new Error('Secret string is undefined');
   } catch (err) {
-    console.error(`Error retrieving secrets from ${secretName}:`, err);
+    console.error(`Error retrieving secret from ${secretName}:`, err);
     throw err;
   }
 }
