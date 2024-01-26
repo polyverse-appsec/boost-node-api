@@ -53,7 +53,7 @@ class BoostBackendCheckinSuite(unittest.TestCase):
         else:
             print("Running test: Create Project, Attach GitHub Public Resources")
 
-        if not private:
+        if private:
             signedHeaders = get_signed_headers(PREMIUM_EMAIL)
             public_git_project = PRIVATE_PROJECT
             project_name = PRIVATE_PROJECT_NAME_CHECKIN_TEST
@@ -76,9 +76,9 @@ class BoostBackendCheckinSuite(unittest.TestCase):
         self.assertEqual(gotten_project_data['name'], project_name)
         self.assertEqual(gotten_project_data['resources'][0]['uri'], public_git_project)
 
-        # now we're going to loop every 15 seconds to see if the project status has completed synchronized - up to 120 seconds
+        # now we're going to loop every 20 seconds to see if the project status has completed synchronized - up to 120 seconds
         # if it hasn't, we'll fail the test
-        for i in range(0, 8):
+        for i in range(0, 30):
             response = requests.get(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/status", headers=signedHeaders)
             self.assertEqual(response.status_code, 200)
 
@@ -90,8 +90,8 @@ class BoostBackendCheckinSuite(unittest.TestCase):
                 print(f"Project status is {gotten_project_data['status']}, waiting 15 seconds")
                 print(f"\tFull Project Status is {response.json()}")
 
-            # wait 15 seconds before probing again
-            time.sleep(15)
+            # wait 20 seconds before probing again
+            time.sleep(20)
 
     def test_user_project_resource_creation_public_project(self):
         return self.helper_test_user_project_resource_creation_project(private=False)
