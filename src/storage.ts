@@ -1,12 +1,14 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DeleteCommand, DeleteCommandInput, DynamoDBDocumentClient, GetCommand, GetCommandInput, PutCommand, PutCommandInput } from "@aws-sdk/lib-dynamodb";
+import { DeleteCommand, DeleteCommandInput, GetCommand, GetCommandInput, PutCommand, PutCommandInput } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
-const client = new DynamoDBClient({ region: "us-west-2" });
+// Use the region from the serverless environment configuration
+const region = process.env.AWS_REGION || 'us-west-2'; // Fallback to 'us-west-2' if not set
+const client = new DynamoDBClient({ region });
 const dynamoDB = DynamoDBDocumentClient.from(client);
 
-// look for environment variable DYNAMO_DB_ANALYSIS for the table name.
-//  if not found, use the default table name Boost.AnalysisDataStore.dev
-const analysisDatastoreTableName = process.env.DYNAMO_DB_ANALYSIS || "Boost.AnalysisDataStore.dev";
+// Use the environment variable DYNAMO_DB_ANALYSIS for the table name
+const analysisDatastoreTableName = process.env.DYNAMO_DB_ANALYSIS || "Boost.AnalysisDataStore.prod";
 
 export enum SourceType {
     GitHub = 'github',
@@ -27,8 +29,8 @@ export async function getProjectData(email: string | null, sourceType: SourceTyp
     const params : GetCommandInput = {
         TableName: analysisDatastoreTableName,
         Key: {
-            projectPath: projectPath, // primary key
-            dataPath: dataPath // secondary/sort key
+            projectPath,
+            dataPath
         }
     };
 
@@ -37,13 +39,14 @@ export async function getProjectData(email: string | null, sourceType: SourceTyp
         try {
             const data = await dynamoDB.send(new GetCommand(params));
             return data.Item ? data.Item.data : undefined;
-        } catch (error: any) {
-            if (error.name === 'ProvisionedThroughputExceededException') {
-                console.error(`Attempt ${attempt + 1}: Throughput exceeded, retrying...`);
-                await sleep(2000 + attempt * 1000); // Exponential backoff
+        } catch (storageReadError: any) {
+            console.error(`Attempt ${attempt + 1}: Error getting project data: ${storageReadError}`);
+            if (storageReadError.name === 'ProvisionedThroughputExceededException') {
+                const waitTime = (1000 * attempt) + (Math.random() * 2000); // Random backoff
+                console.error(`Throughput exceeded, retrying in ${waitTime / 1000} seconds`);
+                await sleep(waitTime);
             } else {
-                console.error(`Error getting project data: ${error}`);
-                throw error;
+                throw storageReadError;
             }
         }
         attempt++;
@@ -65,33 +68,31 @@ export async function storeProjectData(email: string | null, sourceType: SourceT
     const params : PutCommandInput = {
         TableName: analysisDatastoreTableName,
         Item: {
-            projectPath: projectPath, // primary key
-            dataPath: dataPath, // secondary/sort key
-            data: data
+            projectPath,
+            dataPath,
+            data
         }
     };
 
-    // we're going to throttle waits for DynamoDB throughput exceeded errors
-    //    and then we can tune table capacity
     let retries = 0;
     const maximumRetries = 8;
-
     while (retries < maximumRetries) {
         try {
             await dynamoDB.send(new PutCommand(params));
             return;
-        } catch (error: any) {
-            if (error.name === 'ProvisionedThroughputExceededException') {
-                const waitTime = (2 ** retries) + (Math.random() * (10000 - 3000) + 3000) / 1000;
-                console.log(`Waiting for ${waitTime.toFixed(3)} seconds... due to DynamoDB throughput exceeded`);
-                await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
+        } catch (storageWriteError: any) {
+            console.error(`Error writing to DynamoDB: ${storageWriteError}`);
+            if (storageWriteError.name === 'ProvisionedThroughputExceededException') {
+                const waitTime = (2 ** retries) + Math.random() * 7000;
+                console.error(`Throughput exceeded, retrying in ${waitTime / 1000} seconds`);
+                await sleep(waitTime);
                 retries++;
             } else {
-                console.error(`Error writing to DynamoDB: ${error}`);
-                throw error;
+                throw storageWriteError;
             }
         }
     }
+    throw new Error('Maximum retries exceeded');
 }
 
 export async function deleteProjectData(email: string | null, sourceType: SourceType, owner: string, project: string, resourcePath: string, analysisType: string): Promise<void> {
@@ -101,8 +102,8 @@ export async function deleteProjectData(email: string | null, sourceType: Source
     const params : DeleteCommandInput = {
         TableName: analysisDatastoreTableName,
         Key: {
-            projectPath: projectPath, // primary key
-            dataPath: dataPath, // secondary/sort key
+            projectPath,
+            dataPath
         }
     };
 

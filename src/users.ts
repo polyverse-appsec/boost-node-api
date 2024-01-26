@@ -6,7 +6,7 @@ const region = process.env.AWS_REGION || 'us-west-2'; // Fallback to 'us-west-2'
 const dynamoDBClient = new DynamoDB({ region });
 const dynamoDB = DynamoDBDocument.from(dynamoDBClient);
 
-const installationsKeyValueStore = process.env.DYNAMO_DB_ANALYSIS || 'Boost.GitHub-App.installations';
+const installationsKeyValueStore = process.env.DYNAMO_DB_INSTALLATIONS || 'Boost.GitHub-App.installations';
 
 // Retrieves user information from DynamoDB
 export async function getUser(account: string): Promise<{ installationId: string; username: string } | undefined> {
