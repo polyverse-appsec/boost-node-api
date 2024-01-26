@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.9.6: January 25th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Improved details status in /api/user_project/{org}/{project}/status (GET) to include all resources and generators
+
+### Bug Fixes
+- Report synchronized flag in /api/user_project/{org}/{project}/status (GET) to indicate if all data is synchronized to AI Servers (was always false, even when synchronized)
+
 ## Version 0.9.5: January 24th, 2024
 
 ### New Features
