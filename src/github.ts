@@ -69,15 +69,23 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
             if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
                 // Handle rate limit exceeded error
                 const resetTime = publicError.response.headers['x-ratelimit-reset'];
-                console.error(`Rate limit exceeded for Public Access to ${repo} File ${filePathWithoutBranch}. Reset time: ${new Date(resetTime * 1000)}`);
+
+                // if private access is allowed, then we'll try that - log a warning instead of an error and skip other error handling
+                if (allowPrivateAccess) {
+                    console.warn(`Warning: Rate limit exceeded for Public Access to ${repo} File ${filePathWithoutBranch}. Trying Private Access with ${email}`);
+                } else {
+                    console.error(`Rate limit exceeded for Public Access to ${repo} File ${filePathWithoutBranch}. Reset time: ${new Date(resetTime * 1000)}`);
+                    // return a rate limit response
+                    return res.status(429).send('Rate Limit Exceeded');
+                }
             } else {
                 console.error(`Error: retrieving file via public access`, publicError);
+                return res.status(500).send('Internal Server Error');
             }
-            return res.status(500).send('Internal Server Error');
+        } else {
+            // 404 Not Found
+            console.log(`Cannot access repo ${owner}/${repo} at path ${filePathWithoutBranch}`);
         }
-
-        // 404 Not Found
-        console.log(`Cannot access repo ${owner}/${repo} at path ${filePathWithoutBranch}`);
     }
 
     if (!allowPrivateAccess) {
@@ -180,14 +188,22 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
             if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
                 // Handle rate limit exceeded error
                 const resetTime = publicError.response.headers['x-ratelimit-reset'];
-                console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} folder paths. Reset time: ${new Date(resetTime * 1000)}`);
+
+                // if private access is allowed, then we'll try that - log a warning instead of an error and skip other error handling
+                if (allowPrivateAccess) {
+                    console.warn(`Warning: Rate limit exceeded for Public Access to ${owner} repo ${repo} folder paths. Trying Private Access with ${email}`);
+                } else {
+                    console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} folder paths. Reset time: ${new Date(resetTime * 1000)}`);
+                    // return a rate limit response
+                    return res.status(429).send('Rate Limit Exceeded');
+                }
             } else {
                 console.error(`Error retrieving folder paths for ${owner} from ${repo}:`, publicError);
+                return res.status(500).send('Internal Server Error');
             }
-            return res.status(500).send('Internal Server Error');
+        } else {
+            console.log(`Unable to publicly retrieve folder paths for ${owner} from ${repo}:`, publicError);
         }
-
-        console.log(`Unable to publicly retrieve folder paths for ${owner} from ${repo}:`, publicError);
     }
 
     if (!allowPrivateAccess) {
@@ -292,14 +308,20 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
             if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
                 // Handle rate limit exceeded error
                 const resetTime = publicError.response.headers['x-ratelimit-reset'];
-                console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} file paths. Reset time: ${new Date(resetTime * 1000)}`);
+                if (allowPrivateAccess) {
+                    console.warn(`Warning: Rate limit exceeded for Public Access to ${owner} repo ${repo} file paths. Trying Private Access with ${email}`);
+                } else {
+                    console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} file paths. Reset time: ${new Date(resetTime * 1000)}`);
+                    // return a rate limit response
+                    return res.status(429).send('Rate Limit Exceeded');
+                }
             } else {
                 console.error(`Error retrieving file paths for ${owner} from ${repo}:`, publicError);
+                return res.status(500).send('Internal Server Error');
             }
-            return res.status(500).send('Internal Server Error');
+        } else {
+            console.log(`Unable to publicly retrieve file paths for ${owner} from ${repo}:`, publicError);
         }
-
-        console.log(`Unable to publicly retrieve file paths for ${owner} from ${repo}:`, publicError);
     }
 
     if (!allowPrivateAccess) {
@@ -382,14 +404,20 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
             if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
                 // Handle rate limit exceeded error
                 const resetTime = publicError.response.headers['x-ratelimit-reset'];
-                console.error(`Rate limit exceeded for Public Access to ${repo} Details. Reset time: ${new Date(resetTime * 1000)}`);
+                if (allowPrivateAccess) {
+                    console.warn(`Warning: Rate limit exceeded for Public Access to ${owner} repo ${repo} details. Trying Private Access with ${email}`);
+                } else {
+                    console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} details. Reset time: ${new Date(resetTime * 1000)}`);
+                    // return a rate limit response
+                    return res.status(429).send('Rate Limit Exceeded');
+                }
             } else {
                 console.error(`Error retrieving repo details for ${owner} to ${repo}: ${publicError}`);
+                return res.status(500).send('Internal Server Error');
             }
-            throw publicError;
+        } else {
+            console.log(`Public access for ${owner} to ${repo} to get Repo Details, attempting authenticated access`);
         }
-
-        console.log(`Public access for ${owner} to ${repo} to get Repo Details, attempting authenticated access`);
 
         if (!allowPrivateAccess) {
             console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
@@ -497,14 +525,20 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
             if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
                 // Handle rate limit exceeded error
                 const resetTime = publicError.response.headers['x-ratelimit-reset'];
-                console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} full source. Reset time: ${new Date(resetTime * 1000)}`);
+                if (allowPrivateAccess) {
+                    console.warn(`Warning: Rate limit exceeded for Public Access to ${owner} repo ${repo} full source. Trying Private Access with ${email}`);
+                } else {
+                    console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} full source. Reset time: ${new Date(resetTime * 1000)}`);
+                    // return a rate limit response
+                    return res.status(429).send('Rate Limit Exceeded');
+                }
             } else {
                 console.error(`Error retrieving full source for ${owner} from ${repo}:`, publicError);
+                return res.status(500).send('Internal Server Error');
             }
-            return res.status(500).send('Internal Server Error');
+        } else {
+            console.log(`Public access for ${repo} to get Full Source failed, attempting authenticated access`);
         }
-
-        console.log(`Public access for ${repo} to get Full Source failed, attempting authenticated access`);
 
         if (!allowPrivateAccess) {
             console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
