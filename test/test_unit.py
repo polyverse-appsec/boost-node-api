@@ -38,7 +38,7 @@ class UnitTestSuite(unittest.TestCase):
 
     def test_store_data_in_project(self):
         print("Running test: Store data in the user's project")
-        data = {"resources": [{"uri": "https://github.com/sindresorhus/bro"}]}
+        data = {"resources": [{"uri": PUBLIC_PROJECT}]}
         signedHeaders = get_signed_headers(EMAIL)
         response = requests.post(f"{TARGET_URL}/api/user_project/org123/project456", json=data, headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
@@ -83,7 +83,7 @@ class UnitTestSuite(unittest.TestCase):
     def test_update_project(self):
         print("Running test: Updating project data")
         signedHeaders = get_signed_headers(EMAIL)
-        data = {"resources": [{"uri": "https://github.com/sindresorhus/awesome"}]}
+        data = {"resources": [{"uri": PUBLIC_PROJECT}]}
         response = requests.patch(f"{TARGET_URL}/api/user_project/org123/project456", json=data, headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 

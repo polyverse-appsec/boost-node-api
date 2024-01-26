@@ -16,6 +16,7 @@ import {
     getFilePathsFromRepo,
     getDetailsFromRepo,
     getFullSourceFromRepo,
+    RepoDetails
 } from './github';
 import { uploadProjectDataForAIAssistant } from './openai';
 import { UserProjectData } from './types/UserProjectData';
@@ -571,8 +572,13 @@ async function validateProjectRepositories(email: string, org: string, resources
 
         // verify this account (and org pair) can access this resource
         const allowPrivateAccess = checkPrivateAccessAllowed(accountStatus);
-        if (!await getDetailsFromRepo(email, resourceUri, req, res, allowPrivateAccess)) {
-            return res;
+        const repoDetails : RepoDetails = await getDetailsFromRepo(email, resourceUri, req, res, allowPrivateAccess);
+
+        if (repoDetails.errorResponse) {
+            return repoDetails.errorResponse;
+        } else if (!repoDetails.data) {
+            console.error(`Unable to Repo Details an no Error found: ${resource.uri}`);
+            return res.status(500).send('Internal Server Error');
         }
     }
     return undefined;

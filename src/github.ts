@@ -381,13 +381,18 @@ export interface FileContent {
     source: string;
 }
 
+export interface RepoDetails {
+    data?: any;
+    errorResponse?: any;
+}
+
 // returns details of repo, or undefined if res/Response is an error written
-export async function getDetailsFromRepo(email: string, uri: URL, req: Request, res: Response, allowPrivateAccess: boolean) : Promise<any>{
+export async function getDetailsFromRepo(email: string, uri: URL, req: Request, res: Response, allowPrivateAccess: boolean) : Promise<RepoDetails>{
     const [, owner, repo] = uri.pathname.split('/');
 
     if (!owner || !repo) {
         console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
-        return res.status(400).send('Invalid URI');
+        return { errorResponse: res.status(400).send('Invalid URI') };
     }
 
     const octokit = new Octokit();
@@ -398,7 +403,8 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
             repo: repo
         });
 
-        return repoDetails.data;
+        return { data: repoDetails.data };
+
     } catch (publicError: any) {
         if (publicError.status !== 404 && publicError?.response?.data?.message !== 'Not Found') {
             if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
@@ -409,11 +415,11 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
                 } else {
                     console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} details. Reset time: ${new Date(resetTime * 1000)}`);
                     // return a rate limit response
-                    return res.status(429).send('Rate Limit Exceeded');
+                    return { errorResponse: res.status(429).send('Rate Limit Exceeded') };
                 }
             } else {
                 console.error(`Error retrieving repo details for ${owner} to ${repo}: ${publicError}`);
-                return res.status(500).send('Internal Server Error');
+                return { errorResponse: res.status(500).send('Internal Server Error') };
             }
         } else {
             console.log(`Public access for ${owner} to ${repo} to get Repo Details, attempting authenticated access`);
@@ -421,7 +427,7 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
 
         if (!allowPrivateAccess) {
             console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
-            return res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
+            return { errorResponse: res.status(401).send('Access to Private GitHub Resources is not allowed for this Account') };
         }
     
         // Public access failed, switch to authenticated access
@@ -432,13 +438,13 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
                 user = await getUser(email);
                 if (!user) {
                     console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                    return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                    return { errorResponse: res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`) };
                 }
             }
             const installationId = user?.installationId;
             if (!installationId) {
                 console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                return { errorResponse: res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`) };
             }
 
             const secretStore = 'boost/GitHubApp';
@@ -459,10 +465,11 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
 
             console.log(`Success Retrieving Repo Details from Private Repo ${repo}`)
 
-            return repoDetails.data;
+            return { data: repoDetails.data };
         } catch (authenticatedError) {
             console.error(`Error retrieving repo data via authenticated access:`, authenticatedError);
-            return res.status(500).send('Internal Server Error');
+
+            return { errorResponse: res.status(500).send('Internal Server Error') };
         }
     }
 }

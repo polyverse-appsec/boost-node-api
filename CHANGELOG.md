@@ -17,6 +17,7 @@ Polyverse Boost ReST API (Backend)
 ### Bug Fixes
 - Report synchronized flag in /api/user_project/{org}/{project}/status (GET) to indicate if all data is synchronized to AI Servers (was always false, even when synchronized)
 - Fix issue with incorrect Dynamo table (for installation data) being used (was not setting the stage suffix on the table name)
+- Fix incorrect error handling for user trying to access a private repo without GitHub App Installation
 
 ## Version 0.9.5: January 24th, 2024
 

@@ -11,6 +11,9 @@ EMAIL = "unittest@polytest.ai"
 PREMIUM_EMAIL = "stephen@polyverse.com"
 ORG = "polyverse-test-org"
 
+TEST_ORG = "org123"
+TEST_PROJECT_NAME = "project456"
+
 # PRIVATE_PROJECT = "https://github.com/StephenAFisher/testRepoForBoostGitHubApp"
 PRIVATE_PROJECT = "https://github.com/polyverse-appsec/sara"
 PRIVATE_PROJECT_NAME = "test-sara"

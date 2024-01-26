@@ -3,20 +3,19 @@ import requests
 
 from utils import get_signed_headers
 
+from constants import TARGET_URL, EMAIL, PUBLIC_PROJECT, TEST_ORG, PUBLIC_PROJECT_NAME, TEST_PROJECT_NAME
+
 
 class BadInputServiceSuite(unittest.TestCase):
-    BASE_URL = "http://localhost:3000"  # Local Test Server
-    CLOUD_URL = "https://pt5sl5vwfjn6lsr2k6szuvfhnq0vaxhl.lambda-url.us-west-2.on.aws"  # AWS Lambda URL
-    EMAIL = "unittest@polytest.ai"
 
     def test_no_content_type_project_post(self):
         print("Running test: No Content-Type header on project POST")
         headers = get_signed_headers(self.EMAIL)
 
         data = {
-            'resources': [{'uri': "https://github.com/public-apis/public-apis/"}]
+            'resources': [{'uri': PUBLIC_PROJECT}]
         }
-        response = requests.post(f"{self.BASE_URL}/api/user_project/org123/project456", data=data, headers=headers)
+        response = requests.post(f"{self.BASE_URL}/api/user_project/{TEST_ORG}/{PUBLIC_PROJECT_NAME}", data=data, headers=headers)
         self.assertEqual(response.text, "Invalid JSON")
         self.assertEqual(response.status_code, 400)
 
@@ -26,3 +25,10 @@ class BadInputServiceSuite(unittest.TestCase):
 
         response = requests.put(f"{self.BASE_URL}/api/user/profile", None, headers=headers)
         self.assertEqual(response.status_code, 400)
+
+    def test_store_nonexisting_repo_in_project(self):
+        print("Running test: Store data in the user's project")
+        data = {"resources": [{"uri": "http://www.github.com/missing_org/this-repo-does-not-exist/"}]}
+        signedHeaders = get_signed_headers(EMAIL)
+        response = requests.post(f"{TARGET_URL}/api/user_project/{TEST_ORG}/{TEST_PROJECT_NAME}", json=data, headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
