@@ -13,6 +13,7 @@ Polyverse Boost ReST API (Backend)
 - Special case detection of GitHub public access rate limiting - logged
 - Enable Premium / Paid accounts to bypass Public Repo limits to use authenticated GitHub API calls
 - Migrated Backend Service to AWS JavaScript v3 syntax (small bits of code using v2 syntax, most was v3 syntax) - reducing size of Backend Service package
+- Enhanced project status tracking to determine if active Resource generation is ongoing, or has stalled (e.g. no progress in 5 minutes)
 
 ### Bug Fixes
 - Report synchronized flag in /api/user_project/{org}/{project}/status (GET) to indicate if all data is synchronized to AI Servers (was always false, even when synchronized)

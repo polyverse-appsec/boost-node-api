@@ -871,6 +871,7 @@ enum ProjectStatus {
     ResourcesMissing = 'Resources Missing',                 // project uris found, but not resources
     // ResourcesOutOfDate = 'Resources Out of Date',        // Resources out of date with source (e.g. newer source)
     ResourcesIncomplete = 'Resources Incomplete',           // resources found, but not completely generated
+    ResourcesGenerating = 'Resources Generating',           // resources missing or incomplete, but still being generated
     ResourcesNotSynchronized = 'Resources Not Synchronized',// resources completely generated, but not synchronized to OpenAI
     AIResourcesOutOfDate = 'AI Data Out of Date',           // resources synchronized to OpenAI, but newer resources available
     Synchronized = 'Fully Synchronized'                     // All current resources completely synchronized to OpenAI
@@ -880,8 +881,11 @@ interface ProjectStatusState {
     status: ProjectStatus;
     synchronized: boolean;
     last_synchronized?: number;
+    activelyUpdating: boolean;
     details?: string;
 }
+
+const MinutesToWaitBeforeGeneratorConsideredStalled = 3;
 
 const user_project_org_project_status = `/user_project/:org/:project/status`;
 app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Request, res: Response) => {
@@ -897,7 +901,8 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
         const projectStatus : ProjectStatusState = {
             status: ProjectStatus.Unknown,
             last_synchronized: undefined,
-            synchronized: false
+            synchronized: false,
+            activelyUpdating: false,
         };
 
         // get the resource uri for this project
@@ -962,31 +967,38 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
                 missingResources.push(resource);
             }
         }
-        if (missingResources.length > 0) {
-            projectStatus.status = ProjectStatus.ResourcesMissing;
-            projectStatus.details = `Missing Resources: ${missingResources.join(', ')}`;
-            console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
-            return res
-                .status(200)
-                .contentType('application/json')
-                .send(projectStatus);
-        }
 
         let lastResourceCompletedGenerationTime: number | undefined = undefined;
+        let lastResourceGeneratingTime: number | undefined = undefined;
         const incompleteResources : string[] = [];
+        const currentResourceStatus : TaskStatus[] = [];
         for (const resource of [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification]) {
             let generatorStatus : GeneratorState;
             try {
                 generatorStatus = await localSelfDispatch<GeneratorState>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data/${resource}/generator`, 'GET');
             } catch (error) {
-                missingResources.push(resource);
                 // if generator fails, we'll assume the resource isn't available either
+                missingResources.push(resource);
+                currentResourceStatus.push(TaskStatus.Error);
+
                 continue;
             }
             if (generatorStatus.stage !== Stages.Complete) {
+                currentResourceStatus.push(generatorStatus.status);
+
+                // we nede to determine if the generator is still processing, and if so, what the last updated time
+                if (generatorStatus.status === TaskStatus.Processing) {
+                    if (!lastResourceGeneratingTime) {
+                        lastResourceGeneratingTime =  generatorStatus.last_updated;
+                    } else if (!generatorStatus.last_updated) {
+                        console.log(`Can't get last generated time for: ${resource}`);
+                    } else if (lastResourceGeneratingTime < generatorStatus.last_updated) {
+                        lastResourceGeneratingTime = generatorStatus.last_updated;
+                    }
+                }
+
                 // if the generator is not completed, then we're not using the best resource data
                 //      so even if we've synchronized, its only partial resource data (e.g. partial source, or incomplete blueprint)
-                projectStatus.status = ProjectStatus.ResourcesIncomplete;
                 incompleteResources.push(resource);
                 continue;
             }
@@ -997,6 +1009,27 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
                 lastResourceCompletedGenerationTime = generatorStatus.last_updated;
             }
         }
+        // check if we're actively processing
+        if (lastResourceGeneratingTime) {
+            // if the active processing is greater than 2 minutes, then we'll assume we're not actively processing (and we've stalled)
+            if (lastResourceGeneratingTime < (Math.floor(Date.now() / 1000) - (60 * MinutesToWaitBeforeGeneratorConsideredStalled))) {
+                projectStatus.activelyUpdating = false;
+            } else {
+                projectStatus.activelyUpdating = true;
+            }
+        }
+        // if we have missing or incomplete resources, but they are still being generated, then we're still generating
+        if (projectStatus?.activelyUpdating) {
+            projectStatus.status = ProjectStatus.ResourcesGenerating;
+            missingResources.push(...incompleteResources);
+            projectStatus.details = `Generating Resources: ${missingResources.join(', ')}`;
+            console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(projectStatus);
+        }
+        // otherwise, if we have missing resources, we're stalled
         if (missingResources.length > 0) {
             projectStatus.status = ProjectStatus.ResourcesMissing;
             projectStatus.details = `Missing Resources: ${missingResources.join(', ')}`;
@@ -1006,6 +1039,7 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
                 .contentType('application/json')
                 .send(projectStatus);
         }
+        // or if we have incomplete resources, we're stalled
         if (incompleteResources.length > 0) {
             projectStatus.status = ProjectStatus.ResourcesIncomplete;
             projectStatus.details = `Incomplete Resources: ${incompleteResources.join(', ')}`;
@@ -1807,7 +1841,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     //      We choose 3 minutes because the forked rate above waits 2 seconds before returning
                     //      so if a new task runs, we'd expect to update processing time at least every 1-2 minutes
                     if (currentGeneratorState.last_updated &&
-                        currentGeneratorState.last_updated > (Math.floor(Date.now() / 1000) - 60 * 3)) {
+                        currentGeneratorState.last_updated > (Math.floor(Date.now() / 1000) - 60 * MinutesToWaitBeforeGeneratorConsideredStalled)) {
                         // if caller wants us to be idle, and we're busy processing, we'll return busy HTTP
                         //      status code
                         return res
