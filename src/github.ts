@@ -363,7 +363,13 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
         return repoDetails.data;
     } catch (publicError: any) {
         if (publicError.status !== 404 && publicError?.response?.data?.message !== 'Not Found') {
-            console.error(`Error retrieving repo details for ${owner} to ${repo}: ${publicError}`);
+            if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
+                // Handle rate limit exceeded error
+                const resetTime = publicError.response.headers['x-ratelimit-reset'];
+                console.error(`Rate limit exceeded for Public Access to ${repo}. Reset time: ${new Date(resetTime * 1000)}`);
+            } else {
+                console.error(`Error retrieving repo details for ${owner} to ${repo}: ${publicError}`);
+            }
             throw publicError;
         }
 
