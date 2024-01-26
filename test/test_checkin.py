@@ -76,15 +76,20 @@ class BoostBackendCheckinSuite(unittest.TestCase):
         self.assertEqual(gotten_project_data['name'], project_name)
         self.assertEqual(gotten_project_data['resources'][0]['uri'], public_git_project)
 
-        # now we're going to loop every 20 seconds to see if the project status has completed synchronized - up to 120 seconds
+        # now we're going to loop every 20 seconds to see if the project status has completed synchronized
         # if it hasn't, we'll fail the test
-        for i in range(0, 30):
+        # we wait a maximum length based on size of project
+        # 5 minutes for 20-30 resources; 15-20 minutes for 100-150 resources
+        iterations_in_one_min = 3
+        max_iterations_public = iterations_in_one_min * 5
+        max_iterations_private = iterations_in_one_min * 15
+        for i in range(0, max_iterations_private if private else max_iterations_public):
             response = requests.get(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/status", headers=signedHeaders)
             self.assertEqual(response.status_code, 200)
 
             gotten_project_data = response.json()
             if gotten_project_data['synchronized']:
-                print(f"Project is Fully Synchronized in {i * 15} seconds - {response.json()}")
+                print(f"Project is Fully Synchronized in {i * 20} seconds - {response.json()}")
                 break
             else:
 
