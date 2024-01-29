@@ -883,6 +883,7 @@ interface ProjectStatusState {
     last_synchronized?: number;
     activelyUpdating: boolean;
     details?: string;
+    last_updated: number;
 }
 
 const MinutesToWaitBeforeGeneratorConsideredStalled = 3;
@@ -948,6 +949,7 @@ app.post(`${api_root_endpoint}${user_project_org_project_status}`, async (req: R
             last_synchronized: undefined,
             synchronized: false,
             activelyUpdating: false,
+            last_updated : Math.floor(Date.now() / 1000) // default something and refresh when saved
         };
 
         // get the resource uri for this project
@@ -985,7 +987,12 @@ app.post(`${api_root_endpoint}${user_project_org_project_status}`, async (req: R
             // if we get an error, then we'll assume the project doesn't exist
             projectStatus.status = ProjectStatus.Unknown;
             projectStatus.details = `Project Data not found; Treat project as unknown`;
+
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+
+            // we're not going to persist this, since the project may not exist, and we don't want to waste disk space on unknown status
+            projectStatus.last_updated = Math.floor(Date.now() / 1000);
+
             return res
                 .status(200)
                 .contentType('application/json')
@@ -995,6 +1002,9 @@ app.post(`${api_root_endpoint}${user_project_org_project_status}`, async (req: R
         const saveProjectStatusUpdate = async () => {
             // save the project status
             try {
+                // set current timestamp
+                projectStatus.last_updated = Math.floor(Date.now() / 1000);
+
                 await storeProjectData(email, SourceType.General, org, project, '', 'status', JSON.stringify(projectStatus));
                 console.log(`${user_project_org_project_status}: persisted status`);
             } catch (error) {
