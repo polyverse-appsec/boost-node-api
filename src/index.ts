@@ -888,15 +888,60 @@ interface ProjectStatusState {
 const MinutesToWaitBeforeGeneratorConsideredStalled = 3;
 
 const user_project_org_project_status = `/user_project/:org/:project/status`;
+
 app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
     try {
+
         const email = await validateUser(req, res);
         if (!email) {
             return;
         }
+
+        const { org, project } = req.params;
+
+        const rawProjectStatusData = await getProjectData(email, SourceType.General, org, project, '', 'status');
+        if (!rawProjectStatusData) {
+            console.error(`Project Status not found; Project may not exist or hasn't been discovered yet`);
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send({
+                    status: ProjectStatus.Unknown,
+                    synchronized: false,
+                    activelyUpdating: false,
+                    details: `Project Status not found; Project may not exist or hasn't been discovered yet`
+                });
+        }
+
+        const projectStatus : ProjectStatusState = JSON.parse(rawProjectStatusData) as ProjectStatusState;
+
+        console.log(`Project Status: ${JSON.stringify(projectStatus)}`);
+
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send(projectStatus);
+    } catch (error) {
+        console.error(`Handler Error: ${user_project_org_project_status}`, error);
+        return res.status(500).send('Internal Server Error');
+    }
+});
+
+app.post(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const { org, project } = req.params;
 
         const projectStatus : ProjectStatusState = {
             status: ProjectStatus.Unknown,
@@ -921,6 +966,7 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
 
             // we can continue on, since we're just missing the last synchronized time - which probably didn't happen anyway
         }
+
         for (const dataReference of dataReferences) {
             if (dataReference.last_updated) {
                 // pick the newest last_updated date - so we report the last updated date of the most recent resource sync
@@ -946,11 +992,24 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
                 .send(projectStatus);
         }
 
+        const saveProjectStatusUpdate = async () => {
+            // save the project status
+            try {
+                await storeProjectData(email, SourceType.General, org, project, '', 'status', JSON.stringify(projectStatus));
+                console.log(`${user_project_org_project_status}: persisted status`);
+            } catch (error) {
+                console.error(`Unable to persist project status`, error);
+            }
+        }
+
         // if we have no resources, then we're done - report it as synchronized - since we have no data :)
         if (projectData.resources.length === 0) {
             projectStatus.status = ProjectStatus.Synchronized;
             projectStatus.details = `No GitHub resources found - nothing to synchronize`;
             console.log(`Project Status OK: ${JSON.stringify(projectStatus)}`);
+
+            await saveProjectStatusUpdate();
+
             return res
                 .status(200)
                 .contentType('application/json')
@@ -1024,6 +1083,9 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
             missingResources.push(...incompleteResources);
             projectStatus.details = `Generating Resources: ${missingResources.join(', ')}`;
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+
+            await saveProjectStatusUpdate();
+
             return res
                 .status(200)
                 .contentType('application/json')
@@ -1034,6 +1096,9 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
             projectStatus.status = ProjectStatus.ResourcesMissing;
             projectStatus.details = `Missing Resources: ${missingResources.join(', ')}`;
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+
+            await saveProjectStatusUpdate();
+
             return res
                 .status(200)
                 .contentType('application/json')
@@ -1044,6 +1109,9 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
             projectStatus.status = ProjectStatus.ResourcesIncomplete;
             projectStatus.details = `Incomplete Resources: ${incompleteResources.join(', ')}`;
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+
+            await saveProjectStatusUpdate();
+
             return res
                 .status(200)
                 .contentType('application/json')
@@ -1057,6 +1125,8 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
 
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
+            await saveProjectStatusUpdate();
+
             return res
                 .status(200)
                 .contentType('application/json')
@@ -1069,6 +1139,9 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
             // if we've never synchronized the data, then report not synchronized
             projectStatus.status = ProjectStatus.ResourcesNotSynchronized;
             console.error(`Project Status: Resources Completed Generation but not Uploaded to AI Servers`);
+
+            await saveProjectStatusUpdate();
+
             return res
                 .status(200)
                 .contentType('application/json')
@@ -1084,6 +1157,8 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
 
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
+            await saveProjectStatusUpdate();
+
             return res
                 .status(200)
                 .contentType('application/json')
@@ -1096,6 +1171,8 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
         projectStatus.details = `All Resources Completely Generated and Uploaded to AI Servers`;
 
         console.log(`Project Status OK: ${JSON.stringify(projectStatus)}`);
+
+        await saveProjectStatusUpdate();
 
         return res
             .status(200)

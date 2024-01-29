@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.9.7: January 29th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Enable refresh of Project Status via /api/user_project/{org}/{project}/status (POST) - and make GET fast to retrieve cached status
+
+### Bug Fixes
+- N/A
+
 ## Version 0.9.6: January 26th, 2024
 
 ### New Features

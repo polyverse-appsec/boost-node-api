@@ -88,6 +88,11 @@ class BoostBackendCheckinSuite(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
 
             gotten_project_data = response.json()
+            if gotten_project_data['status'] == "Unknown":
+                print("Project Status is Unknown - regenerating via POST")
+                response = requests.post(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/status", headers=signedHeaders)
+                self.assertEqual(response.status_code, 200)
+
             if gotten_project_data['synchronized']:
                 print(f"Project is Fully Synchronized in {i * 20} seconds - {response.json()}")
                 break
