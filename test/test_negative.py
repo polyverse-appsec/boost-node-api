@@ -1,12 +1,13 @@
 import unittest
 import requests
+import time
 
 from utils import get_signed_headers
 
-from constants import TARGET_URL, EMAIL, PUBLIC_PROJECT, TEST_ORG, PUBLIC_PROJECT_NAME, TEST_PROJECT_NAME
+from constants import TARGET_URL, EMAIL, PUBLIC_PROJECT, TEST_ORG, PUBLIC_PROJECT_NAME, TEST_PROJECT_NAME, FREE_EMAIL, FREE_ORG, FREE_PROJECT_NAME, PRIVATE_PROJECT
 
 
-class BadInputServiceSuite(unittest.TestCase):
+class NegativeTestsServiceSuite(unittest.TestCase):
 
     def test_no_content_type_project_post(self):
         print("Running test: No Content-Type header on project POST")
@@ -32,3 +33,18 @@ class BadInputServiceSuite(unittest.TestCase):
         signedHeaders = get_signed_headers(EMAIL)
         response = requests.post(f"{TARGET_URL}/api/user_project/{TEST_ORG}/{TEST_PROJECT_NAME}", json=data, headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
+
+    def test_unpaid_user_accessing_private_repo(self):
+        print("Running test: Create project with private repo as Unpaid User")
+        data = {"resources": [{"uri": PRIVATE_PROJECT}]}
+        signedHeaders = get_signed_headers(FREE_EMAIL)
+        # measure the time it takes for the post
+        start_time = time.time()
+        response = requests.post(f"{TARGET_URL}/api/user_project/{FREE_ORG}/{FREE_PROJECT_NAME}", json=data, headers=signedHeaders)
+        end_time = time.time()
+        print(f"Time to create inaccessible project: {end_time - start_time}")
+        self.assertEqual(response.status_code, 401)
+
+        signedHeaders = get_signed_headers(EMAIL)
+        response = requests.get(f"{TARGET_URL}/api/user_project/{FREE_ORG}/{FREE_PROJECT_NAME}", headers=signedHeaders)
+        self.assertEqual(response.status_code, 404)

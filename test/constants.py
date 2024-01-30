@@ -11,6 +11,11 @@ EMAIL = "unittest@polytest.ai"
 PREMIUM_EMAIL = "stephen@polyverse.com"
 ORG = "polyverse-test-org"
 
+FREE_EMAIL = "unittest@free-polyverse.com"
+FREE_ORG = "free-polyverse-test-org"
+
+FREE_PROJECT_NAME = "free-test-project"
+
 TEST_ORG = "org123"
 TEST_PROJECT_NAME = "project456"
 
