@@ -63,18 +63,21 @@ export async function searchProjectData(email: string | null, sourceType: Source
 
     console.log(`searchProjectData for: ${email ? email : "public"} ${sourceType} ${owner} ${project} ${resourcePath} ${analysisType}`);
 
+    const keyConditionExpression = '#projectPath = :projectPathVal' + (dataPath ? ' AND begins_with(#dataPath, :dataPathVal)' : '');
+    const expressionAttributeNames = {
+        '#projectPath': 'projectPath',
+        ...(dataPath && { '#dataPath': 'dataPath' })
+    };
+    const expressionAttributeValues = {
+        ':projectPathVal': { S: projectPath },
+        ...(dataPath && { ':dataPathVal': { S: dataPath } })
+    };
     // Query parameters
     const params: QueryCommandInput = {
         TableName: analysisDatastoreTableName,
-        KeyConditionExpression: '#projectPath = :projectPathVal' + (dataPath ? ' AND begins_with(#dataPath, :dataPathVal)' : ''),
-        ExpressionAttributeNames: {
-            '#projectPath': 'projectPath',
-            ...(dataPath && { '#dataPath': 'dataPath' })
-        },
-        ExpressionAttributeValues: {
-            ':projectPathVal': { S: projectPath },
-            ...(dataPath && { ':dataPathVal': { S: dataPath } })
-        }
+        KeyConditionExpression: keyConditionExpression,
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: expressionAttributeValues
     };
 
     // Execute the search query
