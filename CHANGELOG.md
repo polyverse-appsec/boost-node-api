@@ -12,7 +12,8 @@ Polyverse Boost ReST API (Backend)
 - Enable refresh of Project Status via /api/user_project/{org}/{project}/status (POST) - and make GET fast to retrieve cached status
 
 ### Bug Fixes
-- N/A
+- Ensure we return a full JSON object from /api/user_project/{org}/{project}/data/{resource}/generator (GET) - was returning a raw string
+- Ensure project creation can work without specifying any GitHub resource URIs (e.g. empty project) - discovery was failing
 
 ## Version 0.9.6: January 26th, 2024
 

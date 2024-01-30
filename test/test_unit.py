@@ -36,14 +36,21 @@ class UnitTestSuite(unittest.TestCase):
         account = response.json()
         self.assertTrue(account["enabled"])
 
-    def test_store_data_in_project(self):
-        print("Running test: Store data in the user's project")
+    def test_create_basic_project(self):
+        print("Running test: Create basic user project")
         data = {"resources": [{"uri": PUBLIC_PROJECT}]}
         signedHeaders = get_signed_headers(EMAIL)
         response = requests.post(f"{TARGET_URL}/api/user_project/org123/project456", json=data, headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
-    def test_retrieve_data_from_project(self):
+        signedHeaders = get_signed_headers(EMAIL)
+        response = requests.get(f"{TARGET_URL}/api/user_project/org123/project456", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+        responseData = response.json()
+        self.assertEqual(responseData['name'], "project456")
+        self.assertNotEqual(len(responseData['resources']), 0)
+
+    def test_create_empty_project(self):
         print("Running test: Retrieve data from the user's project")
 
         signedHeaders = get_signed_headers(EMAIL)
@@ -56,6 +63,19 @@ class UnitTestSuite(unittest.TestCase):
         responseData = response.json()
         self.assertEqual(responseData['name'], "project456")
         self.assertEqual(len(responseData['resources']), 0)
+
+    def test_search_for_projects(self):
+        print("Running test: Retrieve data from the user's project")
+
+        signedHeaders = get_signed_headers(EMAIL)
+        response = requests.post(f"{TARGET_URL}/api/user_project/org123/project456", json={}, headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+        signedHeaders = get_signed_headers(EMAIL)
+        response = requests.get(f"{TARGET_URL}/api/search/project?user=*&project=*&project=*", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+        responseData = response.json()
+        self.assertGreaterEqual(len(responseData), 1)
 
     def test_store_goals_data_in_project(self):
         print("Running test: Store goals data in the user's project")

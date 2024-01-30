@@ -1,6 +1,7 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, QueryCommand, QueryCommandInput } from "@aws-sdk/client-dynamodb";
 import { DeleteCommand, DeleteCommandInput, GetCommand, GetCommandInput, PutCommand, PutCommandInput } from "@aws-sdk/lib-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+import { unmarshall } from "@aws-sdk/util-dynamodb";
 
 // Use the region from the serverless environment configuration
 const region = process.env.AWS_REGION || 'us-west-2'; // Fallback to 'us-west-2' if not set
@@ -52,6 +53,49 @@ export async function getProjectData(email: string | null, sourceType: SourceTyp
         attempt++;
     }
     throw new Error('Maximum retry attempts reached');    
+}
+
+// to search "public" data, pass "*" as email
+// to search private data for all users, pass null as email
+export async function searchProjectData(email: string | null, sourceType: SourceType, owner: string, project: string, resourcePath?: string, analysisType?: string): Promise<any[]> {
+    const projectPath = `${email ? email : "public"}/${sourceType}/${owner}/${project}`;
+    const dataPath = resourcePath && analysisType ? `${resourcePath}/${analysisType}` : undefined;
+
+    console.log(`searchProjectData for: ${email ? email : "public"} ${sourceType} ${owner} ${project} ${resourcePath} ${analysisType}`);
+
+    // Query parameters
+    const params: QueryCommandInput = {
+        TableName: analysisDatastoreTableName,
+        KeyConditionExpression: '#projectPath = :projectPathVal' + (dataPath ? ' AND begins_with(#dataPath, :dataPathVal)' : ''),
+        ExpressionAttributeNames: {
+            '#projectPath': 'projectPath',
+            ...(dataPath && { '#dataPath': 'dataPath' })
+        },
+        ExpressionAttributeValues: {
+            ':projectPathVal': { S: projectPath },
+            ...(dataPath && { ':dataPathVal': { S: dataPath } })
+        }
+    };
+
+    // Execute the search query
+    let attempt = 0;
+    while (attempt < 5) {
+        try {
+            const data = await dynamoDB.send(new QueryCommand(params));
+            return data.Items ? data.Items.map(item => unmarshall(item)) : [];
+        } catch (storageQueryError: any) {
+            console.error(`Attempt ${attempt + 1}: Error querying project data: ${storageQueryError}`);
+            if (storageQueryError.name === 'ProvisionedThroughputExceededException') {
+                const waitTime = (1000 * attempt) + (Math.random() * 2000); // Random backoff
+                console.error(`Throughput exceeded, retrying in ${waitTime / 1000} seconds`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+            } else {
+                throw storageQueryError;
+            }
+        }
+        attempt++;
+    }
+    throw new Error('Maximum retry attempts reached');
 }
 
 function sleep(ms: number) {

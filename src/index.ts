@@ -4,6 +4,7 @@ import bodyParser from 'body-parser';
 import serverless from 'serverless-http';
 import {
     getProjectData,
+    searchProjectData,
     storeProjectData,
     SourceType,
     convertToSourceType,
@@ -21,7 +22,7 @@ import {
 import { uploadProjectDataForAIAssistant } from './openai';
 import { UserProjectData } from './types/UserProjectData';
 import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
-import { ProjectResource, ResourceStatus } from './types/ProjectResource';
+import { ProjectResource } from './types/ProjectResource';
 import axios from 'axios';
 import { ProjectDataReference } from './types/ProjectDataReference';
 import { Generator } from './generators/generator';
@@ -631,6 +632,16 @@ app.patch(`${api_root_endpoint}${user_project_org_project}`, async (req: Request
         await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProjectString);
         console.log(`${user_project_org_project}: updated data`);
 
+        const signedIdentity = (await signedAuthHeader(email))[`X-Signed-Identity`];
+
+        // get the path of the project data uri - excluding the api root endpoint
+        const projectDataPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
+        try {
+            await localSelfDispatch<void>(email, signedIdentity, req, `${projectDataPath}/discovery`, 'POST');
+        } catch (error) {
+            console.error(`Unable to launch discovery for ${projectDataPath}`, error);
+        }
+
         return res
             .status(200)
             .send();
@@ -805,6 +816,58 @@ app.delete(`${api_root_endpoint}${user_project_org_project}`, async (req: Reques
         return res.status(500).send('Internal Server Error');
     }
     
+});
+
+const searchWildcard = '*';
+// Services to search the entire system for any project
+const search_projects = `/search/projects`;
+app.get(`${api_root_endpoint}${search_projects}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        // query params support:
+        //  - org?: string - specific org, or all if not specified
+        //  - project?: string - specific project, or all if not specified
+        //  - user?: string - a specific user, or all if not specified
+
+        const { org, project, user } = req.query;
+
+        const projectDataList : UserProjectData[] = [];
+
+        const projectDataRaw : any[] = await searchProjectData(user?user as string:searchWildcard, SourceType.General, org?org as string:searchWildcard, project?project as string:searchWildcard, "", 'project');
+
+        if (!projectDataRaw) {
+            console.error(`No projects found due to query failure`);
+            return res
+                .status(500)
+                .send('Internal Server Error');
+        }
+
+        console.log(`${search_projects}: retrieved data for ${projectDataRaw.length} raw project data`);
+
+        for (const projectData of projectDataRaw) {
+            const projectDataString = projectData.value;
+            const projectDataObject = JSON.parse(projectDataString) as UserProjectData;
+            projectDataList.push(projectDataObject);
+        }
+
+        console.log(`${search_projects}: retrieved data for ${projectDataList.length} projects`);
+
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send(projectDataList);
+
+    } catch (error) {
+        console.error(`Handler Error: ${search_projects}`, error);
+        return res.status(500).send('Internal Server Error');
+    }
 });
 
 // create an object with the project goals
@@ -1645,10 +1708,12 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_resource_generator}
         } else {
             console.log(`${user_project_org_project_data_resource_generator}: retrieved data`);
 
+            const generatorData = JSON.parse(currentInput) as GeneratorState;
+
             return res
                 .status(200)
                 .contentType('application/json')
-                .send(currentInput);
+                .send(generatorData);
         }
     } catch (error) {
         console.error(`Handler Error: ${user_project_org_project_data_resource_generator}`, error);
@@ -1781,6 +1846,19 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             return res.status(404).send('Project not found');
         }
         const projectData = loadedProjectData as UserProjectData;
+
+        // if we have no resources to generate data from, then we're done
+        if (!projectData.resources?.length) {
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send({
+                    status: TaskStatus.Idle,
+                    stage: Stages.Complete,
+                    last_updated: Math.floor(Date.now() / 1000),
+                    status_details: `No resources to generate data from`,
+                } as GeneratorState);
+        }
 
         const uri = new URL(projectData.resources[0].uri);
         const pathSegments = uri.pathname.split('/').filter(segment => segment);
@@ -2088,8 +2166,14 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
         }
 
         if (!userProjectData.resources || userProjectData.resources.length === 0) {
-            console.error(`No resources found in project: ${userProjectData.org}/${userProjectData.name}`);
-            return res.status(400).send('No resources found in project');
+            console.warn(`No resources found in project: ${userProjectData.org}/${userProjectData.name}`);
+
+            // if we have no resources, we won't generate any data files
+            // in the future, we should support generating blank or minimal data files so user can chat without Repository data
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send([]);
         }
         const uri = new URL(userProjectData.resources[0].uri);
 
