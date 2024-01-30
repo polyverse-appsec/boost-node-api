@@ -4,13 +4,23 @@ import * as jwt from 'jsonwebtoken';
 
 import { getSingleSecret } from './secrets';
 
+export const header_X_Signed_Identity = 'X-Signed-Identity';
+export const header_X_Signing_Algorithm = 'X-Signing-Algorithm';
+
+export const local_sys_admin_email = "root@localhost";
+
 interface RawIdentity {
     email: string;
     organization?: string;
     expires: number;
 }
 
-export async function validateUser(req: Request, res: Response): Promise<string | undefined> {
+export enum AuthType {
+    User,
+    Admin
+}
+
+export async function validateUser(req: Request, res: Response, accessType: AuthType = AuthType.User): Promise<string | undefined> {
     let email = '';
     // if the identity of the caller is signed, we need to verify AuthN
     //   - we'll get the signed identity blob (base-64 encoded JWT)
@@ -20,7 +30,7 @@ export async function validateUser(req: Request, res: Response): Promise<string 
     //   - we'll decode the identity blob to get the email address
 
     // we need to look for any cased variant of x-signed-identity in the header
-    const signedIdentityHeader = Object.keys(req.headers).find(key => key.toLowerCase() === 'x-signed-identity');
+    const signedIdentityHeader = Object.keys(req.headers).find(key => key.toLowerCase() === header_X_Signed_Identity.toLowerCase());
     if (signedIdentityHeader) {
         let signingKey = process.env.JWT_SIGNING_KEY;
         if (!signingKey) {
@@ -32,7 +42,7 @@ export async function validateUser(req: Request, res: Response): Promise<string 
             return undefined;
         }
     
-        const signedAlgorithmHeader = Object.keys(req.headers).find(key => key.toLowerCase() === 'x-signing-algorithm');
+        const signedAlgorithmHeader = Object.keys(req.headers).find(key => key.toLowerCase() === header_X_Signing_Algorithm.toLowerCase());
         let signingAlgorithm = signedAlgorithmHeader?req.headers[signedAlgorithmHeader] as jwt.Algorithm:undefined;
         if (!signingAlgorithm) {
             signingAlgorithm = 'RS256';
@@ -80,6 +90,16 @@ export async function validateUser(req: Request, res: Response): Promise<string 
 
     console.log(`User authenticated: ${email}`);
 
+    // if admin access is required, then verify the domain is coming from polyverse.com
+    if (accessType === AuthType.Admin) {
+        if (!email.endsWith('@polyverse.com')) {
+            console.error(`Unauthorized: Admin access is required`);
+            res.status(401).send('Unauthorized');
+            return undefined;
+        }
+        console.log(`Admin access granted: ${email}`);
+    }
+
     return email;
 }
 
@@ -90,7 +110,7 @@ function normalizeEmail(email: string): string {
     return email.replace(/@polytest\.ai$/i, '@polyverse.com');
 }
 
-export async function signedAuthHeader(email: string, organization?: string): Promise<{'X-Signed-Identity': string}> {
+export async function signedAuthHeader(email: string, organization?: string): Promise<{ [key: string]: string }> {
     let signingKey = process.env.JWT_SIGNING_KEY;
     if (!signingKey) {
         signingKey = await getSingleSecret('boost-sara/sara-client-private-key');
@@ -111,12 +131,12 @@ export async function signedAuthHeader(email: string, organization?: string): Pr
     // if the domain of the email is polyverse.com then change it to polytest.ai
     // use a regex to replace the domain case insensitive
     const signedToken = jwt.sign(unsignedIdentity, signingKey, { algorithm: 'RS256' });
-    return { 'X-Signed-Identity': signedToken}
+    return { [header_X_Signed_Identity]: signedToken}
 }
 
 export function getSignedIdentityFromHeader(req: Request): string | undefined {
     // we need to look for any cased variant of x-signed-identity in the header
-    const signedIdentityHeader = Object.keys(req.headers).find(key => key.toLowerCase() === 'x-signed-identity');
+    const signedIdentityHeader = Object.keys(req.headers).find(key => key.toLowerCase() === header_X_Signed_Identity.toLowerCase());
     if (!signedIdentityHeader) {
         return undefined;
     }

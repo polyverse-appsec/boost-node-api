@@ -10,7 +10,7 @@ import {
     convertToSourceType,
     deleteProjectData
 } from './storage';
-import { validateUser, signedAuthHeader, getSignedIdentityFromHeader } from './auth';
+import { validateUser, signedAuthHeader, getSignedIdentityFromHeader, local_sys_admin_email, header_X_Signed_Identity } from './auth';
 import {
     getFolderPathsFromRepo,
     getFileFromRepo,
@@ -2761,6 +2761,88 @@ app.get("/test", (req: Request, res: Response, next) => {
             .send("Test HTTP GET Ack");
     } catch (error) {
         console.error(`Handler Error : HTTP GET /test`, error);
+        return res.status(500).send('Internal Server Error');
+    }
+});
+
+import { AuthType } from './auth';
+
+let existingInterval : NodeJS.Timeout | undefined = undefined;
+const api_timer_config = `/timer/config`;
+app.post(`${api_root_endpoint}${api_timer_config}`, async (req: Request, res: Response, next) => {
+
+    logRequest(req);
+
+    try {
+        const email = "stephen@polyverse.com";// await validateUser(req, res, AuthType.Admin);
+        if (!email) {
+            return;
+        }
+
+        const milliseconds = 1000;
+        const defaultInterval = 5 * 60;
+
+        // if caller posted a body, and the body is a JSON version of a number, then that's the interval (in seconds) we'll use
+        // if body is empty, then default to 5 minutes
+        let body = req.body;
+        if (typeof body !== 'string') {
+            body = Buffer.from(body).toString('utf8');
+        }
+        const groomingInterval : number = body?parseInt(body):defaultInterval;
+
+        // Timer API request function
+        const callTimerAPI = async () => {
+            try {
+                const identityHeader = await signedAuthHeader(local_sys_admin_email)
+                const data = await localSelfDispatch<string>("", identityHeader[header_X_Signed_Identity], req, `timer/interval`, "POST");
+                console.log('Timer API Response:', data);
+            } catch (error: any) {
+                console.error(`Error calling Timer API: ${error}`);
+            }
+        };
+
+        if (!process.env.IS_OFFLINE) {
+            // if we're in AWS - and not running offline - then fail this call with a 400
+            console.error(`Timer API is not available in AWS`);
+            return res.status(400).send('Bad Request');
+        }
+
+        // Set up the repeating interval in local Serverless offline env
+        if (existingInterval) {
+            console.log(`Clearing existing Timer API interval`);
+            clearInterval(existingInterval!);
+        }
+
+        if (groomingInterval === 0) {
+            console.log(`Timer API interval disabled`);
+        } else {
+            console.log(`Setting up Timer API interval for every ${groomingInterval} seconds`);
+            existingInterval = setInterval(callTimerAPI, groomingInterval * milliseconds);
+        }
+        
+        // return the new timer interval
+        return res
+            .status(200)
+            .contentType("application/json")
+            .send(groomingInterval.toString());
+    } catch (error) {
+        console.error(`Handler Error: HTTP POST ${api_timer_config}`, error);
+        return res.status(500).send('Internal Server Error');
+    }
+});
+
+const api_timer_interval = `/timer/interval`;
+app.post(`${api_root_endpoint}${api_timer_interval}`, async (req: Request, res: Response, next) => {
+
+    try {
+        const currentTimeinSeconds = Math.floor(Date.now() / 1000);
+
+        return res
+            .status(200)
+            .contentType("text/plain")
+            .send(`Timer HTTP POST Ack: ${currentTimeinSeconds}`);
+    } catch (error) {
+        console.error(`Handler Error: HTTP POST ${api_timer_interval}`, error);
         return res.status(500).send('Internal Server Error');
     }
 });

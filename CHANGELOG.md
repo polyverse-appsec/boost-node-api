@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.9.8: January 30th, 2024
+
+### New Features
+- Added new Local Server Timer (defaults to 5 minutes) for groomer - can be configured via /api/timer/config (POST)
+
+### Enhancements
+- N/A
+
+### Bug Fixes
+- N/A
+
 ## Version 0.9.7: January 30th, 2024
 
 ### New Features
