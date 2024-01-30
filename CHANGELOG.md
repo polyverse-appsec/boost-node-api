@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.9.7: January 29th, 2024
+## Version 0.9.7: January 30th, 2024
 
 ### New Features
 - Added Project Search Service API /api/search/projects (GET) to search for a project (by wildcard '*') or specific org, user/owner or prpject name
