@@ -837,6 +837,16 @@ app.get(`${api_root_endpoint}${search_projects}`, async (req: Request, res: Resp
         //  - user?: string - a specific user, or all if not specified
 
         const { org, project, user } = req.query;
+        if (org && typeof org !== 'string') {
+            console.error(`Org must be a string`);
+            return res.status(400).send('Invalid org');
+        } else if (project && typeof project !== 'string') {
+            console.error(`Project must be a string`);
+            return res.status(400).send('Invalid project');
+        } else if (user && typeof user !== 'string') {
+            console.error(`User must be a string`);
+            return res.status(400).send('Invalid user');
+        }
 
         const projectDataList : UserProjectData[] = [];
 
@@ -852,9 +862,13 @@ app.get(`${api_root_endpoint}${search_projects}`, async (req: Request, res: Resp
         console.log(`${search_projects}: retrieved data for ${projectDataRaw.length} raw project data`);
 
         for (const projectData of projectDataRaw) {
-            const projectDataString = projectData.value;
-            const projectDataObject = JSON.parse(projectDataString) as UserProjectData;
-            projectDataList.push(projectDataObject);
+            const projectDataString = projectData.data as string;
+            try {
+                const projectDataObject = JSON.parse(projectDataString) as UserProjectData;
+                projectDataList.push(projectDataObject);
+            } catch (error) {
+                console.error(`Unable to parse project data: ${projectDataString}`, error);
+            }
         }
 
         console.log(`${search_projects}: retrieved data for ${projectDataList.length} projects`);

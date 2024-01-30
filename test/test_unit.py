@@ -72,7 +72,7 @@ class UnitTestSuite(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         signedHeaders = get_signed_headers(EMAIL)
-        response = requests.get(f"{TARGET_URL}/api/search/projects?user=*&project=*&project=*", headers=signedHeaders)
+        response = requests.get(f"{TARGET_URL}/api/search/projects?user=*&project=*&org=*", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
         responseData = response.json()
         self.assertGreaterEqual(len(responseData), 1)

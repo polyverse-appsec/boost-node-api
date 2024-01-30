@@ -1,4 +1,4 @@
-import { DynamoDBClient, QueryCommand, QueryCommandInput } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, ScanCommand, ScanCommandInput } from "@aws-sdk/client-dynamodb";
 import { DeleteCommand, DeleteCommandInput, GetCommand, GetCommandInput, PutCommand, PutCommandInput } from "@aws-sdk/lib-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
@@ -57,46 +57,67 @@ export async function getProjectData(email: string | null, sourceType: SourceTyp
 
 // to search "public" data, pass "*" as email
 // to search private data for all users, pass null as email
-export async function searchProjectData(email: string | null, sourceType: SourceType, owner: string, project: string, resourcePath?: string, analysisType?: string): Promise<any[]> {
-    const projectPath = `${email ? email : "public"}/${sourceType}/${owner}/${project}`;
-    const dataPath = resourcePath && analysisType ? `${resourcePath}/${analysisType}` : undefined;
+// to search for any project - use "*" fpr project name
+// to search for any owner - use "*" for owner name
+export async function searchProjectData(email: string | null, sourceType: SourceType, owner: string, project: string, resourcePath: string, analysisType: string): Promise<any[]> {
+    let filterExpression = '';
+    const expressionAttributeValues: Record<string, any> = {};
 
-    console.log(`searchProjectData for: ${email ? email : "public"} ${sourceType} ${owner} ${project} ${resourcePath} ${analysisType}`);
+    // Handle wildcard and specific cases for email
+    if (email !== "*" && email !== null) {
+        filterExpression += 'contains(projectPath, :emailVal)';
+        expressionAttributeValues[':emailVal'] = { S: email };
+    }
 
-    const keyConditionExpression = '#projectPath = :projectPathVal' + (dataPath ? ' AND begins_with(#dataPath, :dataPathVal)' : '');
-    const expressionAttributeNames = {
-        '#projectPath': 'projectPath',
-        ...(dataPath && { '#dataPath': 'dataPath' })
-    };
-    const expressionAttributeValues = {
-        ':projectPathVal': { S: projectPath },
-        ...(dataPath && { ':dataPathVal': { S: dataPath } })
-    };
-    // Query parameters
-    const params: QueryCommandInput = {
+    // Add sourceType to the filter
+    filterExpression += (filterExpression ? ' AND ' : '') + 'contains(projectPath, :sourceTypeVal)';
+    expressionAttributeValues[':sourceTypeVal'] = { S: sourceType };
+
+    // Handle wildcard for owner
+    if (owner !== "*") {
+        filterExpression += ' AND contains(projectPath, :ownerVal)';
+        expressionAttributeValues[':ownerVal'] = { S: owner };
+    }
+
+    // Handle wildcard for project
+    if (project !== "*") {
+        filterExpression += ' AND contains(projectPath, :projectVal)';
+        expressionAttributeValues[':projectVal'] = { S: project };
+    }
+
+    // Add resourcePath (which is required, and cannot be wildcarded)
+    filterExpression += ' AND contains(dataPath, :resourcePathVal)';
+    expressionAttributeValues[':resourcePathVal'] = { S: resourcePath };
+
+    // Add analysisType (which is required, and cannot be wildcarded)
+    filterExpression += ' AND contains(dataPath, :analysisTypeVal)';
+    expressionAttributeValues[':analysisTypeVal'] = { S: analysisType };
+
+    // Scan parameters
+    const params: ScanCommandInput = {
         TableName: analysisDatastoreTableName,
-        KeyConditionExpression: keyConditionExpression,
-        ExpressionAttributeNames: expressionAttributeNames,
+        FilterExpression: filterExpression,
         ExpressionAttributeValues: expressionAttributeValues
     };
 
-    // Execute the search query
+    // Execute the scan with retries for provisioned throughput exceeded
     let attempt = 0;
-    while (attempt < 5) {
+    const maxAttempts = 5;
+    while (attempt < maxAttempts) {
         try {
-            const data = await dynamoDB.send(new QueryCommand(params));
+            const data = await dynamoDB.send(new ScanCommand(params));
             return data.Items ? data.Items.map(item => unmarshall(item)) : [];
-        } catch (storageQueryError: any) {
-            console.error(`Attempt ${attempt + 1}: Error querying project data: ${storageQueryError}`);
-            if (storageQueryError.name === 'ProvisionedThroughputExceededException') {
-                const waitTime = (1000 * attempt) + (Math.random() * 2000); // Random backoff
+        } catch (error: any) {
+            console.error(`Attempt ${attempt + 1}: Error scanning project data: ${error}`);
+            if (error.name === 'ProvisionedThroughputExceededException') {
+                const waitTime = (1000 * attempt) + (Math.random() * 2000); // Exponential backoff with jitter
                 console.error(`Throughput exceeded, retrying in ${waitTime / 1000} seconds`);
                 await new Promise(resolve => setTimeout(resolve, waitTime));
+                attempt++;
             } else {
-                throw storageQueryError;
+                throw error;
             }
         }
-        attempt++;
     }
     throw new Error('Maximum retry attempts reached');
 }
