@@ -536,7 +536,6 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_fullsource}`,
     }
 });
 
-
 async function validateProjectRepositories(email: string, org: string, resources: ProjectResource[], req: Request, res: Response) : Promise<Response | undefined> {
 
     // validate every resource is a valid Uri
@@ -632,7 +631,7 @@ app.patch(`${api_root_endpoint}${user_project_org_project}`, async (req: Request
         await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProjectString);
         console.log(`${user_project_org_project}: updated data`);
 
-        const signedIdentity = (await signedAuthHeader(email))[`X-Signed-Identity`];
+        const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
 
         // get the path of the project data uri - excluding the api root endpoint
         const projectDataPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
@@ -880,6 +879,62 @@ app.get(`${api_root_endpoint}${search_projects}`, async (req: Request, res: Resp
 
     } catch (error) {
         console.error(`Handler Error: ${search_projects}`, error);
+        return res.status(500).send('Internal Server Error');
+    }
+});
+
+const groom_projects = `/groom/projects`;
+app.post(`${api_root_endpoint}${groom_projects}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const originalIdentityHeader = getSignedIdentityFromHeader(req);
+        if (!originalIdentityHeader) {
+            console.error(`Unauthorized: Signed Header missing`);
+            return res.status(401).send('Unauthorized');
+        }
+
+        // get all the projects
+        const projects : UserProjectData[] =
+            await localSelfDispatch<UserProjectData[]>(email, originalIdentityHeader, req, `search/projects`, 'GET');
+
+            // we'll look for projects with resources, and then make sure they are up to date
+        const projectsWithResources = projects.filter(project => project.resources.length > 0);
+
+        const projectsGroomed : UserProjectData[] = [];
+        // for each project, we'll check the status of the resources
+        for (const project of projectsWithResources) {
+            const projectDataPath = user_project_org_project.replace(":org", project.org).replace(":project", project.name);
+
+            // we'll check the status of the project data
+            const projectStatus = await localSelfDispatch<ProjectStatusState>(email, originalIdentityHeader, req, `${projectDataPath}/status`, 'GET');
+
+            // if the project is not synchronized and not trying to synchronize, then we'll kick off a discovery
+            if (projectStatus.status !== ProjectStatus.Synchronized &&
+                !projectStatus.activelyUpdating) {
+                try {
+                    console.log(`Launching Groomed Discovery for ${projectDataPath} with status ${JSON.stringify(projectStatus)}`);
+//                    await localSelfDispatch<void>(email, originalIdentityHeader, req, `${projectDataPath}/discovery`, 'POST');
+                } catch (error) {
+                    console.error(`Unable to launch discovery for ${projectDataPath}`, error);
+                }
+                projectsGroomed.push(project);
+            }
+        }
+
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send(projectsGroomed);
+
+    } catch (error) {
+        console.error(`Handler Error: ${groom_projects}`, error);
         return res.status(500).send('Internal Server Error');
     }
 });
@@ -2774,7 +2829,7 @@ app.post(`${api_root_endpoint}${api_timer_config}`, async (req: Request, res: Re
     logRequest(req);
 
     try {
-        const email = "stephen@polyverse.com";// await validateUser(req, res, AuthType.Admin);
+        const email = "stephen@polyverse.com" // await validateUser(req, res, AuthType.Admin);
         if (!email) {
             return;
         }
@@ -2807,6 +2862,17 @@ app.post(`${api_root_endpoint}${api_timer_config}`, async (req: Request, res: Re
             return res.status(400).send('Bad Request');
         }
 
+        if (groomingInterval === -1) {
+
+            // call the timing interval immediately/directly
+            await callTimerAPI();
+
+            return res
+                .status(200)
+                .contentType("application/json")
+                .send(groomingInterval.toString());
+        }
+
         // Set up the repeating interval in local Serverless offline env
         if (existingInterval) {
             console.log(`Clearing existing Timer API interval`);
@@ -2834,8 +2900,22 @@ app.post(`${api_root_endpoint}${api_timer_config}`, async (req: Request, res: Re
 const api_timer_interval = `/timer/interval`;
 app.post(`${api_root_endpoint}${api_timer_interval}`, async (req: Request, res: Response, next) => {
 
+    logRequest(req);
     try {
+        const email = await validateUser(req, res, AuthType.Admin);
+
         const currentTimeinSeconds = Math.floor(Date.now() / 1000);
+
+        // run the project groomer
+        const originalIdentity = getSignedIdentityFromHeader(req);
+        if (!originalIdentity) {
+            console.error(`Missing signed identity - after User Validation passed`);
+            return res
+                .status(401)
+                .send('Unauthorized');
+        }
+
+        await localSelfDispatch<string>("", originalIdentity, req, `groom/projects`, "POST");
 
         return res
             .status(200)
