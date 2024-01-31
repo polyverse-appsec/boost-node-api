@@ -13,6 +13,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Return the owner of a project for /api/user_project/{org}/{project} (GET) - to enable user to see who owns the project
+- Return 404, 401 or 500 status code if trying to get project status for a non-existent project /api/user_project/{org}/{project}/status (GET)
 
 ### Bug Fixes
 - N/A

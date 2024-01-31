@@ -870,7 +870,8 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
             const projectDataString = projectData.data as string;
             try {
                 const projectDataObject = JSON.parse(projectDataString) as UserProjectData;
-                projectDataObject.owner = projectData.owner;
+                // the project owner is the first part of the project data path, up until the first '/'
+                projectDataObject.owner = projectData.projectDataPath.substring(0, projectData.projectDataPath.indexOf('/'));
                 projectDataList.push(projectDataObject);
             } catch (error) {
                 console.error(`Unable to parse project data: ${projectDataString}`, error);
@@ -1100,8 +1101,6 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             return;
         }
 
-        const { org, project } = req.params;
-
         const projectGroomPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
         const projectPath = projectGroomPath.substring(0, projectGroomPath.lastIndexOf('/groom'));
 
@@ -1123,6 +1122,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         if (projectStatus.status === ProjectStatus.Unknown) {
             try {
                 const projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, `${projectPath}/status`, 'POST');
+                console.debug(`Refreshed Project Status for ${projectPath}: ${projectStatus}`);
                 const groomingState = {
                     status: GroomingStatus.Grooming,
                     last_updated: Math.floor(Date.now() / 1000)
@@ -1247,20 +1247,17 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         let projectData : UserProjectData;
         try {
             projectData = await localSelfDispatch<UserProjectData>(email, getSignedIdentityFromHeader(req)!, req, projectDataUri, 'GET');
-        } catch (error) {
-            // if we get an error, then we'll assume the project doesn't exist
-            projectStatus.status = ProjectStatus.Unknown;
-            projectStatus.details = `Project Data not found; Treat project as unknown`;
+        } catch (error: any) {
+            if (error.response && error.response.status === 404) {
+                console.error(`Project not found: ${projectDataUri}`);
+                return res.status(404).send('Project not found');
+            } else if (error.response && error.response.status === 401) {
+                console.error(`Unauthorized: ${projectDataUri}`);
+                return res.status(401).send('Unauthorized');
+            }
 
-            console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
-
-            // we're not going to persist this, since the project may not exist, and we don't want to waste disk space on unknown status
-            projectStatus.last_updated = Math.floor(Date.now() / 1000);
-
-            return res
-                .status(200)
-                .contentType('application/json')
-                .send(projectStatus);
+            console.error(`Unable to get project data: ${projectDataUri}`, error);
+            return res.status(500).send('Internal Server Error');
         }
 
         const saveProjectStatusUpdate = async () => {
