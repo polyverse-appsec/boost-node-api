@@ -8,10 +8,11 @@ Polyverse Boost ReST API (Backend)
 ### New Features
 - Added new Local Server Timer (defaults to 5 minutes) for groomer - can be configured via /api/timer/config (POST)
 - Added timer interval processing service /api/timer/interval (POST) triggers on every timer interval
-- Added grooming processor for project re-discovery /api/groom/projects (POST)
+- Added grooming processor for all projects re-discovery /api/groom/projects (POST)
+- Added grooming processor per project re-discovery /api/user_project/{org}/{project}/groom (POST)
 
 ### Enhancements
-- N/A
+- Return the owner of a project for /api/user_project/{org}/{project} (GET) - to enable user to see who owns the project
 
 ### Bug Fixes
 - N/A
