@@ -825,7 +825,9 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
     logRequest(req);
 
     try {
-        const email = await validateUser(req, res);
+        // since project search is system wide by default, we're going to require admin access to
+        //      run a search
+        const email = await validateUser(req, res, AuthType.Admin);
         if (!email) {
             return;
         }
