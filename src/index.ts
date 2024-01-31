@@ -870,8 +870,10 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
             const projectDataString = projectData.data as string;
             try {
                 const projectDataObject = JSON.parse(projectDataString) as UserProjectData;
+
                 // the project owner is the first part of the project data path, up until the first '/'
-                projectDataObject.owner = projectData.projectDataPath.substring(0, projectData.projectDataPath.indexOf('/'));
+                projectDataObject.owner = projectData.projectPath.substring(0, projectData.projectPath.indexOf('/'));
+
                 projectDataList.push(projectDataObject);
             } catch (error) {
                 console.error(`Unable to parse project data: ${projectDataString}`, error);
@@ -2959,7 +2961,7 @@ app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: R
     logRequest(req);
 
     try {
-        const email = "stephen@polyverse.com" // await validateUser(req, res, AuthType.Admin);
+        const email = await validateUser(req, res, AuthType.Admin);
         if (!email) {
             return;
         }
