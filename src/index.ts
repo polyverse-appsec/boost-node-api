@@ -281,8 +281,8 @@ function checkPrivateAccessAllowed(accountStatus: UserAccountState): boolean {
     return accountStatus.enabled && accountStatus.plan === 'premium';
 }
 
-const user_org_connectors_github_file = `/user/:org/connectors/github/file`;
-app.get(`${api_root_endpoint}${user_org_connectors_github_file}`, async (req: Request, res: Response) => {
+const user_org_connectors_github_file = `user/:org/connectors/github/file`;
+app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -368,8 +368,8 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_file}`, async (req: Re
 
 });
 
-const user_org_connectors_github_folders = `/user/:org/connectors/github/folders`;
-app.get(`${api_root_endpoint}${user_org_connectors_github_folders}`, async (req: Request, res: Response) => {
+const user_org_connectors_github_folders = `user/:org/connectors/github/folders`;
+app.get(`${api_root_endpoint}/${user_org_connectors_github_folders}`, async (req: Request, res: Response) => {
 
     logRequest(req);
     
@@ -423,8 +423,8 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_folders}`, async (req:
     }
 });
 
-const user_org_connectors_github_files = `/user/:org/connectors/github/files`;
-app.get(`${api_root_endpoint}${user_org_connectors_github_files}`, async (req: Request, res: Response) => {
+const user_org_connectors_github_files = `user/:org/connectors/github/files`;
+app.get(`${api_root_endpoint}/${user_org_connectors_github_files}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -479,8 +479,8 @@ app.get(`${api_root_endpoint}${user_org_connectors_github_files}`, async (req: R
 });
 
 
-const user_org_connectors_github_fullsource = `/user/:org/connectors/github/fullsource`;
-app.get(`${api_root_endpoint}${user_org_connectors_github_fullsource}`,
+const user_org_connectors_github_fullsource = `user/:org/connectors/github/fullsource`;
+app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
     express.text({ limit: '1mb' }),
     async (req: Request, res: Response) => {
 
@@ -584,8 +584,8 @@ async function validateProjectRepositories(email: string, org: string, resources
     return undefined;
 }
 
-const user_project_org_project = `/user_project/:org/:project`;
-app.patch(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
+const user_project_org_project = `user_project/:org/:project`;
+app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -742,11 +742,11 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
 }
 
 // route for both project PUT and POST
-app.route(`${api_root_endpoint}${user_project_org_project}`)
+app.route(`${api_root_endpoint}/${user_project_org_project}`)
     .post(postOrPutUserProject)
     .put(postOrPutUserProject);
 
-app.get(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -783,7 +783,7 @@ app.get(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, 
     
 });
 
-app.delete(`${api_root_endpoint}${user_project_org_project}`, async (req: Request, res: Response) => {
+app.delete(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -819,8 +819,8 @@ app.delete(`${api_root_endpoint}${user_project_org_project}`, async (req: Reques
 
 const searchWildcard = '*';
 // Services to search the entire system for any project
-const search_projects = `/search/projects`;
-app.get(`${api_root_endpoint}${search_projects}`, async (req: Request, res: Response) => {
+const search_projects = `search/projects`;
+app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -883,8 +883,8 @@ app.get(`${api_root_endpoint}${search_projects}`, async (req: Request, res: Resp
     }
 });
 
-const groom_projects = `/groom/projects`;
-app.post(`${api_root_endpoint}${groom_projects}`, async (req: Request, res: Response) => {
+const groom_projects = `groom/projects`;
+app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -944,8 +944,8 @@ interface ProjectGoals {
     goals?: string;
 }
 
-const user_project_org_project_discovery = `/user_project/:org/:project/discovery`;
-app.post(`${api_root_endpoint}${user_project_org_project_discovery}`, async (req: Request, res: Response) => {
+const user_project_org_project_discovery = `user_project/:org/:project/discovery`;
+app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -1020,9 +1020,9 @@ interface ProjectStatusState {
 
 const MinutesToWaitBeforeGeneratorConsideredStalled = 3;
 
-const user_project_org_project_status = `/user_project/:org/:project/status`;
+const user_project_org_project_status = `user_project/:org/:project/status`;
 
-app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -1063,7 +1063,7 @@ app.get(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Re
     }
 });
 
-app.post(`${api_root_endpoint}${user_project_org_project_status}`, async (req: Request, res: Response) => {
+app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -1325,8 +1325,8 @@ app.post(`${api_root_endpoint}${user_project_org_project_status}`, async (req: R
     }    
 });
 
-const user_project_org_project_goals = `/user_project/:org/:project/goals`;
-app.delete(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Request, res: Response) => {
+const user_project_org_project_goals = `user_project/:org/:project/goals`;
+app.delete(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -1359,7 +1359,7 @@ app.delete(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: 
     }    
 });
 
-app.post(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Request, res: Response) => {
+app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -1422,7 +1422,7 @@ app.post(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Re
     
 });
 
-app.get(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -1463,8 +1463,8 @@ app.get(`${api_root_endpoint}${user_project_org_project_goals}`, async (req: Req
 
 });
 
-const user_project_org_project_config_boostignore = `/user_project/:org/:project/config/.boostignore`;
-app.get(`${api_root_endpoint}${user_project_org_project_config_boostignore}`, async (req: Request, res: Response) => {
+const user_project_org_project_config_boostignore = `user_project/:org/:project/config/.boostignore`;
+app.get(`${api_root_endpoint}/${user_project_org_project_config_boostignore}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -1498,8 +1498,8 @@ app.get(`${api_root_endpoint}${user_project_org_project_config_boostignore}`, as
     }
 });
 
-const user_project_org_project_data_resource = `/user_project/:org/:project/data/:resource`;
-app.get(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
+const user_project_org_project_data_resource = `user_project/:org/:project/data/:resource`;
+app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -1558,8 +1558,8 @@ interface ResourceStatusState {
     last_updated: number;
 }
 
-const user_project_org_project_data_resource_status = `/user_project/:org/:project/data/:resource/status`;
-app.get(`${api_root_endpoint}${user_project_org_project_data_resource_status}`, async (req: Request, res: Response) => {
+const user_project_org_project_data_resource_status = `user_project/:org/:project/data/:resource/status`;
+app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -1616,7 +1616,7 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_resource_status}`, 
     }
 });
 
-app.delete(`${api_root_endpoint}${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
+app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -1671,12 +1671,12 @@ app.delete(`${api_root_endpoint}${user_project_org_project_data_resource}`, asyn
 // Middleware for parsing plain text with a limit of 1mb
 const textParserWithMbLimit = bodyParser.text({ limit: '1mb' });
 
-app.route(`${api_root_endpoint}${user_project_org_project_data_resource}`)
+app.route(`${api_root_endpoint}/${user_project_org_project_data_resource}`)
    .post(textParserWithMbLimit, postOrPutUserProjectDataResource)
    .put(textParserWithMbLimit, postOrPutUserProjectDataResource);
 
-const user_project_org_project_data_resource_generator = `/user_project/:org/:project/data/:resource/generator`;
-app.delete(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
+const user_project_org_project_data_resource_generator = `user_project/:org/:project/data/:resource/generator`;
+app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -1727,7 +1727,7 @@ app.delete(`${api_root_endpoint}${user_project_org_project_data_resource_generat
     }
 });
 
-app.get(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -1791,7 +1791,7 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_resource_generator}
 });
 
 // for updating the generator task status
-app.patch(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
+app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -2113,7 +2113,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
     }
 };
 
-app.route(`${api_root_endpoint}${user_project_org_project_data_resource_generator}`)
+app.route(`${api_root_endpoint}/${user_project_org_project_data_resource_generator}`)
    .post(putOrPostuserProjectDataResourceGenerator)
    .put(putOrPostuserProjectDataResourceGenerator);
 
@@ -2143,8 +2143,8 @@ interface ResourceGeneratorProcessState {
     stage: string;
 }
 
-const user_project_org_project_data_resource_generator_process = `/user_project/:org/:project/data/:resource/generator/process`;
-app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator_process}`, async (req: Request, res: Response) => {
+const user_project_org_project_data_resource_generator_process = `user_project/:org/:project/data/:resource/generator/process`;
+app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generator_process}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -2206,7 +2206,7 @@ app.post(`${api_root_endpoint}${user_project_org_project_data_resource_generator
     }
 });
 
-const user_project_org_project_data_references = `/user_project/:org/:project/data_references`;
+const user_project_org_project_data_references = `user_project/:org/:project/data_references`;
 
 const userProjectDataReferences = async (req: Request, res: Response) => {
 
@@ -2312,11 +2312,11 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
     }
 };
 
-app.route(`${api_root_endpoint}${user_project_org_project_data_references}`)
+app.route(`${api_root_endpoint}/${user_project_org_project_data_references}`)
    .post(userProjectDataReferences)
    .put(userProjectDataReferences);
 
-app.get(`${api_root_endpoint}${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}/${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -2367,7 +2367,7 @@ app.get(`${api_root_endpoint}${user_project_org_project_data_references}`, async
     }
 });
 
-app.delete(`${api_root_endpoint}${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
+app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -2400,8 +2400,8 @@ app.delete(`${api_root_endpoint}${user_project_org_project_data_references}`, as
     }
 });
 
-const files_source_owner_project_path_analysisType = `/files/:source/:owner/:project/:pathBase64/:analysisType`;
-app.delete(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, async (req, res) => {
+const files_source_owner_project_path_analysisType = `files/:source/:owner/:project/:pathBase64/:analysisType`;
+app.delete(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, async (req, res) => {
 
     logRequest(req);
 
@@ -2452,7 +2452,7 @@ app.delete(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`
     }
 });
 
-app.get(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, async (req, res) => {
+app.get(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, async (req, res) => {
 
     logRequest(req);
 
@@ -2502,7 +2502,7 @@ app.get(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, a
     }
 });
 
-app.post(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, async (req, res) => {
+app.post(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, async (req, res) => {
 
     logRequest(req);
 
@@ -2541,7 +2541,7 @@ app.post(`${api_root_endpoint}${files_source_owner_project_path_analysisType}`, 
     }
 });
 
-const proxy_ai_endpoint = "/proxy/ai/:org/:endpoint";
+const proxy_ai_endpoint = "proxy/ai/:org/:endpoint";
 const handleProxyRequest = async (req: Request, res: Response) => {
 
     logRequest(req);
@@ -2612,7 +2612,7 @@ const handleProxyRequest = async (req: Request, res: Response) => {
     }
 };
 
-app.route(`${api_root_endpoint}${proxy_ai_endpoint}`)
+app.route(`${api_root_endpoint}/${proxy_ai_endpoint}`)
    .all(handleProxyRequest);
 
 interface UserAccountState {
@@ -2626,8 +2626,8 @@ interface UserAccountState {
     portal_url: string,
 };
 
-const user_org_account = `/user/:org/account`;
-app.get(`${api_root_endpoint}${user_org_account}`, async (req, res) => {
+const user_org_account = `user/:org/account`;
+app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
 
     logRequest(req);
 
@@ -2659,8 +2659,8 @@ app.get(`${api_root_endpoint}${user_org_account}`, async (req, res) => {
     }
 });
 
-const user_profile = `/user/profile`;
-app.delete(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Response) => {
+const user_profile = `user/profile`;
+app.delete(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -2689,7 +2689,7 @@ interface UserProfile {
     details?: string,
 };
 
-app.put(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Response) => {
+app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -2736,7 +2736,7 @@ app.put(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Respons
     }
 });
 
-app.get(`${api_root_endpoint}${user_profile}`, async (req: Request, res: Response) => {
+app.get(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -2771,8 +2771,8 @@ interface ServiceStatusState {
     type: string
 }
 
-const api_status = `/status`;
-app.get(`${api_root_endpoint}${api_status}`, async (req: Request, res: Response) => {
+const api_status = `status`;
+app.get(`${api_root_endpoint}/${api_status}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -2823,8 +2823,8 @@ app.get("/test", (req: Request, res: Response, next) => {
 import { AuthType } from './auth';
 
 let existingInterval : NodeJS.Timeout | undefined = undefined;
-const api_timer_config = `/timer/config`;
-app.post(`${api_root_endpoint}${api_timer_config}`, async (req: Request, res: Response, next) => {
+const api_timer_config = `timer/config`;
+app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: Response, next) => {
 
     logRequest(req);
 
@@ -2897,8 +2897,8 @@ app.post(`${api_root_endpoint}${api_timer_config}`, async (req: Request, res: Re
     }
 });
 
-const api_timer_interval = `/timer/interval`;
-app.post(`${api_root_endpoint}${api_timer_interval}`, async (req: Request, res: Response, next) => {
+const api_timer_interval = `timer/interval`;
+app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res: Response, next) => {
 
     logRequest(req);
     try {
