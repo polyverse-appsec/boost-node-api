@@ -2903,6 +2903,9 @@ app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res:
     logRequest(req);
     try {
         const email = await validateUser(req, res, AuthType.Admin);
+        if (!email) {
+            return;
+        }
 
         const currentTimeinSeconds = Math.floor(Date.now() / 1000);
 
