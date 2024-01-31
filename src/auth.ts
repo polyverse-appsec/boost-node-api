@@ -92,7 +92,7 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
 
     // if admin access is required, then verify the domain is coming from polyverse.com
     if (accessType === AuthType.Admin) {
-        if (!email.endsWith('@polyverse.com')) {
+        if (email !== local_sys_admin_email) {
             console.error(`Unauthorized: Admin access is required`);
             res.status(401).send('Unauthorized');
             return undefined;
