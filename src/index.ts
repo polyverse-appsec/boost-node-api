@@ -1039,16 +1039,23 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
 
         const rawProjectStatusData = await getProjectData(email, SourceType.General, org, project, '', 'status');
         if (!rawProjectStatusData) {
-            console.error(`Project Status not found; Project may not exist or hasn't been discovered yet`);
+            // if we have no status, let's see if there's a real project here...
+            const projectData = await loadProjectData(email, org, project) as UserProjectData;
+            // if no project, then just 404 so user knows not to ask again
+            if (!projectData) {
+                return res.status(404).send('Project not found');
+            }
+            // if we have a real project, and we have no status, then let's try and generate it now
+            console.error(`Project Status not found; Project exists so let's refresh status`);
+
+            // project uri starts at 'user_project/'
+            const project_subpath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
+            // this will be a blocking call (when GET is normally very fast), but only to ensure we have an initial status
+            const projectStatus = await localSelfDispatch<ProjectStatus>(email, getSignedIdentityFromHeader(req)!, req, project_subpath, 'POST');
             return res
                 .status(200)
                 .contentType('application/json')
-                .send({
-                    status: ProjectStatus.Unknown,
-                    synchronized: false,
-                    activelyUpdating: false,
-                    details: `Project Status not found; Project may not exist or hasn't been discovered yet`
-                });
+                .send(projectStatus);
         }
 
         const projectStatus : ProjectStatusState = JSON.parse(rawProjectStatusData) as ProjectStatusState;
@@ -1166,6 +1173,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             let resourceStatus : ResourceStatusState;
             try {
                 resourceStatus = await localSelfDispatch<ResourceStatusState>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data/${resource}/status`, 'GET');
+                console.debug(`Resource ${resource} Status: ${JSON.stringify(resourceStatus)}`);
             } catch (error) {
                 missingResources.push(resource);
             }
@@ -1178,7 +1186,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         for (const resource of [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification]) {
             let generatorStatus : GeneratorState;
             try {
-                generatorStatus = await localSelfDispatch<GeneratorState>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data/${resource}/generator`, 'GET');
+                generatorStatus = await localSelfDispatch<GeneratorState>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data/${resource}/generator`, 'GET');                console.debug
             } catch (error) {
                 // if generator fails, we'll assume the resource isn't available either
                 missingResources.push(resource);
@@ -2920,7 +2928,12 @@ app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res:
                 .send('Unauthorized');
         }
 
-        await localSelfDispatch<string>("", originalIdentity, req, `groom/projects`, "POST");
+        try {
+            // async launch of groom projects process (no "await")
+            localSelfDispatch<void>("", originalIdentity, req, `groom/projects`, "POST");
+        } catch (error) {
+            console.error(`Timer Triggered: Error starting async groom projects process:`, error);
+        }
 
         return res
             .status(200)
