@@ -18,7 +18,7 @@ Polyverse Boost ReST API (Backend)
 - Ensure we normalize all emails / identities including signed headers
 
 ### Bug Fixes
-- N/A
+- Always return Resource Status (with last_updated time) for Resources that exist /api/user_project/{org}/{project}/data/{resource}/status (GET) - was returning no resource if no timestamp was stored
 
 ## Version 0.9.7: January 30th, 2024
 

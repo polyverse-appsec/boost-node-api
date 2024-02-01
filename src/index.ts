@@ -1729,10 +1729,23 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
         }
 
         const { _, __, resource } = req.params;
-        const resourceStatusRaw = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status");
+        let resourceStatusRaw = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status");
         if (!resourceStatusRaw) {
-            console.error(`${user_project_org_project_data_resource_status}: not found: ${ownerName}/${repoName}/data/${resource}`);
-            return res.status(404).send('Resource not found');
+            // if the resource status was not found, check if the resource exists... we may just be missing the status
+            // so we'll regenerate the status
+            const resourceData = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, '', resource);
+            // resource doesn't exist, so just report missing/Not Found
+            if (!resourceData) {
+                console.error(`${user_project_org_project_data_resource_status}: not found: ${ownerName}/${repoName}/data/${resource}`);
+                return res.status(404).send('Resource not found');
+            }
+            // resource exists, so we'll generate the status
+            const resourceStatusWithTimestamp : ResourceStatusState = {
+                last_updated: Math.floor(Date.now() / 1000)
+            };
+            resourceStatusRaw = JSON.stringify(resourceStatusWithTimestamp);
+            await storeProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status", resourceStatusRaw);
+            console.warn(`Missing status for resource ${req.originalUrl}: generating with current timestamp`);
         }
 
         const resourceStatus : ResourceStatusState = JSON.parse(resourceStatusRaw);
