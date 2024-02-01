@@ -721,7 +721,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
 
         console.log(`${user_project_org_project}: stored data`);
 
-        const signedIdentity = (await signedAuthHeader(email))[`X-Signed-Identity`];
+        const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
 
         // get the path of the project data uri - excluding the api root endpoint
         const projectDataPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
@@ -976,7 +976,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
         for (const resource of resourcesToGenerate) {
             const startProcessing = {"status": "processing"};
 
-            const signedIdentity = (await signedAuthHeader(email))[`X-Signed-Identity`];
+            const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
 
             const generatorPath = `${projectDataPath}/data/${resource}/generator`;
             try {
@@ -994,7 +994,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
             }
         }
 
-        const signedIdentity = (await signedAuthHeader(email))[`X-Signed-Identity`];
+        const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
         const existingDataReferences = await localSelfDispatch<void>(email, signedIdentity, req, `${projectDataPath}/data_references`, 'PUT');
         console.log(`Existing Data References: ${JSON.stringify(existingDataReferences)}`);
 
