@@ -2175,7 +2175,11 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         selfEndpoint = `http://${req.get('host')}`;
                     }
 
+                    const processStartTime = Math.floor(Date.now() / 1000);
+                    console.log(`TIMECHECK: ${currentGeneratorState.stage}: processing started at ${processStartTime}`);
                     currentGeneratorState.stage = await processStage(selfEndpoint, email, projectData, resource, currentGeneratorState.stage);
+                    const processEndTime = Math.floor(Date.now() / 1000);
+                    console.log(`TIMECHECK: ${currentGeneratorState.stage}: processing ended at ${processEndTime} (${processEndTime - processStartTime} seconds)`);
 
                     // if we've finished all stages, then we'll set the status to complete and idle
                     if (currentGeneratorState.stage === Stages.Complete) {
@@ -2230,7 +2234,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     }
 
                     const authHeader = await signedAuthHeader(email);
-                    console.log(`${user_project_org_project_data_resource_generator}: starting async processing for ${newProcessingRequest} at ${selfEndpoint}`);
+                    console.log(`TIMECHECK: ${org}:${project}: starting async processing for ${newProcessingRequest} at ${selfEndpoint}`);
                     // we're going to wait for completion or 1 second to pass
                     await axios.put(selfEndpoint, newProcessingRequest, {
                             headers: {
@@ -2250,7 +2254,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                                 console.log(`${user_project_org_project_data_resource_generator}: Async Processing failed for ${newProcessingRequest}: `, error);
                             }
                         });
-                    console.log(`${user_project_org_project_data_resource_generator}: completed async processing for ${newProcessingRequest}`);
+                    console.log(`TIMECHECK: ${org}:${project}: ${user_project_org_project_data_resource_generator}: completed async processing for ${newProcessingRequest}`);
                                     
                     // Return a response immediately without waiting for the async process
                     return res
