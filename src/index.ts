@@ -1012,6 +1012,7 @@ enum ProjectStatus {
     ResourcesMissing = 'Resources Missing',                 // project uris found, but not resources
     // ResourcesOutOfDate = 'Resources Out of Date',        // Resources out of date with source (e.g. newer source)
     ResourcesIncomplete = 'Resources Incomplete',           // resources found, but not completely generated
+    ResourcesInError = 'Resources In Error',                // resources found, but generators in error state
     ResourcesGenerating = 'Resources Generating',           // resources missing or incomplete, but still being generated
     ResourcesNotSynchronized = 'Resources Not Synchronized',// resources completely generated, but not synchronized to OpenAI
     AIResourcesOutOfDate = 'AI Data Out of Date',           // resources synchronized to OpenAI, but newer resources available
@@ -1356,6 +1357,20 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             projectStatus.status = ProjectStatus.ResourcesGenerating;
             missingResources.push(...incompleteResources);
             projectStatus.details = `Generating Resources: ${missingResources.join(', ')}`;
+            console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+
+            await saveProjectStatusUpdate();
+
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(projectStatus);
+        }
+        const inErrorState : boolean = currentResourceStatus.filter(status => status === TaskStatus.Error).length > 0;
+        if (inErrorState) {
+            projectStatus.status = ProjectStatus.ResourcesInError;
+            const errorResources = missingResources.concat(incompleteResources);
+            projectStatus.details = `Resources in Error: ${errorResources.join(', ')}`;
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();

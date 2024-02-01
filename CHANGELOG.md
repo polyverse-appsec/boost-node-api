@@ -16,6 +16,7 @@ Polyverse Boost ReST API (Backend)
 - Return 404, 401 or 500 status code if trying to get project status for a non-existent project /api/user_project/{org}/{project}/status (GET)
 - Print a scary warning if user tries to use ENABLE_UNSIGNED_AUTHN (e.g. x-user-account) - since most APIs don't support it
 - Ensure we normalize all emails / identities including signed headers
+- Project Status reports on Resources in Error (not just missing or incomplete) at /api/user_project/{org}/{project}/status (GET)
 
 ### Bug Fixes
 - Always return Resource Status (with last_updated time) for Resources that exist /api/user_project/{org}/{project}/data/{resource}/status (GET) - was returning no resource if no timestamp was stored
