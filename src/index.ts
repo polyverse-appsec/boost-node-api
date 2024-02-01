@@ -202,7 +202,9 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
         // if req body is not a string, then we need to convert back into a normal string
         let body = req.body;
         if (typeof body !== 'string') {
-            body = Buffer.from(body).toString('utf8');
+            if (Buffer.isBuffer(body) || Array.isArray(body)) {
+                body = Buffer.from(body).toString('utf8');
+            }
         }
 
         if (body === '') {
@@ -1999,10 +2001,20 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
 
         let body = req.body;
         if (typeof body !== 'string') {
-            body = Buffer.from(body).toString('utf8');
+            if (Buffer.isBuffer(body) || Array.isArray(body)) {
+                body = Buffer.from(body).toString('utf8');
+            } else {
+                body = JSON.stringify(body);
+            }
         }
 
-        const input : GeneratorState = JSON.parse(body);
+        let input : GeneratorState;
+        try {
+            input = JSON.parse(body);
+        } catch (error) {
+            console.error('Error parsing JSON:', error);
+            return res.status(400).send('Invalid JSON Body');
+        }
         if (input.status !== currentGeneratorState.status) {
             console.error(`Invalid PATCH status: ${input.status}`);
             return res.status(400).send(`Invalid PATCH status: ${input.status}`)
@@ -2044,7 +2056,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
             return res.status(400).send(`Invalid PATCH status: ${currentGeneratorState.status}`)
         }
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_data_resource_generator}`, error);
+        console.error(`Handler Error PATCH: ${user_project_org_project_data_resource_generator}`, error);
         return res.status(500).send('Internal Server Error');
     }
 });
@@ -2110,7 +2122,11 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
         let body = req.body;
         if (typeof body !== 'string') {
-            body = Buffer.from(body).toString('utf8');
+            if (Buffer.isBuffer(body) || Array.isArray(body)) {
+                body = Buffer.from(body).toString('utf8');
+            } else {
+                body = JSON.stringify(body);
+            }
         }
 
         let input : GeneratorState;
@@ -2340,7 +2356,11 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
 
         let body = req.body;
         if (typeof body !== 'string') {
-            body = Buffer.from(body).toString('utf8');
+            if (Buffer.isBuffer(body) || Array.isArray(body)) {
+                body = Buffer.from(body).toString('utf8');
+            } else {
+                body = JSON.stringify(body);
+            }
         }
 
         let input : ResourceGeneratorProcessState;
@@ -2353,7 +2373,6 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
         let resourceGeneratorProcessState : ResourceGeneratorProcessState = {
             stage: input.stage
         };
-
 
         const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
         if (!loadedProjectData) {
@@ -3021,9 +3040,23 @@ app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: R
         // if body is empty, then default to 5 minutes
         let body = req.body;
         if (typeof body !== 'string') {
-            body = Buffer.from(body).toString('utf8');
+            if (Buffer.isBuffer(body) || Array.isArray(body)) {
+                body = Buffer.from(body).toString('utf8');
+            } else {
+                body = JSON.stringify(body);
+            }
         }
-        const groomingInterval : number = body?parseInt(body):defaultInterval;
+        let groomingInterval : number;
+        if (!body) {
+            groomingInterval = defaultInterval;
+        } else {
+            try {
+                groomingInterval = parseInt(body);
+            } catch (error) {
+                console.error(`Error parsing numeric: ${body}`, error);
+                return res.status(400).send('Invalid Numberic Body');
+            }
+        }
 
         // Timer API request function
         const callTimerAPI = async () => {

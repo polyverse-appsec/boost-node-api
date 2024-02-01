@@ -27,11 +27,11 @@ export class ArchitecturalSpecificationGenerator extends Generator {
         super(serviceEndpoint, email, projectData, ProjectDataType.ProjectSpecification);
     }
 
-readonly defaultArchitecturalSpecification =
-`# Summary for {projectName}:\n\n\n`
+    readonly defaultArchitecturalSpecification =
+        `# Summary for {projectName}:\n\n\n`
 
-readonly fileArchitecturalSpecificationEntry =
-`# Summary for {relativeFileName}:\n{architecturalSpec}\n\n`
+    readonly fileArchitecturalSpecificationEntry =
+        `# Summary for {relativeFileName}:\n{architecturalSpec}\n\n`
 
     async generate(stage?: string) : Promise<string> {
 
