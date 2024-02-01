@@ -1058,7 +1058,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
             // project uri starts at 'user_project/'
             const project_subpath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
             // this will be a blocking call (when GET is normally very fast), but only to ensure we have an initial status
-            const projectStatus = await localSelfDispatch<ProjectStatus>(email, getSignedIdentityFromHeader(req)!, req, project_subpath, 'POST');
+            const projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, project_subpath, 'POST');
             return res
                 .status(200)
                 .contentType('application/json')

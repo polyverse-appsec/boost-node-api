@@ -11,6 +11,10 @@ EMAIL = "unittest@polytest.ai"
 PREMIUM_EMAIL = "stephen@polyverse.com"
 ORG = "polyverse-test-org"
 
+LOCAL_ADMIN_EMAIL = "root@localhost"
+
+AARON_EMAIL = "aaron@polyverse.com"
+
 FREE_EMAIL = "unittest@free-polyverse.com"
 FREE_ORG = "free-polyverse-test-org"
 

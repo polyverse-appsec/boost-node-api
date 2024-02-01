@@ -5,7 +5,11 @@ import json
 
 from utils import get_signed_headers
 
-from constants import TARGET_URL, EMAIL, ORG, PUBLIC_PROJECT, PUBLIC_PROJECT_NAME, PREMIUM_EMAIL, PRIVATE_PROJECT_NAME_CHECKIN_TEST
+from constants import (
+    TARGET_URL, EMAIL, ORG, PUBLIC_PROJECT, PUBLIC_PROJECT_NAME,
+    PREMIUM_EMAIL, PRIVATE_PROJECT_NAME_CHECKIN_TEST, LOCAL_ADMIN_EMAIL,
+    AARON_EMAIL
+)
 
 
 class UnitTestSuite(unittest.TestCase):
@@ -50,6 +54,15 @@ class UnitTestSuite(unittest.TestCase):
         self.assertEqual(responseData['name'], "project456")
         self.assertNotEqual(len(responseData['resources']), 0)
 
+    def test_project_status(self):
+        print("Running test: Get Status of Private Project")
+        signedHeaders = get_signed_headers(AARON_EMAIL)
+        response = requests.get(f"{TARGET_URL}/api/user_project/polyverse-appsec/sara/status", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+        responseData = response.json()
+        self.assertIsNotNone(responseData)
+
     def test_create_empty_project(self):
         print("Running test: Retrieve data from the user's project")
 
@@ -71,7 +84,7 @@ class UnitTestSuite(unittest.TestCase):
         response = requests.post(f"{TARGET_URL}/api/user_project/org123/project456", json={}, headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
-        signedHeaders = get_signed_headers(EMAIL)
+        signedHeaders = get_signed_headers(LOCAL_ADMIN_EMAIL)
         response = requests.get(f"{TARGET_URL}/api/search/projects?user=*&project=*&org=*", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
         responseData = response.json()
