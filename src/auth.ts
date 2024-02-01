@@ -83,10 +83,15 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
             console.error(`Unauthorized: UNSIGNED_AUTHN is not enabled; set ENABLE_UNSIGNED_AUTHN=true to enable`);
             res.status(401).send('Unauthorized');
             return undefined;
+        } else {
+            console.warn(`ENABLE_UNSIGNED_AUTHN is enabled; BUT MOST APIs will NOT work with this user authentication model, since most APIs use identity delegation`);
         }
-
-        email = normalizeEmail(req.headers[userAccountHeader] as string);
+        
+        email = req.headers[userAccountHeader] as string;
     }
+
+    // cleanup email so we always get the same email style for validation
+    email = normalizeEmail(email);
 
     console.log(`User authenticated: ${email}`);
 
