@@ -975,6 +975,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
         // kickoff project processing now, by creating the project resources, then initiating the first
         //      data store upload
         const resourcesToGenerate : ProjectDataType[] = [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification];
+        const durationInEachStep : number[] = [ Math.floor(Date.now() / 1000) ];
+        console.log(`Starting Discovery for ${projectDataPath}`);
         for (const resource of resourcesToGenerate) {
             const startProcessing = {"status": "processing"};
 
@@ -992,17 +994,22 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
                 console.log(`New Generator State: ${JSON.stringify(newGeneratorState)}`);
             } catch (error) {
                 console.error(`Discovery unable to launch generator (continuing) for ${generatorPath}`, error);
-                continue;
             }
+            durationInEachStep.push(Math.floor(Date.now() / 1000));
+            console.log(`Discovery Step ${resource.toString()} took: ${durationInEachStep[durationInEachStep.length - 1] - durationInEachStep[durationInEachStep.length - 2]} seconds`);
         }
 
         const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
-        const existingDataReferences = await localSelfDispatch<void>(email, signedIdentity, req, `${projectDataPath}/data_references`, 'PUT');
+        const existingDataReferences = await localSelfDispatch<ProjectDataReference[]>(email, signedIdentity, req, `${projectDataPath}/data_references`, 'PUT');
+        durationInEachStep.push(Math.floor(Date.now() / 1000));
         console.log(`Existing Data References: ${JSON.stringify(existingDataReferences)}`);
+
+        // print the time in last step
+        console.log(`Discovery Step Data References took: ${durationInEachStep[durationInEachStep.length - 1] - durationInEachStep[durationInEachStep.length - 2]} seconds`);
 
         return res
             .status(200)
-            .send();
+            .send(existingDataReferences);
     } catch (error) {
         console.error(`Handler Error: ${user_project_org_project_discovery}`, error);
         return res.status(500).send('Internal Server Error');
