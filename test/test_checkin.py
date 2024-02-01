@@ -66,7 +66,10 @@ class BoostBackendCheckinSuite(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         project_data = {"resources": [{"uri": public_git_project}]}
+        project_creation_time = time.time()
         response = requests.post(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}", json=project_data, headers=signedHeaders)
+        project_creation_time = time.time() - project_creation_time
+        print(f"Project Creation Time: {project_creation_time} seconds")
         self.assertEqual(response.status_code, 200)
 
         response = requests.get(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}", headers=signedHeaders)
@@ -87,13 +90,13 @@ class BoostBackendCheckinSuite(unittest.TestCase):
             response = requests.get(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/status", headers=signedHeaders)
             self.assertEqual(response.status_code, 200)
 
-            gotten_project_data = response.json()
-            if gotten_project_data['status'] == "Unknown":
+            project_status = response.json()
+            if project_status['status'] == "Unknown":
                 print("Project Status is Unknown - regenerating via POST")
                 response = requests.post(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/status", headers=signedHeaders)
                 self.assertEqual(response.status_code, 200)
 
-            if gotten_project_data['synchronized']:
+            if project_status['synchronized']:
                 print(f"Project is Fully Synchronized in {i * 20} seconds - {response.json()}")
                 break
             else:
@@ -101,13 +104,13 @@ class BoostBackendCheckinSuite(unittest.TestCase):
                 print(f"\tFull Project Status is {response.json()}")
 
                 # if our project data is out of date on AI servers- then we can poke the AI content sync endpoint to force a sync
-                if gotten_project_data['status'] == "AI Data Out of Date":
+                if project_status['status'] == "AI Data Out of Date":
                     print("Forcing AI Data Sync")
                     response = requests.post(f"{TARGET_URL}/api/user_project/polyverse-appsec/sara/data_references", headers=signedHeaders)
                     self.assertEqual(response.status_code, 200)
                     print("AI Sync completed - rechecking in 20 seconds")
                 else:
-                    print(f"Project status is {gotten_project_data['status']}, waiting 20 seconds")
+                    print(f"Project status is {project_status['status']}, waiting 20 seconds")
 
             # wait 20 seconds before probing again
             time.sleep(20)
