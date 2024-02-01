@@ -21,6 +21,7 @@ Polyverse Boost ReST API (Backend)
 ### Bug Fixes
 - Always return Resource Status (with last_updated time) for Resources that exist /api/user_project/{org}/{project}/data/{resource}/status (GET) - was returning no resource if no timestamp was stored
 - Fix JSON/String decoding from buffer for Generator POST/PUT/PATCH and process (was failing to parse)
+- Report 400 if bad JSON input for body in POST/PATCH/PUT APIs
 
 ## Version 0.9.7: January 30th, 2024
 

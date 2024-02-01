@@ -2113,7 +2113,13 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             body = Buffer.from(body).toString('utf8');
         }
 
-        const input : GeneratorState = JSON.parse(body);
+        let input : GeneratorState;
+        try {
+            input = JSON.parse(body);
+        } catch (error) {
+            console.error('Error parsing JSON:', error);
+            return res.status(400).send('Invalid JSON Body');
+        }
         let userGeneratorRequest : GeneratorState = {
             status: input.status
         };
@@ -2337,7 +2343,13 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
             body = Buffer.from(body).toString('utf8');
         }
 
-        const input : ResourceGeneratorProcessState = JSON.parse(body);
+        let input : ResourceGeneratorProcessState;
+        try {
+            input = JSON.parse(body);
+        } catch (error) {
+            console.error('Error parsing JSON:', error);
+            return res.status(400).send('Invalid JSON Body');
+        }
         let resourceGeneratorProcessState : ResourceGeneratorProcessState = {
             stage: input.stage
         };
@@ -2879,7 +2891,13 @@ app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
             return res.status(400).send('Missing body');
         }
 
-        const newProfileData = JSON.parse(body) as UserProfile;
+        let newProfileData : UserProfile;
+        try {
+            newProfileData = JSON.parse(body) as UserProfile;
+        } catch (error) {
+            console.error(`Error parsing JSON: ${body}`, error);
+            return res.status(400).send('Invalid JSON Body');
+        }
         const profileData: UserProfile = {};
         profileData.name = newProfileData.name;
         profileData.title = newProfileData.title;
