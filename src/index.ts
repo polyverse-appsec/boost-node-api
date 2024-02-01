@@ -1999,7 +1999,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
 
         let body = req.body;
         if (typeof body !== 'string') {
-            body = JSON.stringify(body);
+            body = Buffer.from(body).toString('utf8');
         }
 
         const input : GeneratorState = JSON.parse(body);
@@ -2110,7 +2110,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
         let body = req.body;
         if (typeof body !== 'string') {
-            body = JSON.stringify(body);
+            body = Buffer.from(body).toString('utf8');
         }
 
         const input : GeneratorState = JSON.parse(body);
@@ -2201,6 +2201,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     }
 
                     const authHeader = await signedAuthHeader(email);
+                    console.log(`${user_project_org_project_data_resource_generator}: starting async processing for ${newProcessingRequest} at ${selfEndpoint}`);
                     // we're going to wait for completion or 1 second to pass
                     await axios.put(selfEndpoint, newProcessingRequest, {
                             headers: {
@@ -2220,6 +2221,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                                 console.log(`${user_project_org_project_data_resource_generator}: Async Processing failed for ${newProcessingRequest}: `, error);
                             }
                         });
+                    console.log(`${user_project_org_project_data_resource_generator}: completed async processing for ${newProcessingRequest}`);
                                     
                     // Return a response immediately without waiting for the async process
                     return res
@@ -2332,7 +2334,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
 
         let body = req.body;
         if (typeof body !== 'string') {
-            body = JSON.stringify(body);
+            body = Buffer.from(body).toString('utf8');
         }
 
         const input : ResourceGeneratorProcessState = JSON.parse(body);
