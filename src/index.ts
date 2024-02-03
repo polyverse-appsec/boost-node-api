@@ -1214,7 +1214,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         if (projectStatus.status !== ProjectStatus.Synchronized) {
             try {
                 console.log(`Launching Groomed Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
-//                    await localSelfDispatch<void>(email, originalIdentityHeader, req, `${projectDataPath}/discovery`, 'POST');
+
+                const originalIdentityHeader = getSignedIdentityFromHeader(req);
+                await localSelfDispatch<void>(email, originalIdentityHeader!, req, `${projectPath}/discovery`, 'POST');
 
                 const groomingState = {
                     status: GroomingStatus.Grooming,
