@@ -748,9 +748,15 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
                 console.log(`TIMECHECK: ${org}:${project}:discovery timed out after ${maximumDiscoveryTimeoutOnProjectCreationInSeconds} seconds`);
             } else {
-                console.log(`TIMECHECK: ${org}:${project}:discovery failed`, error);
+                // This block is for handling errors, including 404 and 500 status codes
+                if (axios.isAxiosError(error) && error.response) {
+                    console.log(`TIMECHECK: ${org}:${project}:discovery failed ${error.response.status}:${error.response.data} - due to error: ${error}`);
+                } else {
+                    // Handle other errors (e.g., network errors)
+                    console.log(`TIMECHECK: ${org}:${project}:discovery failed due to error: ${error}`);
+                }
             }
-        });       
+        });
 
         return res
             .status(200)
@@ -2275,9 +2281,15 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                             // otherwise, we'll move on
                         .catch(error => {
                             if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
-                                console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} async processing timed out`);
+                                console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} async processing timed out after 1 seconds`);
                             } else {
-                                console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} failed async processing ${error}`);
+                                // This block is for handling errors, including 404 and 500 status codes
+                                if (axios.isAxiosError(error) && error.response) {
+                                    console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} async processing failed due to error: ${error.response.status}:${error.response.statusText} due to error:${error}`);
+                                } else {
+                                    // Handle other errors (e.g., network errors)
+                                    console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} failed async processing ${error}`);
+                                }
                             }
                         });
                     console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} After async processing`);
