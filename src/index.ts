@@ -2227,7 +2227,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     const processStartTime = Math.floor(Date.now() / 1000);
                     console.log(`TIMECHECK: ${currentGeneratorState.stage}: processing started at ${processStartTime}`);
 
-                    currentGeneratorState.stage = await localSelfDispatch<string>(email, getSignedIdentityFromHeader(req)!, req, pathToProcess, "POST", currentGeneratorState.stage?JSON.stringify(processNextStageState):undefined);
+                    currentGeneratorState.stage = await localSelfDispatch<string>(email, getSignedIdentityFromHeader(req)!, req, pathToProcess, "POST", currentGeneratorState.stage?processNextStageState:undefined);
 
                     const processEndTime = Math.floor(Date.now() / 1000);
                     console.log(`TIMECHECK: ${currentGeneratorState.stage}: processing ended at ${processEndTime} (${processEndTime - processStartTime} seconds)`);
