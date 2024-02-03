@@ -3,13 +3,13 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.9.9: February 2nd, 2024
+## Version 0.9.9: February 4th, 2024
 
 ### New Features
 - N/A
 
 ### Enhancements
-- N/A
+- Ensure Project Creation completes in ~15 seconds or less (with Discovery forked) /api/user_project/{org}/{project} (POST/PUT)
 
 ### Bug Fixes
 - N/A

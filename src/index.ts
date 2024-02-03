@@ -722,16 +722,35 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProjectString);
 
         console.log(`${user_project_org_project}: stored data`);
+        // because the discovery process may take more than 15 seconds, we never want to fail the project creation
+        //      no matter how long discovery takes or even if discovery runs
+        // so we'll use the axios timeout to ensure we don't wait too long for the discovery process
+        const maximumDiscoveryTimeoutOnProjectCreationInSeconds = 15;
 
-        const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
-
-        // get the path of the project data uri - excluding the api root endpoint
-        const projectDataPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
-        try {
-            await localSelfDispatch<void>(email, signedIdentity, req, `${projectDataPath}/discovery`, 'POST');
-        } catch (error) {
-            console.error(`Unable to launch discovery for ${projectDataPath}`, error);
+        let selfEndpoint = `${req.protocol}://${req.get('host')}${req.originalUrl}/discovery`;
+        // if we're running locally, then we'll use http:// no matter what
+        if (req.get('host')!.includes('localhost')) {
+            selfEndpoint = `http://${req.get('host')}${req.originalUrl}/discovery`;
         }
+        const authHeader = await signedAuthHeader(email);
+        await axios.post(selfEndpoint, undefined, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...authHeader,
+            },
+            timeout: maximumDiscoveryTimeoutOnProjectCreationInSeconds * 1000 })
+        .then(response => {
+            // if the new task stage completes in 1 seconds, we'll wait...
+            console.log(`TIMECHECK: ${org}:${project}:discovery completed in ${maximumDiscoveryTimeoutOnProjectCreationInSeconds} seconds`);
+        })
+            // otherwise, we'll move on
+        .catch(error => {
+            if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
+                console.log(`TIMECHECK: ${org}:${project}:discovery timed out after ${maximumDiscoveryTimeoutOnProjectCreationInSeconds} seconds`);
+            } else {
+                console.log(`TIMECHECK: ${org}:${project}:discovery failed`, error);
+            }
+        });       
 
         return res
             .status(200)
@@ -2175,9 +2194,16 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         selfEndpoint = `http://${req.get('host')}`;
                     }
 
+                    const processNextStageState : ResourceGeneratorProcessState = {
+                        stage: currentGeneratorState.stage!,
+                    };
+                    const pathToProcess = `${req.originalUrl.substring(req.originalUrl.indexOf('user_project'))}/process`;
+
                     const processStartTime = Math.floor(Date.now() / 1000);
                     console.log(`TIMECHECK: ${currentGeneratorState.stage}: processing started at ${processStartTime}`);
-                    currentGeneratorState.stage = await processStage(selfEndpoint, email, projectData, resource, currentGeneratorState.stage);
+
+                    currentGeneratorState.stage = await localSelfDispatch<string>(email, getSignedIdentityFromHeader(req)!, req, pathToProcess, "POST", currentGeneratorState.stage?JSON.stringify(processNextStageState):undefined);
+
                     const processEndTime = Math.floor(Date.now() / 1000);
                     console.log(`TIMECHECK: ${currentGeneratorState.stage}: processing ended at ${processEndTime} (${processEndTime - processStartTime} seconds)`);
 
@@ -2234,7 +2260,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     }
 
                     const authHeader = await signedAuthHeader(email);
-                    console.log(`TIMECHECK: ${org}:${project}: starting async processing for ${newProcessingRequest} at ${selfEndpoint}`);
+                    console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} starting async processing`);
                     // we're going to wait for completion or 1 second to pass
                     await axios.put(selfEndpoint, newProcessingRequest, {
                             headers: {
@@ -2244,17 +2270,17 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                             timeout: 1000 })
                         .then(response => {
                             // if the new task stage completes in 1 seconds, we'll wait...
-                            console.log(`${user_project_org_project_data_resource_generator}: Async Processing completed for ${newProcessingRequest}: `, response.status);
+                            console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} completed async processing`);
                         })
                             // otherwise, we'll move on
                         .catch(error => {
                             if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
-                                console.log(`${user_project_org_project_data_resource_generator}: Async Processing started for ${newProcessingRequest}`);
+                                console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} async processing timed out`);
                             } else {
-                                console.log(`${user_project_org_project_data_resource_generator}: Async Processing failed for ${newProcessingRequest}: `, error);
+                                console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} failed async processing ${error}`);
                             }
                         });
-                    console.log(`TIMECHECK: ${org}:${project}: ${user_project_org_project_data_resource_generator}: completed async processing for ${newProcessingRequest}`);
+                    console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} After async processing`);
                                     
                     // Return a response immediately without waiting for the async process
                     return res
@@ -2366,24 +2392,27 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
         }
 
         let body = req.body;
-        if (typeof body !== 'string') {
-            if (Buffer.isBuffer(body) || Array.isArray(body)) {
-                body = Buffer.from(body).toString('utf8');
-            } else {
-                body = JSON.stringify(body);
+        let resourceGeneratorProcessState : ResourceGeneratorProcessState | undefined = undefined;
+        if (body) {
+            if( typeof body !== 'string') {
+                if (Buffer.isBuffer(body) || Array.isArray(body)) {
+                    body = Buffer.from(body).toString('utf8');
+                } else {
+                    body = JSON.stringify(body);
+                }
             }
-        }
+            let input : ResourceGeneratorProcessState;
+            try {
+                input = JSON.parse(body);
+            } catch (error) {
+                console.error('Error parsing JSON:', error);
+                return res.status(400).send('Invalid JSON Body');
+            }
 
-        let input : ResourceGeneratorProcessState;
-        try {
-            input = JSON.parse(body);
-        } catch (error) {
-            console.error('Error parsing JSON:', error);
-            return res.status(400).send('Invalid JSON Body');
+            resourceGeneratorProcessState = {
+                stage: input.stage
+            };
         }
-        let resourceGeneratorProcessState : ResourceGeneratorProcessState = {
-            stage: input.stage
-        };
 
         const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
         if (!loadedProjectData) {
@@ -2398,7 +2427,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
             selfEndpoint = `http://${req.get('host')}`;
         }
 
-        const nextGeneratorState : string = await processStage(selfEndpoint, email, projectData, resource, resourceGeneratorProcessState.stage);
+        const nextGeneratorState : string = await processStage(selfEndpoint, email, projectData, resource, resourceGeneratorProcessState?.stage);
 
         return res
             .status(200)
