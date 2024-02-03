@@ -713,6 +713,25 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             resources : updatedProject.resources? updatedProject.resources : [],
         };
 
+        const projectPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
+        try {
+            const currentProjectData = await localSelfDispatch<UserProjectData>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, projectPath, 'GET');
+
+            // check if the current data is equivalent to the existing data, and if it is, then just return success and skip validation
+            if (JSON.stringify(currentProjectData) === JSON.stringify(storedProject)) {
+                return res
+                    .status(200)
+                    .contentType('application/json')
+                    .send(storedProject);
+            }
+        } catch (error: any) {
+            // check for 404 and ignore it - everything else, log and error and then continue
+            if (!error.message.includes('failed with status 404')) {
+                console.error(`Unable to retrieve current project data for ${projectPath} - just post the new data - due to ${error}`);
+            }
+        }
+
+        // validate this user has access to these repositories
         if (await validateProjectRepositories(email, org, storedProject.resources, req, res)) {
             return res;
         }

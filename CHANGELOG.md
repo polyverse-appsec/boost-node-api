@@ -10,6 +10,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Ensure Project Creation completes in ~15 seconds or less (with Discovery forked) /api/user_project/{org}/{project} (POST/PUT)
+- If Project POST/PUT is submitting the same as existing project data, then skip GitHub validation and discovery launch
 
 ### Bug Fixes
 - N/A
