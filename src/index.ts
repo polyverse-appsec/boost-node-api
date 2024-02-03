@@ -23,7 +23,7 @@ import { uploadProjectDataForAIAssistant } from './openai';
 import { UserProjectData } from './types/UserProjectData';
 import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
 import { ProjectResource } from './types/ProjectResource';
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { ProjectDataReference } from './types/ProjectDataReference';
 import { Generator } from './generators/generator';
 
@@ -58,7 +58,7 @@ app.use((err : any, req : Request, res : Response) => {
 });
 */
 
-export async function localSelfDispatch<T>(email: string, originalIdentityHeader: string, initialRequest: Request, path: string, httpVerb: string, bodyContent?: any): Promise<T> {
+export async function localSelfDispatch<T>(email: string, originalIdentityHeader: string, initialRequest: Request, path: string, httpVerb: string, bodyContent?: any, timeoutMs: number = 0): Promise<T> {
 
     let selfEndpoint = `${initialRequest.protocol}://${initialRequest.get('host')}${api_root_endpoint}/${path}`;
     // if we're running locally, then we'll use http:// no matter what
@@ -66,40 +66,92 @@ export async function localSelfDispatch<T>(email: string, originalIdentityHeader
         selfEndpoint = `http://${initialRequest.get('host')}${api_root_endpoint}/${path}`;
     }
 
-    const fetchOptions : RequestInit = {
-        method: httpVerb,
-        headers: {
-            'X-Signed-Identity': originalIdentityHeader,
-        }
-    };
+    if (!timeoutMs) {
 
-    if (['POST', 'PUT'].includes(httpVerb) && bodyContent) {
-        fetchOptions.body = JSON.stringify(bodyContent);
-        fetchOptions.headers = {
-            ...fetchOptions.headers,
+        const fetchOptions : RequestInit = {
+            method: httpVerb,
+            headers: {
+                'X-Signed-Identity': originalIdentityHeader,
+            }
+        };
+
+        if (['POST', 'PUT'].includes(httpVerb) && bodyContent) {
+            fetchOptions.body = JSON.stringify(bodyContent);
+            fetchOptions.headers = {
+                ...fetchOptions.headers,
+                'Content-Type': 'application/json'
+            };
+        }
+
+        let response;
+        
+        try {
+            response = await fetch(selfEndpoint, fetchOptions);
+        } catch (error) {
+            console.error(`Request ${httpVerb} ${selfEndpoint} failed with error ${error}`);
+            throw error;
+        }
+
+        if (response.ok) {
+            if (['GET'].includes(httpVerb)) {
+                const objectResponse = await response.json();
+                return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
+            } else {
+                return {} as T;
+            }
+        }
+
+        throw new Error(`Request ${selfEndpoint} failed with status ${response.status}: ${response.statusText}`);
+    } else {
+        const headers = {
+            'X-Signed-Identity': originalIdentityHeader,
             'Content-Type': 'application/json'
         };
-    }
-
-    let response;
     
-    try {
-        response = await fetch(selfEndpoint, fetchOptions);
-    } catch (error) {
-        console.error(`Request ${httpVerb} ${selfEndpoint} failed with error ${error}`);
-        throw error;
-    }
-
-    if (response.ok) {
-        if (['GET'].includes(httpVerb)) {
-            const objectResponse = await response.json();
-            return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
-        } else {
-            return {} as T;
+        const axiosConfig = {
+            headers: headers,
+            timeout: timeoutMs
+        };
+    
+        try {
+            let response;
+            switch (httpVerb.toLowerCase()) {
+                case 'get':
+                    response = await axios.get(selfEndpoint, axiosConfig);
+                    break;
+                case 'post':
+                    response = await axios.post(selfEndpoint, bodyContent, axiosConfig);
+                    break;
+                case 'put':
+                    response = await axios.put(selfEndpoint, bodyContent, axiosConfig);
+                    break;
+                case 'delete':
+                    response = await axios.delete(selfEndpoint, axiosConfig);
+                    break;
+                case 'patch':
+                    response = await axios.patch(selfEndpoint, bodyContent, axiosConfig);
+                    break;
+                default:
+                    throw new Error(`Invalid HTTP Verb: ${httpVerb}`);
+            }
+    
+            // Axios automatically parses JSON, so no need to manually parse it here.
+            return response.data as T;
+        } catch (error : any) {
+            if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
+                console.log(`TIMECHECK: ${httpVerb} ${selfEndpoint} timed out after ${timeoutMs / 1000} seconds`);
+            } else {
+                // This block is for handling errors, including 404 and 500 status codes
+                if (axios.isAxiosError(error) && error.response) {
+                    console.log(`TIMECHECK: ${httpVerb} ${selfEndpoint} failed with status ${error.response.status}:${error.response.statusText} due to error:${error}`);
+                } else {
+                    // Handle other errors (e.g., network errors)
+                    console.log(`TIMECHECK: ${httpVerb} ${selfEndpoint} failed ${error}`);
+                }
+            }
+            throw error;
         }
     }
-
-    throw new Error(`Request ${selfEndpoint} failed with status ${response.status}: ${response.statusText}`);
 }
 
 async function splitAndStoreData(
