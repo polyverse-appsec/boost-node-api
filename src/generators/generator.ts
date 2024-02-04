@@ -79,7 +79,7 @@ export class Generator {
         console.log(`Loaded ${this.dataType} data`);
     }
 
-    async saveScratchData(data: string) : Promise<void> {
+    async saveScratchData(data: string, stage?: string) : Promise<void> {
         console.log(`Saving Scratch ${this.dataType} data`);
 
         const uri = new URL(this.projectData.resources[0].uri);
@@ -90,10 +90,15 @@ export class Generator {
             throw new Error(`Invalid URI: ${uri}`);
         }
 
+        // save as current stage if not defined
+        if (!stage) {
+            stage = this.currentStage;
+        }
+
         // write the scratch data for the current stage
         await saveProjectDataResource(
             this.email, ownerName, repoName, this.dataType,
-            `${this.dataType}/generators/scratch/${this.currentStage}`,
+            `${this.dataType}/generators/scratch/${stage}`,
             data);
     }
 

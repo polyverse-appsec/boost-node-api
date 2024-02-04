@@ -13,7 +13,7 @@ Polyverse Boost ReST API (Backend)
 - If Project POST/PUT is submitting the same as existing project data, then skip GitHub validation and discovery launch
 
 ### Bug Fixes
-- N/A
+- Fix issue preventing Blueprint data from refreshing correctly (was not loading draft blueprint data)
 
 ## Version 0.9.8: January 31st, 2024
 
