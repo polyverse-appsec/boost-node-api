@@ -302,7 +302,7 @@ export class Generator {
 
             return filteredFileList;
         } catch (err) {
-            console.error(`Unable to get filtered file list: ${err}`);
+            console.error(`Unable to get filtered file list for ${this.resourceUri}: ${err}`);
             throw err;
         }
     }
