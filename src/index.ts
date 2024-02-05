@@ -2860,8 +2860,8 @@ app.post(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`,
 });
 
 const proxy_ai_endpoint = "proxy/ai/:org/:endpoint";
+const secondsBeforeRequestTimeout = 28;
 const handleProxyRequest = async (req: Request, res: Response) => {
-
     logRequest(req);
 
     try {
@@ -2885,47 +2885,45 @@ const handleProxyRequest = async (req: Request, res: Response) => {
             externalEndpoint = Endpoints.get(endpoint as Services);
         }
 
-        const fetchOptions : any = {
-            method: req.method,
+        const axiosOptions = {
+            method: req.method as any,
+            url: externalEndpoint,
             headers: {
                 'Accept': 'application/json',
                 ...signedIdentity
-            }
+            },
+            data: (req.method !== 'GET' && req.method !== 'HEAD') ? req.body : undefined,
+            timeout: secondsBeforeRequestTimeout * 1000
         };
 
-        if (req.method !== 'GET' && req.method !== 'HEAD') {
-            fetchOptions.body = req.body;
-        }
-
         try {
-            const response = await fetch(externalEndpoint, fetchOptions);
+            const response = await axios(axiosOptions);
 
             console.log(`Proxy response: ${response.status} ${response.statusText}`);
 
-            if (response.ok) {
-                const responseObject = await response.json();
-                return res.
-                    status(200).
-                    contentType('application/json').
-                    send(responseObject);
-            } else {
-                return res.status(response.status).send(response.statusText);
-            }
-        } catch (error : any) {
-            // check for ECONNREFUSED error from fetch
-            if (error?.errno === 'ECONNREFUSED' || error?.cause?.code === 'ECONNREFUSED') {
-                if (error.cause) { // fetch embeds tcp error in cause property of error
-                    error = error.cause;
+            return res
+                .status(response.status)
+                .contentType('application/json')
+                .send(response.data);
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                if (error.code === 'ECONNABORTED') {
+                    console.error(`Error: Request to ${externalEndpoint} timed out`, error.message);
+                } else if (error.response) {
+                    console.error(`Error: Server responded with status ${error.response.status}`, error.message);
+                    return res.status(error.response.status).send(error.response.statusText);
+                } else if (error.request) {
+                    console.error(`Error: No response received from ${externalEndpoint}`, error.message);
+                } else {
+                    console.error(`Error: Request setup failed for ${externalEndpoint}`, error.message);
                 }
-                console.error(`Error making proxy request - endpoint refused request: ${externalEndpoint}`, error);
-                return res.status(500).send('Internal Server Error');
+            } else {
+                console.error('Unknown error during proxy request:', error);
             }
-
-            console.error('Error making proxy request:', error);
             return res.status(500).send('Internal Server Error');
         }
     } catch (error) {
-        console.error(`Handler Error: ${proxy_ai_endpoint}`, error);
+        console.error(`Handler Error: ${req.method} ${proxy_ai_endpoint}`, error);
         return res.status(500).send('Internal Server Error');
     }
 };

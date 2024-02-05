@@ -12,6 +12,7 @@ Polyverse Boost ReST API (Backend)
 - Ensure Project Creation completes in ~15 seconds or less (with Discovery forked) /api/user_project/{org}/{project} (POST/PUT)
 - If Project POST/PUT is submitting the same as existing project data, then skip GitHub validation and discovery launch
 - Update Generator for AI Specification to process each file as a single stage (to stay within 30 second timeout)
+- Update AI Proxy Service to support 28 second timeout (<30 Serverless timeout) for all routes at /api/proxy/ai/
 
 ### Bug Fixes
 - Fix issue preventing Blueprint data from refreshing correctly (was not loading draft blueprint data)
