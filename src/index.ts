@@ -2293,6 +2293,9 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     console.log(`TIMECHECK: ${currentGeneratorState.stage}: processing started at ${processStartTime}`);
 
                     const newGeneratorState = await localSelfDispatch<ResourceGeneratorProcessState>(email, getSignedIdentityFromHeader(req)!, req, pathToProcess, "POST", processNextStageState.stage?processNextStageState:undefined);
+                    if (!newGeneratorState?.stage) {
+                        throw new Error(`Missing stage returned: ${pathToProcess}`);
+                    }
                     currentGeneratorState.stage = newGeneratorState.stage;
 
                     const processEndTime = Math.floor(Date.now() / 1000);
@@ -2526,7 +2529,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
             selfEndpoint = `http://${req.get('host')}`;
         }
 
-        const nextGeneratorState : string = await processStage(selfEndpoint, email, projectData, resource, resourceGeneratorProcessState?.stage);
+        const nextStage : string = await processStage(selfEndpoint, email, projectData, resource, resourceGeneratorProcessState?.stage);
+        const nextGeneratorState : ResourceGeneratorProcessState = {
+            stage: nextStage
+        };
 
         return res
             .status(200)
