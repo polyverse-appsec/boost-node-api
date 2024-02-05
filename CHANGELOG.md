@@ -16,6 +16,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Bug Fixes
 - Fix issue preventing Blueprint data from refreshing correctly (was not loading draft blueprint data)
+- Fix inability to fetch result of PUT/POST for local dispatch calls
 
 ## Version 0.9.8: January 31st, 2024
 
