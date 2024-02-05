@@ -2930,7 +2930,7 @@ const handleProxyRequest = async (req: Request, res: Response) => {
             const response = await axios(axiosOptions);
             const endTimeOfCall = Date.now();
 
-            console.log(`Proxy response: ${response.status} ${response.statusText} (${(endTimeOfCall - startTimeOfCall) * 1000} seconds)`);
+            console.log(`Proxy response: ${response.status} ${response.statusText} (${(endTimeOfCall - startTimeOfCall) / 1000} seconds)`);
 
             return res
                 .status(response.status)
@@ -2940,17 +2940,17 @@ const handleProxyRequest = async (req: Request, res: Response) => {
             const endTimeOfCallError = Date.now();
             if (axios.isAxiosError(error)) {
                 if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
-                    console.error(`Error: TIMEOUT: Request to ${externalEndpoint} timed out after ${(endTimeOfCallError - startTimeOfCall) * 1000} seconds`, error);
+                    console.error(`Error: TIMEOUT: Request to ${externalEndpoint} timed out after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
                 } else if (error.response) {
-                    console.error(`Error: Server responded with status ${error.response.status} ${error.response.statusText} after ${(endTimeOfCallError - startTimeOfCall) * 1000} seconds`, error);
+                    console.error(`Error: Server responded with status ${error.response.status} ${error.response.statusText} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
                     return res.status(error.response.status).send(error.response.statusText);
                 } else if (error.request) {
-                    console.error(`Error: No response received from ${externalEndpoint} after ${(endTimeOfCallError - startTimeOfCall) * 1000} seconds`, error);
+                    console.error(`Error: No response received from ${externalEndpoint} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
                 } else {
-                    console.error(`Error: Request setup failed for ${externalEndpoint} after ${(endTimeOfCallError - startTimeOfCall) * 1000} seconds`, error);
+                    console.error(`Error: Request setup failed for ${externalEndpoint} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
                 }
             } else {
-                console.error(`Unknown error during proxy request for ${externalEndpoint} after ${(endTimeOfCallError - startTimeOfCall) * 1000} seconds`, error);
+                console.error(`Unknown error during proxy request for ${externalEndpoint} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
             }
             return res.status(500).send('Internal Server Error');
         }
