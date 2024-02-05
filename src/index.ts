@@ -96,7 +96,16 @@ export async function localSelfDispatch<T>(email: string, originalIdentityHeader
             if (['GET'].includes(httpVerb)) {
                 const objectResponse = await response.json();
                 return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
-            } else {
+            } else if (['POST', 'PUT', 'PATCH'].includes(httpVerb)) {
+                let objectResponse;
+                try {
+                    objectResponse = await response.json();
+                } catch (error) {
+                    console.error(`Request ${httpVerb} ${selfEndpoint} failed with error ${error}`);
+                    return {} as T;
+                }
+                return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
+            } else { // DELETE
                 return {} as T;
             }
         }
