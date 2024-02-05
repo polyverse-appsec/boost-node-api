@@ -191,7 +191,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
             break;
         }
         default:
-            throw new Error(`Invalid Project Source Stage: ${stage}`);
+            throw new Error(`Invalid Generator: ${this.resourceUri} Stage: ${stage}`);
         }
         await this.save();
 

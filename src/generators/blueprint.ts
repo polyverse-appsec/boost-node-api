@@ -165,7 +165,7 @@ readonly defaultBlueprint =
             }
             break;
         default:
-            throw new Error(`Invalid Blueprint Stage: ${stage}`);
+            throw new Error(`Invalid Generator: ${this.resourceUri} Stage: ${stage}`);
         }
         await this.save();
 
