@@ -23,6 +23,13 @@ interface SummarizerOutput extends AIResponse {
     analysis: string;
 }
 
+interface FileSummarizationStatus {
+    numberOfErrors: number;
+    currentErrorStreak: number;
+    totalFiles: number;
+    filesProcessed: number;
+}
+
 export class ArchitecturalSpecificationGenerator extends Generator {
     constructor(serviceEndpoint: string, email: string, projectData: UserProjectData) {
         super(serviceEndpoint, email, projectData, ProjectDataType.ProjectSpecification);
@@ -87,7 +94,16 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                     .replace('{architecturalSpec}', NoSpecificationAvailable);
             }
 
-            await this.saveScratchData(JSON.stringify(filteredFileContents));
+            await this.saveScratchData<FileContent[]>(filteredFileContents);
+
+            // reset the summarization status
+            const fileSummarizationStatus : FileSummarizationStatus = {
+                numberOfErrors: 0,
+                currentErrorStreak: 0,
+                totalFiles: filteredFileContents.length,
+                filesProcessed: 0,
+            };
+            await this.saveScratchData<FileSummarizationStatus>(fileSummarizationStatus, ArchitecturalSpecificationStage.FileSummarization);
 
             nextStage = ArchitecturalSpecificationStage.FileSummarization;
             break;
@@ -96,14 +112,12 @@ export class ArchitecturalSpecificationGenerator extends Generator {
         {
             await this.updateProgress('Loading Filtered File Contents');
 
-            const loadedFilteredFileContentsRaw = await this.loadScratchData(ArchitecturalSpecificationStage.FileFiltering);
-            if (!loadedFilteredFileContentsRaw) {
+            const filteredFileContents = await this.loadScratchData<FileContent[]>(ArchitecturalSpecificationStage.FileFiltering);
+            if (!filteredFileContents) {
                 throw new GeneratorProcessingError(
                     `Unable to load filtered file contents from previous stage`,
                     ArchitecturalSpecificationStage.FileFiltering);
             }
-
-            const filteredFileContents : FileContent[] = JSON.parse(loadedFilteredFileContentsRaw);
 
             if (filteredFileContents.length === 0) {
                 nextStage = ArchitecturalSpecificationStage.Complete;
@@ -117,7 +131,9 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                 }
 
                     // re-save the filtered file contents (without the newest entry)
-                await this.saveScratchData(JSON.stringify(filteredFileContents), ArchitecturalSpecificationStage.FileSummarization);
+                await this.saveScratchData<FileContent[]>(filteredFileContents, ArchitecturalSpecificationStage.FileFiltering);
+
+                await this.load(); // load the resource data before updating it
 
                 if (!nextStage) {
 
@@ -125,10 +141,19 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                         .replace('{relativeFileName}', fileContent!.path)
                         .replace('{architecturalSpec}', NoSpecificationAvailable)
 
+                    const fileSummarizationStatus = await this.loadScratchData<FileSummarizationStatus>(ArchitecturalSpecificationStage.FileSummarization);
+                    if (!fileSummarizationStatus) {
+                        throw new GeneratorProcessingError(
+                            `Unable to load file summarization status from previous stage`,
+                            ArchitecturalSpecificationStage.FileFiltering);
+                    }
+
                     try {
                         await this.updateProgress('Building AI Specification for ' + fileContent!.path);
 
                         const architecturalSpec : string = await this.createArchitecturalSpecification(fileContent!.source);
+                        
+                        fileSummarizationStatus.filesProcessed++;
 
                         const availableSpecForThisFile = this.fileArchitecturalSpecificationEntry
                                 .replace('{relativeFileName}', fileContent!.path)
@@ -136,8 +161,13 @@ export class ArchitecturalSpecificationGenerator extends Generator {
 
                         this.data.replace(unavailableSpecForThisFile, availableSpecForThisFile);
 
-                    } catch (err) {
+                    } catch (err: any) {
                         console.log(`Error creating architectural specification for ${fileContent!.path}: ${err}`);
+
+                        fileSummarizationStatus.numberOfErrors++;
+                        fileSummarizationStatus.currentErrorStreak++;
+                
+                        await this.checkAndSetErrorState(fileSummarizationStatus, err);
 
                         const errorSpecificationForThisFile = this.fileArchitecturalSpecificationEntry
                                 .replace('{relativeFileName}', fileContent!.path)
@@ -148,12 +178,13 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                         await this.updateProgress(`Failed to Build AI Spec for ${fileContent!.path} due to ${err}`);
                     }
 
+                    await this.saveScratchData<FileSummarizationStatus>(fileSummarizationStatus, ArchitecturalSpecificationStage.FileSummarization);
+
                     // if there are no more files to process, we're done
                     if (filteredFileContents.length === 0) {
                         nextStage = ArchitecturalSpecificationStage.Complete;
                     } else {
                         nextStage = ArchitecturalSpecificationStage.FileSummarization;
-                    
                     }
                 }
             }
@@ -167,6 +198,33 @@ export class ArchitecturalSpecificationGenerator extends Generator {
         await this.updateProgress('Finished Stage ' + stage);
 
         return nextStage;
+    }
+
+    async checkAndSetErrorState(fileSummarizationStatus: FileSummarizationStatus, err: Error) : Promise<void> {
+
+        // if we have 5 errors in a row, we'll abort and retry later - assume major network glitch
+        if (fileSummarizationStatus.currentErrorStreak > 5) {
+            throw new GeneratorProcessingError(
+                `Too many errors creating architectural specifications: ${fileSummarizationStatus.currentErrorStreak} errors in a row`,
+                ArchitecturalSpecificationStage.FileSummarization);
+        }
+
+        // if we have higher than 25% errors, we'll abort and retry
+        //    we throw here - which marks the generator in error state with reason, and enables
+        //    caller or groomer to restart this stage
+        // For very small projects (less than 10 files), we'll be less tolerant of errors
+        //    since a couple errors can dramatically skew the results
+        else if (fileSummarizationStatus.totalFiles > 10) {
+            if (fileSummarizationStatus.numberOfErrors > (fileSummarizationStatus.totalFiles / 4)) {
+                throw new GeneratorProcessingError(
+                    `Too many errors creating architectural specifications: ${fileSummarizationStatus.numberOfErrors} errors out of ${fileSummarizationStatus.totalFiles} files`,
+                    ArchitecturalSpecificationStage.FileSummarization);
+            }
+        } else if (fileSummarizationStatus.numberOfErrors > 2) {
+            throw new GeneratorProcessingError(
+                `Too many errors creating architectural specifications: ${fileSummarizationStatus.numberOfErrors} errors out of ${fileSummarizationStatus.totalFiles} files`,
+                ArchitecturalSpecificationStage.FileSummarization);
+        }
     }
 
     async createArchitecturalSpecification(code: string) : Promise<string> {

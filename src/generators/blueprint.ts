@@ -104,7 +104,7 @@ readonly defaultBlueprint =
                 const draftOutput : DraftBlueprintOutput = await this.createDraftBlueprint(filteredFileList);
 
                 // we're going to save our resulting data, so we can run sampled code
-                await this.saveScratchData(JSON.stringify(draftOutput), BlueprintStage.SampledCode);
+                await this.saveScratchData<DraftBlueprintOutput>(draftOutput, BlueprintStage.SampledCode);
 
                 this.data = draftOutput.draftBlueprint;
 
@@ -115,15 +115,13 @@ readonly defaultBlueprint =
             {
                 await this.updateProgress('Sampling Project Code');
 
-                const loadedDraftOutputRaw = await this.loadScratchData();
-                if (!loadedDraftOutputRaw) {
+                const draftOutput = await this.loadScratchData<DraftBlueprintOutput>();
+                if (!draftOutput) {
                     // if we don't have the data we need from the draft blueprint process, we won't be able
                     //      to build a better sampled code blueprint - so reset back to file scan to try and
                     //      generate it again
                     throw new GeneratorProcessingError('Unable to load draft data', BlueprintStage.FileScan);
                 }
-
-                const draftOutput : DraftBlueprintOutput = JSON.parse(loadedDraftOutputRaw);
 
                 await this.load(); // load the resource data before re-processing it
 

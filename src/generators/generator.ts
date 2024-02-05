@@ -79,7 +79,7 @@ export class Generator {
         console.log(`Loaded ${this.dataType} data`);
     }
 
-    async saveScratchData(data: string, stage?: string) : Promise<void> {
+    async saveScratchData<T>(data: T, stage?: string) : Promise<void> {
         console.log(`Saving Scratch ${this.dataType} data`);
 
         const uri = new URL(this.projectData.resources[0].uri);
@@ -95,14 +95,16 @@ export class Generator {
             stage = this.currentStage;
         }
 
+        const serializedData = JSON.stringify(data);
+
         // write the scratch data for the current stage
         await saveProjectDataResource(
             this.email, ownerName, repoName, this.dataType,
             `${this.dataType}/generators/scratch/${stage}`,
-            data);
+            serializedData);
     }
 
-    async loadScratchData(stage?: string) : Promise<string | undefined> {
+    async loadScratchData<T>(stage?: string) : Promise<T | undefined> {
         console.log(`Saving Scratch ${this.dataType} data`);
 
         const uri = new URL(this.projectData.resources[0].uri);
@@ -117,7 +119,12 @@ export class Generator {
         const data = await loadProjectDataResource(
             this.email, ownerName, repoName, this.dataType,
             `${this.dataType}/generators/scratch/${stage?stage:this.currentStage}`);
-        return data;
+        if (!data) {
+            console.log(`No Scratch ${this.dataType} data found`);
+            return undefined;
+        }
+
+        return JSON.parse(data) as T;
     }
 
     async save() : Promise<void> {
