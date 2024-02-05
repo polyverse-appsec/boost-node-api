@@ -2290,7 +2290,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     const pathToProcess = `${req.originalUrl.substring(req.originalUrl.indexOf('user_project'))}/process`;
 
                     const processStartTime = Math.floor(Date.now() / 1000);
-                    console.log(`TIMECHECK: ${currentGeneratorState.stage}: processing started at ${processStartTime}`);
+                    console.log(`TIMECHECK: ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"}: processing started at ${processStartTime}`);
 
                     const newGeneratorState = await localSelfDispatch<ResourceGeneratorProcessState>(email, getSignedIdentityFromHeader(req)!, req, pathToProcess, "POST", processNextStageState.stage?processNextStageState:undefined);
                     if (!newGeneratorState?.stage) {
@@ -2299,7 +2299,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     currentGeneratorState.stage = newGeneratorState.stage;
 
                     const processEndTime = Math.floor(Date.now() / 1000);
-                    console.log(`TIMECHECK: ${currentGeneratorState.stage}: processing ended at ${processEndTime} (${processEndTime - processStartTime} seconds)`);
+                    console.log(`TIMECHECK: ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"}: processing ended at ${processEndTime} (${processEndTime - processStartTime} seconds) - move to stage:${currentGeneratorState.stage}`);
 
                     // if we've finished all stages, then we'll set the status to complete and idle
                     if (currentGeneratorState.stage === Stages.Complete) {
