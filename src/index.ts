@@ -2112,6 +2112,10 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
                 body = JSON.stringify(body);
             }
         }
+        if (body === '') {
+            console.error(`PATCH ${user_project_org_project_data_resource_generator}: empty body`);
+            return res.status(400).send('Missing body');
+        }
 
         let input : GeneratorState;
         try {
@@ -2233,6 +2237,10 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 body = JSON.stringify(body);
             }
         }
+        if (body === '') {
+            console.error(`PUT ${user_project_org_project_data_resource_generator}: empty body`);
+            return res.status(400).send('Missing body');
+        }
 
         let input : GeneratorState;
         try {
@@ -2276,12 +2284,16 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     const processNextStageState : ResourceGeneratorProcessState = {
                         stage: currentGeneratorState.stage!,
                     };
+                    if (typeof processNextStageState.stage !== 'string') {
+                        processNextStageState.stage = "";
+                    }
                     const pathToProcess = `${req.originalUrl.substring(req.originalUrl.indexOf('user_project'))}/process`;
 
                     const processStartTime = Math.floor(Date.now() / 1000);
                     console.log(`TIMECHECK: ${currentGeneratorState.stage}: processing started at ${processStartTime}`);
 
-                    currentGeneratorState.stage = await localSelfDispatch<string>(email, getSignedIdentityFromHeader(req)!, req, pathToProcess, "POST", currentGeneratorState.stage?processNextStageState:undefined);
+                    const newGeneratorState = await localSelfDispatch<ResourceGeneratorProcessState>(email, getSignedIdentityFromHeader(req)!, req, pathToProcess, "POST", processNextStageState.stage?processNextStageState:undefined);
+                    currentGeneratorState.stage = newGeneratorState.stage;
 
                     const processEndTime = Math.floor(Date.now() / 1000);
                     console.log(`TIMECHECK: ${currentGeneratorState.stage}: processing ended at ${processEndTime} (${processEndTime - processStartTime} seconds)`);
@@ -2487,16 +2499,18 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
                 }
             }
             let input : ResourceGeneratorProcessState;
-            try {
-                input = JSON.parse(body);
-            } catch (error) {
-                console.error('Error parsing JSON:', error);
-                return res.status(400).send('Invalid JSON Body');
-            }
+            if (body) {
+                try {
+                    input = JSON.parse(body);
+                } catch (error) {
+                    console.error('Error parsing JSON:', error);
+                    return res.status(400).send('Invalid JSON Body');
+                }
 
-            resourceGeneratorProcessState = {
-                stage: input.stage
-            };
+                resourceGeneratorProcessState = {
+                    stage: input.stage
+                };
+            }
         }
 
         const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
