@@ -139,7 +139,7 @@ export async function localSelfDispatch<T>(email: string, originalIdentityHeader
             return response.data as T;
         } catch (error : any) {
             if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
-                console.log(`TIMECHECK: ${httpVerb} ${selfEndpoint} timed out after ${timeoutMs / 1000} seconds`);
+                console.log(`TIMECHECK: TIMEOUT: ${httpVerb} ${selfEndpoint} timed out after ${timeoutMs / 1000} seconds`);
             } else {
                 // This block is for handling errors, including 404 and 500 status codes
                 if (axios.isAxiosError(error) && error.response) {
@@ -817,7 +817,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             // otherwise, we'll move on
         .catch(error => {
             if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
-                console.log(`TIMECHECK: ${org}:${project}:discovery timed out after ${maximumDiscoveryTimeoutOnProjectCreationInSeconds} seconds`);
+                console.log(`TIMECHECK: TIMEOUT: ${org}:${project}:discovery timed out after ${maximumDiscoveryTimeoutOnProjectCreationInSeconds} seconds`);
             } else {
                 // This block is for handling errors, including 404 and 500 status codes
                 if (axios.isAxiosError(error) && error.response) {
@@ -2354,7 +2354,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                             // otherwise, we'll move on
                         .catch(error => {
                             if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
-                                console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} async processing timed out after 1 seconds`);
+                                console.log(`TIMECHECK: TIMEOUT: ${org}:${project}:${resource}:${currentGeneratorState.stage} async processing timed out after 1 seconds`);
                             } else {
                                 // This block is for handling errors, including 404 and 500 status codes
                                 if (axios.isAxiosError(error) && error.response) {
@@ -2907,8 +2907,8 @@ const handleProxyRequest = async (req: Request, res: Response) => {
                 .send(response.data);
         } catch (error) {
             if (axios.isAxiosError(error)) {
-                if (error.code === 'ECONNABORTED') {
-                    console.error(`Error: Request to ${externalEndpoint} timed out`, error.message);
+                if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
+                    console.error(`Error: TIMEOUT: Request to ${externalEndpoint} timed out`, error.message);
                 } else if (error.response) {
                     console.error(`Error: Server responded with status ${error.response.status}`, error.message);
                     return res.status(error.response.status).send(error.response.statusText);
