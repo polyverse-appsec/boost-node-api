@@ -120,7 +120,7 @@ export class Generator {
             this.email, ownerName, repoName, this.dataType,
             `${this.dataType}/generators/scratch/${stage?stage:this.currentStage}`);
         if (!data) {
-            console.log(`No Scratch ${this.dataType} data found`);
+            console.log(`No Scratch ${this.dataType} data found in stage ${stage?stage:this.currentStage} via Loads`);
             return undefined;
         }
 
