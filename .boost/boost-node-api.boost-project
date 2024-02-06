@@ -3,7 +3,7 @@
   "summary": {
     "projectName": "boost-node-api",
     "summaryUrl": ".boost/boost-node-api.summary.boost-notebook",
-    "filesToAnalyze": 34,
+    "filesToAnalyze": 36,
     "filesAnalyzed": 0,
     "issues": [
       "No summary file found at .boost/boost-node-api.summary.boost-notebook"
@@ -201,15 +201,6 @@
       "issueCells": 0,
       "sections": {}
     },
-    "test\\test_badinputs.py": {
-      "sourceRelFile": "test\\test_badinputs.py",
-      "notebookRelFile": ".boost/test/test_badinputs.py.boost-notebook",
-      "totalCells": 0,
-      "completedCells": 0,
-      "errorCells": 0,
-      "issueCells": 0,
-      "sections": {}
-    },
     "test\\test_ai.py": {
       "sourceRelFile": "test\\test_ai.py",
       "notebookRelFile": ".boost/test/test_ai.py.boost-notebook",
@@ -321,6 +312,33 @@
     "src\\boost-python-api\\AIFunctionResponse.ts": {
       "sourceRelFile": "src\\boost-python-api\\AIFunctionResponse.ts",
       "notebookRelFile": ".boost/src/boost-python-api/AIFunctionResponse.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "test\\test_unit_github.py": {
+      "sourceRelFile": "test\\test_unit_github.py",
+      "notebookRelFile": ".boost/test/test_unit_github.py.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "test\\test_negative.py": {
+      "sourceRelFile": "test\\test_negative.py",
+      "notebookRelFile": ".boost/test/test_negative.py.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "test\\test_proj_status.py": {
+      "sourceRelFile": "test\\test_proj_status.py",
+      "notebookRelFile": ".boost/test/test_proj_status.py.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,

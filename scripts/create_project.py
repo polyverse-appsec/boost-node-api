@@ -9,7 +9,7 @@ import time
 
 REMOTE_URL = "https://3c27qu2ddje63mw2dmuqp6oa7u0ergex.lambda-url.us-west-2.on.aws"  # Dev_url
 LOCAL_URL = "http://localhost:3000"
-BASE_URL = LOCAL_URL
+BASE_URL = REMOTE_URL
 
 python_cmd = "python3"  # or "python"
 
