@@ -1,3 +1,5 @@
+import sys
+sys.path.append("..")
 import requests
 from utils import get_signed_headers  # Replace with the actual function name
 from constants import LOCAL_URL, CLOUD_URL_DEV, CLOUD_URL_PROD, CLOUD_URL_TEST, PREMIUM_EMAIL
