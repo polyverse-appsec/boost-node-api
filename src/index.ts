@@ -2538,15 +2538,36 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
             selfEndpoint = `http://${req.get('host')}`;
         }
 
-        const nextStage : string = await processStage(selfEndpoint, email, projectData, resource, resourceGeneratorProcessState?.stage);
-        const nextGeneratorState : ResourceGeneratorProcessState = {
-            stage: nextStage
-        };
+        try {
+            const nextStage : string = await processStage(selfEndpoint, email, projectData, resource, resourceGeneratorProcessState?.stage);
+            const nextGeneratorState : ResourceGeneratorProcessState = {
+                stage: nextStage
+            };
 
-        return res
-            .status(200)
-            .contentType('application/json')
-            .send(nextGeneratorState);
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(nextGeneratorState);
+        } catch (error) {
+            if (error instanceof GeneratorProcessingError) {
+                const processingError = error as GeneratorProcessingError;
+                if (processingError.stage != resourceGeneratorProcessState?.stage) {
+                    console.error(`Resetting to ${processingError.stage} due to error in ${resource} stage ${resourceGeneratorProcessState?.stage}:`, processingError);
+            
+                    const nextGeneratorState : ResourceGeneratorProcessState = {
+                        stage: processingError.stage
+                    };
+        
+                    return res
+                        .status(200)
+                        .contentType('application/json')
+                        .send(nextGeneratorState);
+                }
+            }
+
+            console.error(`Error processing stage ${resourceGeneratorProcessState?.stage}:`, error);
+            throw error;
+        }
     } catch (error) {
         console.error(`Handler Error: ${user_project_org_project_data_resource_generator}`, error);
         return res.status(500).send('Internal Server Error');

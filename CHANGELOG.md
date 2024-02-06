@@ -13,6 +13,7 @@ Polyverse Boost ReST API (Backend)
 - If Project POST/PUT is submitting the same as existing project data, then skip GitHub validation and discovery launch
 - Update Generator for AI Specification to process each file as a single stage (to stay within 30 second timeout)
 - Update AI Proxy Service to support 28 second timeout (<30 Serverless timeout) for all routes at /api/proxy/ai/
+- Enable Generator stages to rerun if they fail (e.g. if cached file contents are missing, they can be regenerated)
 
 ### Bug Fixes
 - Fix issue preventing Blueprint data from refreshing correctly (was not loading draft blueprint data)
