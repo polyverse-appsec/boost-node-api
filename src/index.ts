@@ -220,6 +220,29 @@ const logRequest = (req: Request) => {
     }
 }
 
+const handleErrorResponse = (error: any, req: Request, res: Response) : Response => {
+    // Base error message with the request details
+    const errorMessage = `UNHANDLED_ERROR(Response): ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
+
+    // Check if we're in the development environment
+    if (process.env.DEPLOYMENT_STAGE === 'dev' || process.env.DEPLOYMENT_STAGE === 'test' || process.env.DEPLOYMENT_STAGE === 'local'
+        || process.env.DEPLOYMENT_STAGE === 'prod') {
+        // In development, print the full error stack if available, or the error message otherwise
+        console.error(errorMessage, error.stack || error);
+        // Respond with the detailed error message for debugging purposes
+        return res
+            .status(500)
+            .send('Internal Server Error: ' + (error.stack || error));
+    } else { // we'll use this for 'prod' and 'test' Stages in the future
+        // In non-development environments, log the error message for privacy/security reasons
+        console.error(errorMessage, error.message || error);
+        // Respond with a generic error message to avoid exposing sensitive error details
+        return res
+            .status(500)
+            .send('Internal Server Error: ' + (error.message || error));
+    }
+}
+
 const postOrPutUserProjectDataResource = async (req: Request, res: Response) => {
 
     logRequest(req);
@@ -287,8 +310,7 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
 
         return res.status(200).send();
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_data_resource}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 };
 
@@ -425,8 +447,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: R
 
         return getFileFromRepo(email, uri!, repo!, path, req, res, privateAccessAllowed);
     } catch (error) {
-        console.error(`Handler Error: ${user_org_connectors_github_file}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 
 });
@@ -481,8 +502,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_folders}`, async (req
 
         return getFolderPathsFromRepo(email, uri, req, res, privateAccessAllowed);
     } catch (error) {
-        console.error(`Handler Error: ${user_org_connectors_github_folders}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -536,8 +556,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_files}`, async (req: 
 
         return getFilePathsFromRepo(email, uri, req, res, privateAccessAllowed);
     } catch (error) {
-        console.error(`Handler Error: ${user_org_connectors_github_files}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -594,8 +613,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
 
         return getFullSourceFromRepo(email, uri, req, res, privateAccessAllowed);
     } catch (error) {
-        console.error(`Handler Error: ${user_org_connectors_github_fullsource}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -640,7 +658,7 @@ async function validateProjectRepositories(email: string, org: string, resources
         if (repoDetails.errorResponse) {
             return repoDetails.errorResponse;
         } else if (!repoDetails.data) {
-            console.error(`Unable to Repo Details an no Error found: ${resource.uri}`);
+            console.error(`Unable to get Repo Details and no Error found: ${resource.uri}`);
             return res.status(500).send('Internal Server Error');
         }
     }
@@ -708,8 +726,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
             .status(200)
             .send();
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -843,8 +860,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             .contentType('application/json')
             .send(storedProject);
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 }
 
@@ -888,8 +904,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request,
             .send(projectData);
 
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
     
 });
@@ -922,8 +937,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reque
             .status(200)
             .send();
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
     
 });
@@ -995,8 +1009,7 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
             .send(projectDataList);
 
     } catch (error) {
-        console.error(`Handler Error: ${search_projects}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -1050,8 +1063,7 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
             .send(projectsGroomed);
 
     } catch (error) {
-        console.error(`Handler Error: ${groom_projects}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -1116,8 +1128,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
             .status(200)
             .send(existingDataReferences);
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_discovery}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }    
 });
 
@@ -1189,8 +1200,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
             .contentType('application/json')
             .send(projectStatus);
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_status}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -1309,8 +1319,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             .contentType('application/json')
             .send(groomingState);
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_groom}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }    
 });
 
@@ -1583,8 +1592,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             .status(200)
             .send(projectStatus);
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_status}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }    
 });
 
@@ -1617,8 +1625,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req:
             .status(200)
             .send();
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_goals}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }    
 });
 
@@ -1679,8 +1686,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
             .contentType('application/json')
             .send(updatedGoals);
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_goals}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
     
 });
@@ -1720,8 +1726,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Re
             .contentType('application/json')
             .send(projectGoals);
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_goals}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 
 });
@@ -1756,8 +1761,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_config_boostignore}`, a
             .contentType('application/json')
             .send(ignoreFileSpecs);
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_config_boostignore}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -1812,8 +1816,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async 
         .contentType('application/json')
         .send(resourceData);
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_data_resource}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -1887,8 +1890,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
         .contentType('application/json')
         .send(resourceStatus);
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_data_resource_status}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -1939,8 +1941,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource}`, asy
             .status(200)
             .send();
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_data_resource}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -1998,8 +1999,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource_genera
             .status(200)
             .send();
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_data_resource_generator}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -2061,8 +2061,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
                 .send(generatorData);
         }
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_data_resource_generator}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -2174,8 +2173,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
             return res.status(400).send(`Invalid PATCH status: ${currentGeneratorState.status}`)
         }
     } catch (error) {
-        console.error(`Handler Error PATCH: ${user_project_org_project_data_resource_generator}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -2438,8 +2436,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             .contentType('application/json')
             .send(currentGeneratorState);
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_data_resource_generator}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 };
 
@@ -2569,8 +2566,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
             throw error;
         }
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_data_resource_generator}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -2675,8 +2671,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
             .contentType('application/json')
             .send(projectDataFileIds);
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_data_references}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 };
 
@@ -2730,8 +2725,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_references}`, asyn
             .contentType('application/json')
             .send(dataReferences);
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_data_references}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -2763,8 +2757,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, a
             .status(200)
             .send();
     } catch (error) {
-        console.error(`Handler Error: ${user_project_org_project_data_references}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -2815,8 +2808,7 @@ app.delete(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}
             .send();
 
     } catch (error) {
-        console.error(`Handler Error: ${files_source_owner_project_path_analysisType}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -2865,8 +2857,7 @@ app.get(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, 
 
         return res.status(200).contentType('text/plain').send(data);
     } catch (error) {
-        console.error(`Handler Error: ${files_source_owner_project_path_analysisType}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -2904,8 +2895,7 @@ app.post(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`,
         res.sendStatus(200);
 
     } catch (error) {
-        console.error(`Handler Error: ${files_source_owner_project_path_analysisType}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -2976,8 +2966,7 @@ const handleProxyRequest = async (req: Request, res: Response) => {
             return res.status(500).send('Internal Server Error');
         }
     } catch (error) {
-        console.error(`Handler Error: ${req.method} ${proxy_ai_endpoint}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 };
 
@@ -3023,8 +3012,7 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
             .contentType('application/json')
             .send(accountStatus);
     } catch (error) {
-        console.error(`Handler Error: ${user_org_account}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -3047,8 +3035,7 @@ app.delete(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Res
             .status(200)
             .send();
     } catch (error) {
-        console.error(`Handler Error: ${user_profile}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -3106,8 +3093,7 @@ app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
             .contentType('application/json')
             .send(profileData);
     } catch (error) {
-        console.error(`Handler Error: ${user_profile}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -3135,8 +3121,7 @@ app.get(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
             .contentType('application/json')
             .send(profileData);
     } catch (error) {
-        console.error(`Handler Error: ${user_profile}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -3175,8 +3160,7 @@ app.get(`${api_root_endpoint}/${api_status}`, async (req: Request, res: Response
             .contentType('application/json')
             .send(status);
     } catch (error) {
-        console.error(`Handler Error: ${api_status}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -3190,8 +3174,7 @@ app.get("/test", (req: Request, res: Response, next) => {
             .contentType("text/plain")
             .send("Test HTTP GET Ack");
     } catch (error) {
-        console.error(`Handler Error : HTTP GET /test`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -3281,8 +3264,7 @@ app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: R
             .contentType("application/json")
             .send(groomingInterval.toString());
     } catch (error) {
-        console.error(`Handler Error: HTTP POST ${api_timer_config}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -3319,8 +3301,7 @@ app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res:
             .contentType("text/plain")
             .send(`Timer HTTP POST Ack: ${currentTimeinSeconds}`);
     } catch (error) {
-        console.error(`Handler Error: HTTP POST ${api_timer_interval}`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 
@@ -3336,8 +3317,7 @@ app.post("/test", (req: Request, res: Response, next) => {
             .contentType("text/plain")
             .send(`Test HTTP POST Ack: ${data}`);
     } catch (error) {
-        console.error(`Handler Error: HTTP POST /test`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res);
     }
 });
 

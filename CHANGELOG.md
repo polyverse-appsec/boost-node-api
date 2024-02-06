@@ -10,6 +10,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Split Blueprint Generator stages for File Import and File Scan - to improve responsiveness
+- Log full Request Uri for Internal Service Errors; log and return Call stack for known Deployment Servicess
 
 ### Bug Fixes
 - N/A
