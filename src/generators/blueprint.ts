@@ -9,6 +9,7 @@ import { AIFunctionResponse } from '../boost-python-api/AIFunctionResponse';
 
 enum BlueprintStage {
     Default = 'Default',
+    FileImport = 'File Import',
     FileScan = 'File Scan',
     SampledCode = 'Sampled Code',
     // TODO: Add more thorough blueprint
@@ -92,12 +93,27 @@ readonly defaultBlueprint =
             await this.updateProgress('Generating Default Blueprint');
             this.data = this.defaultBlueprint.replace('{projectName}', this.projectData.name);
 
-            nextStage = BlueprintStage.FileScan;
+            nextStage = BlueprintStage.FileImport;
 
             break;
-        case BlueprintStage.FileScan:
+
+        case BlueprintStage.FileImport:
             {
                 const filteredFileList : string[] = await this.getFilteredFileList();
+
+                // we're going to save our resulting data, so we can run sampled code
+                await this.saveScratchData<string[]>(filteredFileList, BlueprintStage.FileScan);
+
+                nextStage = BlueprintStage.FileScan;
+            }
+            break;
+
+        case BlueprintStage.FileScan:
+            {
+                const filteredFileList : string[] | undefined = await this.loadScratchData<string[]>();
+                if (!filteredFileList) {
+                    throw new GeneratorProcessingError('Unable to load file list', BlueprintStage.FileImport);
+                }
 
                 await this.updateProgress('Analyzing Files with AI');
 

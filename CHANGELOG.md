@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.9.10: February 6th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Split Blueprint Generator stages for File Import and File Scan - to improve responsiveness
+
+### Bug Fixes
+- N/A
+
 ## Version 0.9.9: February 6th, 2024
 
 ### New Features
