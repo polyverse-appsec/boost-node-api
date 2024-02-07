@@ -46,8 +46,11 @@ export class Generator {
 
         const nextStage = await this.onGenerate(stage);
 
-        await this.save();
-
+        if (this.data) {
+            await this.save();
+        } else {
+            console.log(`No ${this.dataType} data was generated - skipping save`);
+        }
         await this.updateProgress('Finished Stage ' + stage);
 
         return nextStage;
