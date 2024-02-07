@@ -1572,6 +1572,8 @@ enum GroomingStatus {
 
 interface ProjectGroomState {
     status: GroomingStatus;
+    status_details?: string;
+    consecutive_errors?: number;
     last_updated: number;
 }
 
@@ -1590,6 +1592,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         const projectGroomPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
         const projectPath = projectGroomPath.substring(0, projectGroomPath.lastIndexOf('/groom'));
 
+        const maximumDurationOfThisCallInSeconds = 25;
+        const callStart = Math.floor(Date.now() / 1000);
+
         // we'll check the status of the project data
         let projectStatus : ProjectStatusState;
         try {
@@ -1607,6 +1612,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         if (projectStatus.activelyUpdating) {
             const groomingState = {
                 status: GroomingStatus.Skipping,
+                status_details: 'Project is actively updating',
                 last_updated: Math.floor(Date.now() / 1000)
             };
             return res
@@ -1616,16 +1622,37 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         }
         // if we're not synchronized, and idle, then try again
         if (projectStatus.status !== ProjectStatus.Synchronized) {
+            const timeRemainingToDiscoverInSeconds = maximumDurationOfThisCallInSeconds - (Math.floor(Date.now() / 1000) - callStart);
+            // if we have less than one second to run discovery, just skip it for now, and we'll try again later (status refresh took too long)
+            if (timeRemainingToDiscoverInSeconds <= 1) {
+                const groomingState = {
+                    status: GroomingStatus.Skipping,
+                    status_details: `Insufficient time to rediscover: ${timeRemainingToDiscoverInSeconds} seconds remaining`,
+                    last_updated: Math.floor(Date.now() / 1000)
+                };
+                return res
+                    .status(200)
+                    .contentType('application/json')
+                    .send(groomingState);
+            }
             try {
                 console.log(`Launching Groomed Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
 
                 const originalIdentityHeader = getSignedIdentityFromHeader(req);
-                await localSelfDispatch<void>(email, originalIdentityHeader!, req, `${projectPath}/discovery`, 'POST');
+                const discoveryResult = await localSelfDispatch<ProjectDataReference[]>(email, originalIdentityHeader!, req, `${projectPath}/discovery`, 'POST', undefined, timeRemainingToDiscoverInSeconds * 1000);
 
-                const groomingState = {
+                const groomingState : ProjectGroomState = {
                     status: GroomingStatus.Grooming,
                     last_updated: Math.floor(Date.now() / 1000)
                 };
+
+                    // if discovery result is an empty object (i.e. {}), then we launched discovery but don't know if it finished (e.g. timeout waiting)
+                if (!discoveryResult || !Object.keys(discoveryResult).length) {
+                    groomingState.status_details = `Launched Async Discovery, but no result yet`;
+                } else {
+                    groomingState.status_details = `Launched Discovery ${JSON.stringify(discoveryResult)}`;
+                }
+
                 return res
                     .status(200)
                     .contentType('application/json')
@@ -1634,6 +1661,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 console.error(`Groomer unable to launch discovery for ${projectPath}`, error);
                 const groomingState = {
                     status: GroomingStatus.Error,
+                    status_details: `Error launching discovery: ${error}`,
                     last_updated: Math.floor(Date.now() / 1000)
                 };
                 return res
@@ -1645,8 +1673,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
 
         const groomingState = {
             status: GroomingStatus.Completed,
+            status_details: 'Project is synchronized and idle',
             last_updated: Math.floor(Date.now() / 1000)
         };
+
         return res
             .status(200)
             .contentType('application/json')

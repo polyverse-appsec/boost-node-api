@@ -10,6 +10,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Cleaned up noisy logging - can be enabled for tracing with Env variable TRACE_LEVEL (any value)
+- Enforce per project grooming timeouts (<25 seconds); and report status of groomer in grooming calls, including errors or timeouts
 
 ### Bug Fixes
 - N/A
