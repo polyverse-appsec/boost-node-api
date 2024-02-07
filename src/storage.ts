@@ -25,7 +25,9 @@ export async function getProjectData(email: string | null, sourceType: SourceTyp
     const projectPath = `${email ? email : "public"}/${sourceType}/${owner}/${project}`;
     const dataPath = `${resourcePath}/${analysisType}`;
 
-    console.log(`getProjectData for: ${projectPath}${dataPath}`);
+    if (process.env.TRACE_LEVEL) {
+        console.log(`getProjectData for: ${projectPath}${dataPath}`);
+    }
 
     const params : GetCommandInput = {
         TableName: analysisDatastoreTableName,

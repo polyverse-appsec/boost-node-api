@@ -328,7 +328,6 @@ async function loadProjectData(email: string, org: string, project: string): Pro
         return undefined;
     }
     projectData = JSON.parse(projectData) as UserProjectData;
-    console.log(`loadProjectData: retrieved data`);
 
     // create an object with the string fields, org, name, guidelines, array of string resources
     const userProjectData : UserProjectData = {
@@ -992,7 +991,9 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
                 .send('Internal Server Error');
         }
 
-        console.log(`${search_projects}: retrieved data for ${projectDataRaw.length} raw project data`);
+        if (process.env.TRACE_LEVEL) {
+            console.log(`${search_projects}: retrieved data for ${projectDataRaw.length} raw project data`);
+        }
 
         for (const projectData of projectDataRaw) {
             const projectDataString = projectData.data as string;
@@ -1008,7 +1009,9 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
             }
         }
 
-        console.log(`${search_projects}: retrieved data for ${projectDataList.length} projects`);
+        if (process.env.TRACE_LEVEL) {
+            console.log(`${search_projects}: retrieved data for ${projectDataList.length} projects`);
+        }
 
         return res
             .status(200)
@@ -1604,32 +1607,6 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             return res.status(500).send('Internal Server Error');
         }
 
-        // if we have no project status, then we're going to force a refresh of the project status
-        //      and we'll check again the next grooming cycle
-        if (projectStatus.status === ProjectStatus.Unknown) {
-            try {
-                const projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, `${projectPath}/status`, 'POST');
-                console.debug(`Refreshed Project Status for ${projectPath}: ${projectStatus}`);
-                const groomingState = {
-                    status: GroomingStatus.Grooming,
-                    last_updated: Math.floor(Date.now() / 1000)
-                };
-                return res
-                    .status(200)
-                    .contentType('application/json')
-                    .send(groomingState);
-            } catch (error) {
-                console.error(`Unable to refresh status for ${projectPath}`, error);
-                const groomingState = {
-                    status: GroomingStatus.Error,
-                    last_updated: Math.floor(Date.now() / 1000)
-                };
-                return res
-                    .status(200)
-                    .contentType('application/json')
-                    .send(groomingState);
-            }
-        }
         // if the project is actively updating/discovery, then groomer will be idle
         if (projectStatus.activelyUpdating) {
             const groomingState = {
@@ -1806,8 +1783,6 @@ app.get(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Re
             projectGoals = JSON.parse(projectGoalsRaw);
         }
 
-        console.log(`${user_project_org_project_goals}: retrieved data`);
-
         return res
             .status(200)
             .contentType('application/json')
@@ -1897,11 +1872,10 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async 
             return res.status(404).send('Resource not found');
         }
 
-        console.log(`${user_project_org_project_data_resource}: retrieved data`);
-    return res
-        .status(200)
-        .contentType('application/json')
-        .send(resourceData);
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send(resourceData);
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }
@@ -1971,11 +1945,10 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
 
         const resourceStatus : ResourceStatusState = JSON.parse(resourceStatusRaw);
 
-        console.log(`${user_project_org_project_data_resource_status}: retrieved data`);
-    return res
-        .status(200)
-        .contentType('application/json')
-        .send(resourceStatus);
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send(resourceStatus);
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }
@@ -2138,7 +2111,6 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
                     status: TaskStatus.Idle,
                 } as GeneratorState);
         } else {
-            console.log(`${user_project_org_project_data_resource_generator}: retrieved data`);
 
             const generatorData = JSON.parse(currentInput) as GeneratorState;
 
@@ -2828,8 +2800,6 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_references}`, asyn
         }
         const dataReferences = JSON.parse(dataReferencesRaw) as ProjectDataReference[];
 
-        console.log(`${user_project_org_project_data_references}: retrieved ids`);
-
         return res
             .status(200)
             .contentType('application/json')
@@ -3223,8 +3193,6 @@ app.get(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
         if (profileRaw) {
             profileData = JSON.parse(profileRaw) as UserProfile;
         }
-
-        console.log(`${user_profile}: retrieved data`);
 
         return res
             .status(200)

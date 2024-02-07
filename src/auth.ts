@@ -93,8 +93,10 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
     // cleanup email so we always get the same email style for validation
     email = normalizeEmail(email);
 
-    console.log(`User authenticated: ${email}`);
-
+    if (process.env.TRACE_LEVEL) {
+        console.log(`User authenticated: ${email}`);
+    }
+    
     // if admin access is required, then verify the domain is coming from polyverse.com
     if (accessType === AuthType.Admin) {
         if (email !== local_sys_admin_email) {
