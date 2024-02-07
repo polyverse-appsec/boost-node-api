@@ -58,23 +58,26 @@ class BoostBackendCheckinSuite(unittest.TestCase):
             public_git_project = PRIVATE_PROJECT
             project_name = PRIVATE_PROJECT_NAME_CHECKIN_TEST
         else:
-            signedHeaders = get_signed_headers(EMAIL)
+            signedHeaders = get_signed_headers(PREMIUM_EMAIL if PREMIUM_EMAIL else EMAIL)
             public_git_project = PUBLIC_PROJECT
             project_name = PUBLIC_PROJECT_NAME_CHECKIN_TEST
 
-        # we're going to iterate over the 3 resources (blueprint, projectsource, aispec) and delete each of them
-        for resource in ["blueprint", "projectsource", "aispec"]:
-            # delete the generator
-            response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/{resource}/generator", headers=signedHeaders)
-            self.assertEqual(response.status_code, 200)
+        response = requests.get(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}", headers=signedHeaders)
+        if response.status_code == 200:
 
-            # delete the resource
-            response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/{resource}", headers=signedHeaders)
-            self.assertEqual(response.status_code, 200)
+            # we're going to iterate over the 3 resources (blueprint, projectsource, aispec) and delete each of them
+            for resource in ["blueprint", "projectsource", "aispec"]:
+                # delete the generator
+                response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/{resource}/generator", headers=signedHeaders)
+                self.assertEqual(response.status_code, 200)
 
-        # delete the project
-        response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}", headers=signedHeaders)
-        self.assertEqual(response.status_code, 200)
+                # delete the resource
+                response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/{resource}", headers=signedHeaders)
+                self.assertEqual(response.status_code, 200)
+
+            # delete the project
+            response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}", headers=signedHeaders)
+            self.assertEqual(response.status_code, 200)
 
         project_data = {"resources": [{"uri": public_git_project}]}
         project_creation_time = time.time()
@@ -103,11 +106,10 @@ class BoostBackendCheckinSuite(unittest.TestCase):
 
             project_status = response.json()
             if project_status['status'] == "Unknown":
-                print("Project Status is Unknown - regenerating via POST")
-                response = requests.post(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/status", headers=signedHeaders)
-                self.assertEqual(response.status_code, 200)
+                print(f"Project Status is Unknown - {response.json()}")
+                break
 
-            if project_status['synchronized']:
+            if project_status['synchronized'] is True:
                 print(f"Project is Fully Synchronized in {i * 20} seconds - {response.json()}")
                 break
 
@@ -123,6 +125,10 @@ class BoostBackendCheckinSuite(unittest.TestCase):
                     print("AI Sync completed - rechecking in 20 seconds")
                 else:
                     print(f"Project status is {project_status['status']}, waiting 20 seconds")
+
+                    if not project_status['activelyUpdating']:
+                        print("Project is not actively updating, something is wrong")
+
                     self.assertTrue(project_status['activelyUpdating'])
 
             # wait 20 seconds before probing again
