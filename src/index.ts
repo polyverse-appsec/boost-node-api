@@ -2207,7 +2207,9 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
             await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', 
                 `${resource}/generator`, JSON.stringify(generatorState));
 
-            console.log(`${user_project_org_project_data_resource_generator}: stored new state: ${JSON.stringify(generatorState)}`);
+            if (process.env.TRACE_LEVEL) {
+                console.log(`${req.originalUrl}: Updated Generator: ${JSON.stringify(generatorState)}`);
+            }
         };
 
         // if we're only updating the timestamp on the processing, then don't kick off any new work
@@ -3154,6 +3156,7 @@ app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
             console.error(`Error parsing JSON: ${body}`, error);
             return res.status(400).send('Invalid JSON Body');
         }
+
         const profileData: UserProfile = {};
         profileData.name = newProfileData.name;
         profileData.title = newProfileData.title;

@@ -9,7 +9,7 @@ Polyverse Boost ReST API (Backend)
 - N/A
 
 ### Enhancements
-- N/A
+- Cleaned up noisy logging - can be enabled for tracing with Env variable TRACE_LEVEL (any value)
 
 ### Bug Fixes
 - N/A
