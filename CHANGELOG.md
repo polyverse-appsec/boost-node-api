@@ -12,6 +12,7 @@ Polyverse Boost ReST API (Backend)
 - Split Blueprint Generator stages for File Import and File Scan - to improve responsiveness
 - Log full Request Uri for Internal Service Errors; log and return Call stack for known Deployment Servicess
 - Added support requesting a project status update - by calling PATCH /api/user_project/{org}/{project}/status with status=Unknown
+- Ensure Generator refreshes Project Status after any stage changes, or processing or error changes
 
 ### Bug Fixes
 - Fix missing generator stage (e.g. breaking Generator scratch data save and loads) - was causing Generators to fail

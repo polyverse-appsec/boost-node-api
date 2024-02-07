@@ -1146,9 +1146,9 @@ enum ProjectStatus {
 
 interface ProjectStatusState {
     status: ProjectStatus;
-    synchronized: boolean;
+    synchronized?: boolean;
     last_synchronized?: number;
-    activelyUpdating: boolean;
+    activelyUpdating?: boolean;
     details?: string;
     last_updated: number;
 }
@@ -2347,6 +2347,23 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
             await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', 
                 `${resource}/generator`, JSON.stringify(generatorState));
+
+            const projectStatusRefreshDelayInMs = 250;
+            try {
+                // force a refresh of the project status
+                const projectStatusRefreshRequest : ProjectStatusState = {
+                    status: ProjectStatus.Unknown,
+                    last_updated: generatorState.last_updated
+                };
+                // we're going to start an async project status refresh (but only wait 250 ms to ensure it starts)
+                await localSelfDispatch<ProjectStatusState>(
+                    email, getSignedIdentityFromHeader(req)!, req,
+                    `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs);
+            } catch (error: any) {
+                if (error.message.includes(`timeout of ${projectStatusRefreshDelayInMs}ms exceeded`)) {
+                    console.warn(`Error refreshing project status for ${org}/${project}: ${error.message}`);
+                }
+            }
 
             console.log(`${user_project_org_project_data_resource_generator}: stored new state: ${JSON.stringify(generatorState)}`);
         };
