@@ -313,8 +313,6 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
 
         await storeProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status", JSON.stringify(resourceStatus));
 
-        console.log(`${user_project_org_project_data_resource}: stored data`);
-
         return res.status(200).send();
     } catch (error) {
         return handleErrorResponse(error, req, res);
@@ -824,7 +822,6 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
 
         await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProjectString);
 
-        console.log(`${user_project_org_project}: stored data`);
         // because the discovery process may take more than 15 seconds, we never want to fail the project creation
         //      no matter how long discovery takes or even if discovery runs
         // so we'll use the axios timeout to ensure we don't wait too long for the discovery process
@@ -1223,7 +1220,6 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req:
             projectStatus.status = updatedStatus.status;
 
             await storeProjectData(email, SourceType.General, org, project, '', 'status', JSON.stringify(projectStatus));
-            console.log(`${user_project_org_project_status}: updated status`);
 
             return res
                 .status(200)
@@ -1366,7 +1362,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 projectStatus.last_updated = Math.floor(Date.now() / 1000);
 
                 await storeProjectData(email, SourceType.General, org, project, '', 'status', JSON.stringify(projectStatus));
-                console.log(`${user_project_org_project_status}: persisted status`);
+
             } catch (error) {
                 console.error(`Unable to persist project status`, error);
             }
@@ -1742,8 +1738,6 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
         }
 
         await storeProjectData(email, SourceType.General, org, project, '', 'goals', JSON.stringify(updatedGoals));
-
-        console.log(`${user_project_org_project_goals}: stored data`);
 
         return res
             .status(200)
@@ -3165,8 +3159,6 @@ app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
         profileData.title = newProfileData.title;
         profileData.details = newProfileData.details;
         await storeProjectData(email, SourceType.General, 'user', '', '', 'profile', JSON.stringify(profileData));
-
-        console.log(`${user_profile}: stored data`);
 
         return res
             .status(200)

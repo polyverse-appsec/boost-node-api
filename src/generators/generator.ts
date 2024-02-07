@@ -166,9 +166,6 @@ export class Generator {
             throw new Error(`Invalid URI: ${uri}`);
         }
 
-        // console log the size of the data we're saving in case we blow a limit
-        console.log(`Saving ${this.dataType} data of size ${this.data.length}`);
-
         const authHeader = await signedAuthHeader(this.email);
         const response = await fetch(this.resourceUri, {
             method: 'PUT',
@@ -184,7 +181,9 @@ export class Generator {
             throw new Error(`Unable to Save Generated Resource (size:${this.data.length} bytes): ${response.status} - ${errorText}`);
         }
 
-        console.log(`Saved ${this.dataType} data`);
+        if (process.env.TRACE_LEVEL) {
+            console.log(`Saved ${this.dataType} data of size ${this.data.length}`);
+        }
     }
 
     async updateProgress(statusUpdate: string) : Promise<void> {
