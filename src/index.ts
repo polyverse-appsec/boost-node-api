@@ -227,7 +227,7 @@ const logRequest = (req: Request) => {
     }
 }
 
-const handleErrorResponse = (error: any, req: Request, res: Response) : Response => {
+const handleErrorResponse = (error: any, req: Request, res: Response, supplementalErrorMessage: string = 'Error') : Response => {
     // Base error message with the request details
     const errorMessage = `UNHANDLED_ERROR(Response): ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
@@ -235,18 +235,18 @@ const handleErrorResponse = (error: any, req: Request, res: Response) : Response
     if (process.env.DEPLOYMENT_STAGE === 'dev' || process.env.DEPLOYMENT_STAGE === 'test' || process.env.DEPLOYMENT_STAGE === 'local'
         || process.env.DEPLOYMENT_STAGE === 'prod') {
         // In development, print the full error stack if available, or the error message otherwise
-        console.error(errorMessage, error.stack || error);
+        console.error(`${supplementalErrorMessage} - ${errorMessage}`, error.stack || error);
         // Respond with the detailed error message for debugging purposes
         return res
             .status(500)
-            .send('Internal Server Error: ' + (error.stack || error));
+            .send(`Internal Server Error: ${supplementalErrorMessage} - ` + (error.stack || error));
     } else { // we'll use this for 'prod' and 'test' Stages in the future
         // In non-development environments, log the error message for privacy/security reasons
-        console.error(errorMessage, error.message || error);
+        console.error(`${supplementalErrorMessage} - ${errorMessage}`, error.message || error);
         // Respond with a generic error message to avoid exposing sensitive error details
         return res
             .status(500)
-            .send('Internal Server Error: ' + (error.message || error));
+            .send(`Internal Server Error: ${supplementalErrorMessage} - ${errorMessage}` + (error.message || error));
     }
 }
 
@@ -2758,13 +2758,11 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
 
                     projectDataFileIds.push(storedProjectDataId);
                 } catch (error) {
-                    console.error(`Handler Error: ${user_project_org_project_data_references}: Unable to store project data on AI Servers:`, error);
-                    return res.status(500).send('Internal Server Error');
+                    return handleErrorResponse(error, req, res, `Unable to store project data on AI Servers:`);
                 }
             }
         } catch (error) {
-            console.error(`Handler Error: ${user_project_org_project_data_references}: Unable to retrieve project data:`, error);
-            return res.status(500).send('Internal Server Error');
+            return handleErrorResponse(error, req, res, `Unable to retrieve project data`);
         }
 
         await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', JSON.stringify(projectDataFileIds));
