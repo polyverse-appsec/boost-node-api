@@ -12,6 +12,7 @@ enum BlueprintStage {
     FileImport = 'File Import',
     FileScan = 'File Scan',
     SampledCode = 'Sampled Code',
+    BuildingBlueprint = 'Building Blueprint'
     // TODO: Add more thorough blueprint
     //    - Sample files identified in Chat
     //    - Sample files for key architectural areas (auth, data, UI, etc)
@@ -91,88 +92,107 @@ readonly defaultBlueprint =
             break;
 
         case BlueprintStage.FileImport:
-            {
-                const filteredFileList : string[] = await this.getFilteredFileList();
+        {
+            const filteredFileList : string[] = await this.getFilteredFileList();
 
-                // we're going to save our resulting data, so we can run sampled code
-                await this.saveScratchData<string[]>(filteredFileList, BlueprintStage.FileScan);
+            // we're going to save our resulting data, so we can run sampled code
+            await this.saveScratchData<string[]>(filteredFileList, BlueprintStage.FileImport);
 
-                nextStage = BlueprintStage.FileScan;
-            }
+            nextStage = BlueprintStage.FileScan;
+
             break;
+        }
 
         case BlueprintStage.FileScan:
-            {
-                const filteredFileList : string[] | undefined = await this.loadScratchData<string[]>();
-                if (!filteredFileList) {
-                    throw new GeneratorProcessingError('Unable to load file list', BlueprintStage.FileImport);
-                }
-
-                await this.updateProgress('Analyzing Files with AI');
-
-                const draftOutput : DraftBlueprintOutput = await this.createDraftBlueprint(filteredFileList);
-
-                // we're going to save our resulting data, so we can run sampled code
-                await this.saveScratchData<DraftBlueprintOutput>(draftOutput, BlueprintStage.SampledCode);
-
-                this.data = draftOutput.draftBlueprint;
-
-                nextStage = BlueprintStage.SampledCode;
+        {
+            const filteredFileList : string[] | undefined = await this.loadScratchData<string[]>(BlueprintStage.FileImport);
+            if (!filteredFileList) {
+                throw new GeneratorProcessingError('Unable to load file list', BlueprintStage.FileImport);
             }
+
+            await this.updateProgress('Analyzing Files with AI');
+
+            const draftOutput : DraftBlueprintOutput = await this.createDraftBlueprint(filteredFileList);
+
+            // we're going to save our resulting data, so we can run sampled code
+            await this.saveScratchData<DraftBlueprintOutput>(draftOutput, BlueprintStage.FileScan);
+
+            this.data = draftOutput.draftBlueprint;
+
+            nextStage = BlueprintStage.SampledCode;
             break;
+        }
+
         case BlueprintStage.SampledCode:
-            {
-                await this.updateProgress('Sampling Project Code');
+        {
+            await this.updateProgress('Sampling Project Code');
 
-                const draftOutput = await this.loadScratchData<DraftBlueprintOutput>();
-                if (!draftOutput) {
-                    // if we don't have the data we need from the draft blueprint process, we won't be able
-                    //      to build a better sampled code blueprint - so reset back to file scan to try and
-                    //      generate it again
-                    throw new GeneratorProcessingError('Unable to load draft data', BlueprintStage.FileScan);
-                }
-
-                await this.load(); // load the resource data before re-processing it
-
-                const inputData : QuickBlueprintInput = {
-                    draftBlueprint: this.data,
-                    filelist: draftOutput.prioritizedListOfSourceFilesToAnalyze,
-                    projectName: this.projectData.name,
-                }
-
-                if (draftOutput.recommendedSampleSourceFile) {
-                    await this.updateProgress('Sampling Project Source Files');
-
-                    const code = await this.loadProjectFile(draftOutput.recommendedSampleSourceFile);
-                    if (code) {
-                        inputData.code = code;
-                    }
-                }
-                if (draftOutput.recommendedProjectDeploymentFile) {
-                    await this.updateProgress('Sampling Project Deployment Configuration');
-
-                    const projectFile = await this.loadProjectFile(draftOutput.recommendedProjectDeploymentFile);
-                    if (projectFile) {
-                        inputData.projectFile = projectFile;
-                    }
-                }
-                if (!inputData.code && !inputData.projectFile) {
-                    throw new GeneratorProcessingError('Unable to load project files', BlueprintStage.FileScan);
-                } else if (!inputData.code) {
-                    console.error('Unable to find code file, using project file only');
-                    inputData.code = 'No Code Provided';
-                } else if (!inputData.projectFile) {
-                    console.error('Unable to find project file, using code only');
-                    inputData.projectFile = 'No Project File Provided';
-                }
-
-                await this.updateProgress('Rebuilding Blueprint from Sampled Project Files');
-
-                this.data = await this.createSampledCodeBlueprint(inputData);
-
-                nextStage = Stages.Complete;
+            const draftOutput = await this.loadScratchData<DraftBlueprintOutput>(BlueprintStage.FileScan);
+            if (!draftOutput) {
+                // if we don't have the data we need from the draft blueprint process, we won't be able
+                //      to build a better sampled code blueprint - so reset back to file scan to try and
+                //      generate it again
+                throw new GeneratorProcessingError('Unable to load draft data', BlueprintStage.FileScan);
             }
+
+            await this.load(); // load the resource data before re-processing it
+
+            const inputData : QuickBlueprintInput = {
+                draftBlueprint: this.data,
+                filelist: draftOutput.prioritizedListOfSourceFilesToAnalyze,
+                projectName: this.projectData.name,
+            }
+
+            if (draftOutput.recommendedSampleSourceFile) {
+                await this.updateProgress('Sampling Project Source Files');
+
+                const code = await this.loadProjectFile(draftOutput.recommendedSampleSourceFile);
+                if (code) {
+                    inputData.code = code;
+                }
+            }
+            if (draftOutput.recommendedProjectDeploymentFile) {
+                await this.updateProgress('Sampling Project Deployment Configuration');
+
+                const projectFile = await this.loadProjectFile(draftOutput.recommendedProjectDeploymentFile);
+                if (projectFile) {
+                    inputData.projectFile = projectFile;
+                }
+            }
+            if (!inputData.code && !inputData.projectFile) {
+                throw new GeneratorProcessingError('Unable to load project files', BlueprintStage.FileScan);
+            } else if (!inputData.code) {
+                console.error('Unable to find code file, using project file only');
+                inputData.code = 'No Code Provided';
+            } else if (!inputData.projectFile) {
+                console.error('Unable to find project file, using code only');
+                inputData.projectFile = 'No Project File Provided';
+            }
+
+            await this.saveScratchData<QuickBlueprintInput>(inputData, BlueprintStage.SampledCode);
+
+            nextStage = BlueprintStage.BuildingBlueprint;
+
             break;
+        }
+        case BlueprintStage.BuildingBlueprint:
+        {
+
+            await this.updateProgress('Rebuilding Blueprint from Sampled Project Files');
+
+            const inputData = await this.loadScratchData<QuickBlueprintInput>(BlueprintStage.SampledCode);
+            if (!inputData) {
+                // if we don't have the data we need from the draft blueprint process, we won't be able
+                //      to build a better sampled code blueprint - so reset back to find the code samples
+                throw new GeneratorProcessingError('Unable to load sampled code data', BlueprintStage.SampledCode);
+            }
+
+            this.data = await this.createSampledCodeBlueprint(inputData);
+
+            nextStage = Stages.Complete;
+            break;
+        }
+
         default:
             throw new Error(`Invalid Generator: ${this.resourceUri} Stage: ${stage}`);
         }
