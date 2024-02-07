@@ -98,7 +98,7 @@ export async function localSelfDispatch<T>(
             if (['GET'].includes(httpVerb)) {
                 const objectResponse = await response.json();
                 return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
-            } else if (['POST', 'PUT', 'PATCH'].includes(httpVerb)) {
+            } else if (['POST', 'PUT', 'PATCH'].includes(httpVerb) && response.status === 200) {
                 let objectResponse;
                 try {
                     objectResponse = await response.json();
@@ -2761,7 +2761,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
 
                 try {
                     const storedProjectDataId = await uploadProjectDataForAIAssistant(`${userProjectData.org}_${userProjectData.name}`, uri, projectDataTypes[i], projectDataNames[i], projectData);
-                    console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${storedProjectDataId}`);
+                    console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${JSON.stringify(storedProjectDataId)}`);
 
                     projectDataFileIds.push(storedProjectDataId);
                 } catch (error) {
@@ -3010,7 +3010,7 @@ app.post(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`,
 });
 
 const proxy_ai_endpoint = "proxy/ai/:org/:endpoint";
-const secondsBeforeRequestTimeout = 28;
+const secondsBeforeRequestTimeout = 25;
 const handleProxyRequest = async (req: Request, res: Response) => {
     logRequest(req);
 
