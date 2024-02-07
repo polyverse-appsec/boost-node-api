@@ -110,6 +110,9 @@ class BoostBackendCheckinSuite(unittest.TestCase):
             if project_status['synchronized']:
                 print(f"Project is Fully Synchronized in {i * 20} seconds - {response.json()}")
                 break
+            elif not project_status['activelyUpdating']:
+                self.assertTrue(project_status['activelyUpdating'])
+                break
             else:
 
                 print(f"\tFull Project Status is {response.json()}")
