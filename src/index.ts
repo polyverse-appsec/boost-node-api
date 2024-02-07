@@ -58,7 +58,9 @@ app.use((err : any, req : Request, res : Response) => {
 });
 */
 
-export async function localSelfDispatch<T>(email: string, originalIdentityHeader: string, initialRequest: Request, path: string, httpVerb: string, bodyContent?: any, timeoutMs: number = 0): Promise<T> {
+export async function localSelfDispatch<T>(
+    email: string, originalIdentityHeader: string, initialRequest: Request,
+    path: string, httpVerb: string, bodyContent?: any, timeoutMs: number = 0, throwOnTimeout: boolean = true): Promise<T> {
 
     let selfEndpoint = `${initialRequest.protocol}://${initialRequest.get('host')}${api_root_endpoint}/${path}`;
     // if we're running locally, then we'll use http:// no matter what
@@ -149,6 +151,11 @@ export async function localSelfDispatch<T>(email: string, originalIdentityHeader
         } catch (error : any) {
             if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
                 console.log(`TIMECHECK: TIMEOUT: ${httpVerb} ${selfEndpoint} timed out after ${timeoutMs / 1000} seconds`);
+
+                // if caller is launching an async process, and doesn't care about response, don't throw on timeout
+                if (!throwOnTimeout) {
+                    return {} as T;
+                }
             } else {
                 // This block is for handling errors, including 404 and 500 status codes
                 if (axios.isAxiosError(error) && error.response) {
@@ -2349,21 +2356,22 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 `${resource}/generator`, JSON.stringify(generatorState));
 
             const projectStatusRefreshDelayInMs = 250;
-            try {
-                // force a refresh of the project status
-                const projectStatusRefreshRequest : ProjectStatusState = {
-                    status: ProjectStatus.Unknown,
-                    last_updated: generatorState.last_updated
-                };
-                // we're going to start an async project status refresh (but only wait 250 ms to ensure it starts)
-                await localSelfDispatch<ProjectStatusState>(
-                    email, getSignedIdentityFromHeader(req)!, req,
-                    `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs);
-            } catch (error: any) {
-                if (!error.message.includes(`timeout of ${projectStatusRefreshDelayInMs}ms exceeded`)) {
-                    console.warn(`Error refreshing project status for ${org}/${project}: ${error.message}`);
-                }
-            }
+
+            // force a refresh of the project status
+            const projectStatusRefreshRequest : ProjectStatusState = {
+                status: ProjectStatus.Unknown,
+                last_updated: generatorState.last_updated
+            };
+            // we're going to start an async project status refresh (but only wait 250 ms to ensure it starts)
+            await localSelfDispatch<ProjectStatusState>(
+                email, getSignedIdentityFromHeader(req)!, req,
+                `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs, false);
+
+            // if we have completed all stages or reached a terminal point (e.g. error or non-active updating)
+            //      then we'll upload what we have to the AI servers
+            // this is all an async process (we don't wait for it to complete)
+            await localSelfDispatch<ProjectDataReference[]>(email, getSignedIdentityFromHeader(req)!, req,
+                `user_project/${org}/${project}/data_references`, 'PUT', undefined, projectStatusRefreshDelayInMs, false);
 
             console.log(`${user_project_org_project_data_resource_generator}: stored new state: ${JSON.stringify(generatorState)}`);
         };
