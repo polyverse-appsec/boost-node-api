@@ -2354,6 +2354,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
             await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', 
                 `${resource}/generator`, JSON.stringify(generatorState));
+                console.log(`${user_project_org_project_data_resource_generator}: stored new state: ${JSON.stringify(generatorState)}`);
 
             const projectStatusRefreshDelayInMs = 250;
 
@@ -2370,10 +2371,12 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             // if we have completed all stages or reached a terminal point (e.g. error or non-active updating)
             //      then we'll upload what we have to the AI servers
             // this is all an async process (we don't wait for it to complete)
-            await localSelfDispatch<ProjectDataReference[]>(email, getSignedIdentityFromHeader(req)!, req,
-                `user_project/${org}/${project}/data_references`, 'PUT', undefined, projectStatusRefreshDelayInMs, false);
-
-            console.log(`${user_project_org_project_data_resource_generator}: stored new state: ${JSON.stringify(generatorState)}`);
+            try {
+                await localSelfDispatch<ProjectDataReference[]>(email, getSignedIdentityFromHeader(req)!, req,
+                    `user_project/${org}/${project}/data_references`, 'PUT', undefined, projectStatusRefreshDelayInMs, false);
+            } catch (error) {
+                console.error(`Error uploading data references to AI Servers:`, error);
+            }
         };
 
         try {
@@ -2747,7 +2750,11 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                 if (!projectData) {
                     // data not found in KV cache - must be manually uploaded for now per project
                     console.log(`${user_project_org_project_data_references}: no data found for ${projectDataTypes[i]}`);
-                    return res.status(400).send(`No data found for ${projectDataTypes[i]}`);
+
+                    // we can't upload since we don't have all the resources yet
+                    return res
+                        .status(204)
+                        .send(`No data found for ${projectDataTypes[i]}`);
                 }
 
                 console.log(`${user_project_org_project_data_references}: retrieved project data for ${projectDataTypes[i]}`);
