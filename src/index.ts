@@ -2322,7 +2322,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     if (error instanceof GeneratorProcessingError) {
                         const processingError = error as GeneratorProcessingError;
                         if (processingError.stage != currentGeneratorState.stage) {
-                            console.error(`Resetting to ${processingError.stage} due to error in ${resource} stage ${currentGeneratorState.stage}:`, processingError);
+                            console.error(`${req.originalUrl}: Resetting to ${processingError.stage} due to error in ${resource} stage ${currentGeneratorState.stage}:`, processingError);
                         }
                     }
 
@@ -2549,7 +2549,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
             if (error instanceof GeneratorProcessingError) {
                 const processingError = error as GeneratorProcessingError;
                 if (processingError.stage != resourceGeneratorProcessState?.stage) {
-                    console.error(`Resetting to ${processingError.stage} due to error in ${resource} stage ${resourceGeneratorProcessState?.stage}:`, processingError);
+                    console.error(`${req.originalUrl}: Resetting to ${processingError.stage} due to error in ${resource} stage ${resourceGeneratorProcessState?.stage}:`, processingError);
             
                     const nextGeneratorState : ResourceGeneratorProcessState = {
                         stage: processingError.stage
