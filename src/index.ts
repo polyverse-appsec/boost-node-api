@@ -2360,7 +2360,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     email, getSignedIdentityFromHeader(req)!, req,
                     `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs);
             } catch (error: any) {
-                if (error.message.includes(`timeout of ${projectStatusRefreshDelayInMs}ms exceeded`)) {
+                if (!error.message.includes(`timeout of ${projectStatusRefreshDelayInMs}ms exceeded`)) {
                     console.warn(`Error refreshing project status for ${org}/${project}: ${error.message}`);
                 }
             }
