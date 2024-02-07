@@ -12,7 +12,9 @@ export async function uploadProjectDataForAIAssistant(projectName: string, uri: 
         throw new Error('Invalid project data');
     }
 
-    console.log(`store_data_for_project: projectData received`);
+    if (process.env.TRACE_LEVEL) {
+        console.debug(`store_data_for_project: projectData received`);
+    }
 
     // Split the pathname by '/' and filter out empty strings
     const pathSegments = uri.pathname.split('/').filter(segment => segment);
@@ -25,7 +27,10 @@ export async function uploadProjectDataForAIAssistant(projectName: string, uri: 
     }
 
     const projectQualifiedFullFilename = `${projectName}_${generateFilenameFromGitHubProject(ownerName, repoName)}_${simpleFilename}`;
-    console.log(`store_data_for_project: AI file resource name: ${projectQualifiedFullFilename}`);
+
+    if (process.env.TRACE_LEVEL) {
+        console.debug(`AI file resource name: ${projectQualifiedFullFilename}`);
+    }
     const openAiFile : OpenAIFileUploadResponse = await createAssistantFileWithRetry(projectQualifiedFullFilename, projectData);
 
     const dataResource : ProjectDataReference = {

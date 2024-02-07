@@ -2690,8 +2690,6 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
         }
         const uri = new URL(userProjectData.resources[0].uri);
 
-        console.log(`${user_project_org_project_data_references}: Request validated uri: ${uri}`);
-
         // Split the pathname by '/' and filter out empty strings
         const pathSegments = uri.pathname.split('/').filter(segment => segment);
 
@@ -2729,12 +2727,16 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                         .send(`No data found for ${projectDataTypes[i]}`);
                 }
 
-                console.log(`${user_project_org_project_data_references}: retrieved project data for ${projectDataTypes[i]}`);
+                if (process.env.TRACE_LEVEL) {
+                    console.log(`${user_project_org_project_data_references}: retrieved project data for ${projectDataTypes[i]}`);
+                }
 
                 try {
                     const storedProjectDataId = await uploadProjectDataForAIAssistant(`${userProjectData.org}_${userProjectData.name}`, uri, projectDataTypes[i], projectDataNames[i], projectData);
-                    console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${JSON.stringify(storedProjectDataId)}`);
 
+                    if (process.env.TRACE_LEVEL) {
+                        console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${JSON.stringify(storedProjectDataId)}`);
+                    }
                     projectDataFileIds.push(storedProjectDataId);
                 } catch (error) {
                     return handleErrorResponse(error, req, res, `Unable to store project data on AI Servers:`);
@@ -2745,8 +2747,6 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
         }
 
         await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', JSON.stringify(projectDataFileIds));
-
-        console.log(`${user_project_org_project_data_references}: stored data`);
 
         return res
             .status(200)
