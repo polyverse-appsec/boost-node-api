@@ -90,6 +90,7 @@ class BoostBackendCheckinSuite(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         gotten_project_data = response.json()
+        gotten_project_data = gotten_project_data if 'body' not in gotten_project_data else json.loads(gotten_project_data['body'])
         self.assertEqual(gotten_project_data['name'], project_name)
         self.assertEqual(gotten_project_data['resources'][0]['uri'], public_git_project)
 
@@ -105,6 +106,7 @@ class BoostBackendCheckinSuite(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
 
             project_status = response.json()
+            project_status = project_status if 'body' not in project_status else json.loads(project_status['body'])
             if project_status['status'] == "Unknown":
                 print(f"Project Status is Unknown - {response.json()}")
                 break
@@ -118,18 +120,12 @@ class BoostBackendCheckinSuite(unittest.TestCase):
                 print(f"\tFull Project Status is {response.json()}")
 
                 # if our project data is out of date on AI servers- then we can poke the AI content sync endpoint to force a sync
-                if project_status['status'] == "AI Data Out of Date":
-                    print("Forcing AI Data Sync")
-                    response = requests.post(f"{TARGET_URL}/api/user_project/polyverse-appsec/sara/data_references", headers=signedHeaders)
-                    self.assertEqual(response.status_code, 200)
-                    print("AI Sync completed - rechecking in 20 seconds")
-                else:
-                    print(f"Project status is {project_status['status']}, waiting 20 seconds")
+                print(f"Project status is {project_status['status']}, waiting 20 seconds")
 
-                    if not project_status['activelyUpdating']:
-                        print("Project is not actively updating, something is wrong")
+                if not project_status['activelyUpdating']:
+                    print("Project is not actively updating, something is wrong")
 
-                    self.assertTrue(project_status['activelyUpdating'])
+                self.assertTrue(project_status['activelyUpdating'])
 
             # wait 20 seconds before probing again
             time.sleep(20)
