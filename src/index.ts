@@ -1249,7 +1249,8 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
             projectStatus = JSON.parse(rawProjectStatusData) as ProjectStatusState;
         }
 
-        if (!projectStatus || projectStatus.status === ProjectStatus.Unknown) {
+        // if there's no project status yet - let's try and build one
+        if (!projectStatus) {
             // if we have no status, let's see if there's a real project here...
             const projectData = await loadProjectData(email, org, project) as UserProjectData;
             // if no project, then just 404 so user knows not to ask again
@@ -1259,6 +1260,13 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
             // if we have a real project, and we have no status, then let's try and generate it now
             console.error(`Project Status not found; Project exists so let's refresh status`);
 
+            // project uri starts at 'user_project/'
+            const project_subpath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
+            // this will be a blocking call (when GET is normally very fast), but only to ensure we have an initial status
+            projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, project_subpath, 'POST');
+
+        // if we have already cached project status, but its marked Unknown - then try and refresh it
+        } else if (projectStatus.status === ProjectStatus.Unknown) {
             // project uri starts at 'user_project/'
             const project_subpath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
             // this will be a blocking call (when GET is normally very fast), but only to ensure we have an initial status
