@@ -6,13 +6,9 @@ import sys
 # Determine the parent directory's path.
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Append the parent directory to sys.path.
-sys.path.append(parent_dir + "/test")
+sys.path.append(parent_dir)
 
-
-# import the get_signed_headers function from the utils.py script - which is located in ../test/utils.py
-
-
-from utils import get_signed_headers
+from test.utils import get_signed_headers  # noqa
 
 # Constants for URL options
 LOCAL_URL = "http://localhost:3000"  # Placeholder, replace with your actual local URL
