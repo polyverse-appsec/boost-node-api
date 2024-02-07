@@ -1443,7 +1443,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             projectStatus.status = ProjectStatus.ResourcesGenerating;
             missingResources.push(...incompleteResources);
             projectStatus.details = `Generating Resources: ${missingResources.join(', ')}`;
-            console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+            console.warn(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
