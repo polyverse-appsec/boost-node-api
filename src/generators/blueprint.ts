@@ -78,12 +78,7 @@ readonly defaultBlueprint =
 * Analysis of the architectural soundness and best practices: Not yet determined
 * Architectural Problems Identified: Not yet determined`
 
-    async generate(stage?: string) : Promise<string> {
-
-        if (!stage) {
-            stage = Stages.Complete;
-        }
-
+    async onGenerate(stage: string) : Promise<string> {
         let nextStage;
         switch (stage) {
         case Stages.Complete:
@@ -181,9 +176,6 @@ readonly defaultBlueprint =
         default:
             throw new Error(`Invalid Generator: ${this.resourceUri} Stage: ${stage}`);
         }
-        await this.save();
-
-        await this.updateProgress('Finished Stage ' + stage);
 
         return nextStage;
     }

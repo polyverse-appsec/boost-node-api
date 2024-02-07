@@ -13,7 +13,7 @@ Polyverse Boost ReST API (Backend)
 - Log full Request Uri for Internal Service Errors; log and return Call stack for known Deployment Servicess
 
 ### Bug Fixes
-- N/A
+- Fix missing generator stage (e.g. breaking Generator scratch data save and loads) - was causing Generators to fail
 
 ## Version 0.9.9: February 6th, 2024
 

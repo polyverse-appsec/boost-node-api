@@ -22,11 +22,7 @@ readonly defaultProjectSource =
 readonly fileSourceEntry =
 `# Contents of {relativeFileName}:\n{fileSource}\n\n`
 
-    async generate(stage?: string) : Promise<string> {
-
-        if (!stage) {
-            stage = Stages.Complete;
-        }
+    async onGenerate(stage: string) : Promise<string> {
 
         let nextStage;
         switch (stage) {
@@ -91,9 +87,6 @@ readonly fileSourceEntry =
         default:
             throw new Error(`Invalid Generator: ${this.resourceUri} Stage: ${stage}`);
         }
-        await this.save();
-
-        await this.updateProgress('Finished Stage ' + stage);
 
         return nextStage;
     }

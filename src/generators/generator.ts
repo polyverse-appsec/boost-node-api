@@ -4,6 +4,8 @@ import { GeneratorState, TaskStatus } from "../types/GeneratorState";
 import { signedAuthHeader } from "../auth";
 import { saveProjectDataResource, loadProjectDataResource } from "..";
 import { FileContent } from "../github";
+import { Stages } from "../types/GeneratorState";
+
 const ignore = require('ignore');
 
 export class GeneratorProcessingError extends Error {
@@ -34,8 +36,25 @@ export class Generator {
         this.data = '';
     }
 
-    async generate(stage?: string) : Promise<string> {
-        throw new Error('Not implemented');
+    async generate(stage?: string): Promise<string> {
+
+        if (!stage) {
+            stage = Stages.Complete;
+        }
+
+        this.currentStage = stage;
+
+        const nextStage = await this.onGenerate(stage);
+
+        await this.save();
+
+        await this.updateProgress('Finished Stage ' + stage);
+
+        return nextStage;
+    }
+
+    protected async onGenerate(stage: string): Promise<string> {
+        throw new Error('onGenerate not implemented');
     }
 
     async load() : Promise<void> {
@@ -94,6 +113,9 @@ export class Generator {
         if (!stage) {
             stage = this.currentStage;
         }
+        if (!stage) {
+            throw new Error('Stage not defined');
+        }
 
         const serializedData = JSON.stringify(data);
 
@@ -113,6 +135,9 @@ export class Generator {
         const ownerName = pathSegments.pop();
         if (!repoName || !ownerName) {
             throw new Error(`Invalid URI: ${uri}`);
+        }
+        if (!stage && !this.currentStage) {
+            throw new Error('Stage not defined');
         }
 
         // write the scratch data for the current stage or a different stage
@@ -164,6 +189,10 @@ export class Generator {
             last_updated: Math.floor(Date.now() / 1000),
             status: TaskStatus.Processing,
             status_details: statusUpdate
+        }
+
+        if (!this.currentStage) {
+            throw new Error('Current Stage not defined');
         }
 
         console.log(`Progress Update on Stage ${this.currentStage}: ${JSON.stringify(state)}`);

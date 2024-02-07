@@ -40,11 +40,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
     readonly fileArchitecturalSpecificationEntry =
         `# Summary for {relativeFileName}:\n{architecturalSpec}\n\n`
 
-    async generate(stage?: string) : Promise<string> {
-
-        if (!stage) {
-            stage = Stages.Complete;
-        }
+    async onGenerate(stage: string) : Promise<string> {
 
         const NoSpecificationAvailable = 'No AI Specification available';
         const ErrorGeneratingSpecification = 'Unable to generate AI Specification';
@@ -192,9 +188,6 @@ export class ArchitecturalSpecificationGenerator extends Generator {
         default:
             throw new Error(`Invalid Generator: ${this.resourceUri} Stage: ${stage}`);
         }
-        await this.save();
-
-        await this.updateProgress('Finished Stage ' + stage);
 
         return nextStage;
     }
