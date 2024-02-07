@@ -12,7 +12,6 @@ enum ArchitecturalSpecificationStage {
     ProjectInfo= 'Default',
     FileFiltering = 'Identifying Files for Summarization',
     FileSummarization = 'Summarization of Files using AI',
-    Complete = Stages.Complete,
 }
 
 interface SummarizerInput {
@@ -44,7 +43,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
     async generate(stage?: string) : Promise<string> {
 
         if (!stage) {
-            stage = ArchitecturalSpecificationStage.Complete;
+            stage = Stages.Complete;
         }
 
         const NoSpecificationAvailable = 'No AI Specification available';
@@ -52,7 +51,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
 
         let nextStage : string = "";
         switch (stage) {
-        case ArchitecturalSpecificationStage.Complete:
+        case Stages.Complete:
         case ArchitecturalSpecificationStage.ProjectInfo:
             await this.updateProgress('Generating Initial Project Info');
             this.data = this.defaultArchitecturalSpecification
@@ -120,14 +119,14 @@ export class ArchitecturalSpecificationGenerator extends Generator {
             }
 
             if (filteredFileContents.length === 0) {
-                nextStage = ArchitecturalSpecificationStage.Complete;
+                nextStage = Stages.Complete;
             }
 
             if (!nextStage) {
                 // remove the first file from the file source list - to process
                 const fileContent : FileContent | undefined = filteredFileContents.shift();
                 if (!fileContent) {
-                    nextStage = ArchitecturalSpecificationStage.Complete;
+                    nextStage = Stages.Complete;
                 }
 
                     // re-save the filtered file contents (without the newest entry)
@@ -182,7 +181,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
 
                     // if there are no more files to process, we're done
                     if (filteredFileContents.length === 0) {
-                        nextStage = ArchitecturalSpecificationStage.Complete;
+                        nextStage = Stages.Complete;
                     } else {
                         nextStage = ArchitecturalSpecificationStage.FileSummarization;
                     }

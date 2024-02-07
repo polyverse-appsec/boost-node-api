@@ -9,8 +9,6 @@ enum ProjectSourceStage {
     ProjectInfo= 'Default',
     FilePathScan = 'File Paths Scan',
     FullSourceScan = 'Full Source Code Import',
-    Complete = Stages.Complete,
-
 }
 
 export class ProjectSourceGenerator extends Generator {
@@ -27,12 +25,12 @@ readonly fileSourceEntry =
     async generate(stage?: string) : Promise<string> {
 
         if (!stage) {
-            stage = ProjectSourceStage.Complete;
+            stage = Stages.Complete;
         }
 
         let nextStage;
         switch (stage) {
-        case ProjectSourceStage.Complete:
+        case Stages.Complete:
         case ProjectSourceStage.ProjectInfo:
             await this.updateProgress('Generating Initial Project Info');
             this.data = this.defaultProjectSource
@@ -87,7 +85,7 @@ readonly fileSourceEntry =
                             .replace('{fileSource}', fileContent.source)
                 }
 
-                nextStage = ProjectSourceStage.Complete;
+                nextStage = Stages.Complete;
             }
             break;
         default:

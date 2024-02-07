@@ -15,8 +15,6 @@ enum BlueprintStage {
     // TODO: Add more thorough blueprint
     //    - Sample files identified in Chat
     //    - Sample files for key architectural areas (auth, data, UI, etc)
-    Complete = Stages.Complete,
-
 }
 
 interface DraftBlueprintInput {
@@ -83,12 +81,12 @@ readonly defaultBlueprint =
     async generate(stage?: string) : Promise<string> {
 
         if (!stage) {
-            stage = BlueprintStage.Complete;
+            stage = Stages.Complete;
         }
 
         let nextStage;
         switch (stage) {
-        case BlueprintStage.Complete:
+        case Stages.Complete:
         case BlueprintStage.Default:
             await this.updateProgress('Generating Default Blueprint');
             this.data = this.defaultBlueprint.replace('{projectName}', this.projectData.name);
@@ -177,7 +175,7 @@ readonly defaultBlueprint =
 
                 this.data = await this.createSampledCodeBlueprint(inputData);
 
-                nextStage = BlueprintStage.Complete;
+                nextStage = Stages.Complete;
             }
             break;
         default:
