@@ -1157,6 +1157,78 @@ const MinutesToWaitBeforeGeneratorConsideredStalled = 3;
 
 const user_project_org_project_status = `user_project/:org/:project/status`;
 
+app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        let body = req.body;
+        if (!body) {
+            console.error(`No body found`);
+            return res.status(400).send('Invalid body');
+        }
+        if (typeof body !== 'string') {
+            // Check if body is a Buffer
+            if (Buffer.isBuffer(body)) {
+                body = body.toString('utf8');
+            } else if (Array.isArray(body)) {
+                body = Buffer.from(body).toString('utf8');
+            } else {
+                body = JSON.stringify(body);
+            }
+        }
+
+        if (body === '') {
+            console.error(`${req.originalUrl}: empty body`);
+            return res.status(400).send('Missing body');
+        }
+
+        // Parse the body string to an object
+        let updatedStatus;
+        try {
+            updatedStatus = JSON.parse(body);
+            if (updatedStatus.status !== ProjectStatus.Unknown) {
+                return res
+                    .status(400)
+                    .send('Invalid status - only Unknown status can be set');
+            }
+        } catch (error) {
+            console.error('Error parsing JSON:', error);
+            return res.status(400).send('Invalid JSON');
+        }
+
+        const { org, project } = req.params;
+
+        const rawProjectStatusData = await getProjectData(email, SourceType.General, org, project, '', 'status');
+
+        let projectStatus : ProjectStatusState | undefined = undefined;
+        if (rawProjectStatusData) {
+            projectStatus = JSON.parse(rawProjectStatusData) as ProjectStatusState;
+            projectStatus.status = updatedStatus.status;
+
+            await storeProjectData(email, SourceType.General, org, project, '', 'status', JSON.stringify(projectStatus));
+            console.log(`${user_project_org_project_status}: updated status`);
+
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(projectStatus);
+        } else {
+            return res
+                .status(404)
+                .send('Project Status not found');
+        }
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
 app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
 
     logRequest(req);
@@ -1171,7 +1243,13 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
         const { org, project } = req.params;
 
         const rawProjectStatusData = await getProjectData(email, SourceType.General, org, project, '', 'status');
-        if (!rawProjectStatusData) {
+
+        let projectStatus : ProjectStatusState | undefined = undefined;
+        if (rawProjectStatusData) {
+            projectStatus = JSON.parse(rawProjectStatusData) as ProjectStatusState;
+        }
+
+        if (!projectStatus || projectStatus.status === ProjectStatus.Unknown) {
             // if we have no status, let's see if there's a real project here...
             const projectData = await loadProjectData(email, org, project) as UserProjectData;
             // if no project, then just 404 so user knows not to ask again
@@ -1184,14 +1262,8 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
             // project uri starts at 'user_project/'
             const project_subpath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
             // this will be a blocking call (when GET is normally very fast), but only to ensure we have an initial status
-            const projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, project_subpath, 'POST');
-            return res
-                .status(200)
-                .contentType('application/json')
-                .send(projectStatus);
+            projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, project_subpath, 'POST');
         }
-
-        const projectStatus : ProjectStatusState = JSON.parse(rawProjectStatusData) as ProjectStatusState;
 
         console.log(`Project Status: ${JSON.stringify(projectStatus)}`);
 
@@ -1202,125 +1274,6 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }
-});
-
-enum GroomingStatus {
-    Completed = 'Completed',
-    Grooming = 'Grooming',
-    Skipping = 'Skipping',
-    Error = 'Error'
-}
-
-interface ProjectGroomState {
-    status: GroomingStatus;
-    last_updated: number;
-}
-
-const user_project_org_project_groom = `user_project/:org/:project/groom`;
-app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
-
-    try {
-
-        const email = await validateUser(req, res);
-        if (!email) {
-            return;
-        }
-
-        const projectGroomPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
-        const projectPath = projectGroomPath.substring(0, projectGroomPath.lastIndexOf('/groom'));
-
-        // we'll check the status of the project data
-        let projectStatus : ProjectStatusState;
-        try {
-            projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, `${projectPath}/status`, 'GET');
-        } catch (error: any) {
-            if (error.response && error.response.status === 404) {
-                console.error(`Project Status not found; Project may not exist or hasn't been discovered yet`);
-                return res.status(404).send('Project not found');
-            }
-            console.error(`Unable to query Project Status`, error);
-            return res.status(500).send('Internal Server Error');
-        }
-
-        // if we have no project status, then we're going to force a refresh of the project status
-        //      and we'll check again the next grooming cycle
-        if (projectStatus.status === ProjectStatus.Unknown) {
-            try {
-                const projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, `${projectPath}/status`, 'POST');
-                console.debug(`Refreshed Project Status for ${projectPath}: ${projectStatus}`);
-                const groomingState = {
-                    status: GroomingStatus.Grooming,
-                    last_updated: Math.floor(Date.now() / 1000)
-                };
-                return res
-                    .status(200)
-                    .contentType('application/json')
-                    .send(groomingState);
-            } catch (error) {
-                console.error(`Unable to refresh status for ${projectPath}`, error);
-                const groomingState = {
-                    status: GroomingStatus.Error,
-                    last_updated: Math.floor(Date.now() / 1000)
-                };
-                return res
-                    .status(200)
-                    .contentType('application/json')
-                    .send(groomingState);
-            }
-        }
-        // if the project is actively updating/discovery, then groomer will be idle
-        if (projectStatus.activelyUpdating) {
-            const groomingState = {
-                status: GroomingStatus.Skipping,
-                last_updated: Math.floor(Date.now() / 1000)
-            };
-            return res
-                .status(200)
-                .contentType('application/json')
-                .send(groomingState);
-        }
-        // if we're not synchronized, and idle, then try again
-        if (projectStatus.status !== ProjectStatus.Synchronized) {
-            try {
-                console.log(`Launching Groomed Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
-
-                const originalIdentityHeader = getSignedIdentityFromHeader(req);
-                await localSelfDispatch<void>(email, originalIdentityHeader!, req, `${projectPath}/discovery`, 'POST');
-
-                const groomingState = {
-                    status: GroomingStatus.Grooming,
-                    last_updated: Math.floor(Date.now() / 1000)
-                };
-                return res
-                    .status(200)
-                    .contentType('application/json')
-                    .send(groomingState);
-            } catch (error) {
-                console.error(`Groomer unable to launch discovery for ${projectPath}`, error);
-                const groomingState = {
-                    status: GroomingStatus.Error,
-                    last_updated: Math.floor(Date.now() / 1000)
-                };
-                return res
-                    .status(200)
-                    .contentType('application/json')
-                    .send(groomingState);
-            }
-        }
-
-        const groomingState = {
-            status: GroomingStatus.Completed,
-            last_updated: Math.floor(Date.now() / 1000)
-        };
-        return res
-            .status(200)
-            .contentType('application/json')
-            .send(groomingState);
-    } catch (error) {
-        return handleErrorResponse(error, req, res);
-    }    
 });
 
 app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
@@ -1591,6 +1544,125 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         return res
             .status(200)
             .send(projectStatus);
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }    
+});
+
+enum GroomingStatus {
+    Completed = 'Completed',
+    Grooming = 'Grooming',
+    Skipping = 'Skipping',
+    Error = 'Error'
+}
+
+interface ProjectGroomState {
+    status: GroomingStatus;
+    last_updated: number;
+}
+
+const user_project_org_project_groom = `user_project/:org/:project/groom`;
+app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const projectGroomPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
+        const projectPath = projectGroomPath.substring(0, projectGroomPath.lastIndexOf('/groom'));
+
+        // we'll check the status of the project data
+        let projectStatus : ProjectStatusState;
+        try {
+            projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, `${projectPath}/status`, 'GET');
+        } catch (error: any) {
+            if (error.response && error.response.status === 404) {
+                console.error(`Project Status not found; Project may not exist or hasn't been discovered yet`);
+                return res.status(404).send('Project not found');
+            }
+            console.error(`Unable to query Project Status`, error);
+            return res.status(500).send('Internal Server Error');
+        }
+
+        // if we have no project status, then we're going to force a refresh of the project status
+        //      and we'll check again the next grooming cycle
+        if (projectStatus.status === ProjectStatus.Unknown) {
+            try {
+                const projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, `${projectPath}/status`, 'POST');
+                console.debug(`Refreshed Project Status for ${projectPath}: ${projectStatus}`);
+                const groomingState = {
+                    status: GroomingStatus.Grooming,
+                    last_updated: Math.floor(Date.now() / 1000)
+                };
+                return res
+                    .status(200)
+                    .contentType('application/json')
+                    .send(groomingState);
+            } catch (error) {
+                console.error(`Unable to refresh status for ${projectPath}`, error);
+                const groomingState = {
+                    status: GroomingStatus.Error,
+                    last_updated: Math.floor(Date.now() / 1000)
+                };
+                return res
+                    .status(200)
+                    .contentType('application/json')
+                    .send(groomingState);
+            }
+        }
+        // if the project is actively updating/discovery, then groomer will be idle
+        if (projectStatus.activelyUpdating) {
+            const groomingState = {
+                status: GroomingStatus.Skipping,
+                last_updated: Math.floor(Date.now() / 1000)
+            };
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(groomingState);
+        }
+        // if we're not synchronized, and idle, then try again
+        if (projectStatus.status !== ProjectStatus.Synchronized) {
+            try {
+                console.log(`Launching Groomed Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
+
+                const originalIdentityHeader = getSignedIdentityFromHeader(req);
+                await localSelfDispatch<void>(email, originalIdentityHeader!, req, `${projectPath}/discovery`, 'POST');
+
+                const groomingState = {
+                    status: GroomingStatus.Grooming,
+                    last_updated: Math.floor(Date.now() / 1000)
+                };
+                return res
+                    .status(200)
+                    .contentType('application/json')
+                    .send(groomingState);
+            } catch (error) {
+                console.error(`Groomer unable to launch discovery for ${projectPath}`, error);
+                const groomingState = {
+                    status: GroomingStatus.Error,
+                    last_updated: Math.floor(Date.now() / 1000)
+                };
+                return res
+                    .status(200)
+                    .contentType('application/json')
+                    .send(groomingState);
+            }
+        }
+
+        const groomingState = {
+            status: GroomingStatus.Completed,
+            last_updated: Math.floor(Date.now() / 1000)
+        };
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send(groomingState);
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }    
