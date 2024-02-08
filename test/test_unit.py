@@ -168,11 +168,11 @@ class UnitTestSuite(unittest.TestCase):
         #     so we need to see if we can parse the JSON, and if not, just use the string
         try:
             response = response.json()
-            response = response['body']
+            response = json.loads(response['body']) if 'body' in response else response
         except json.JSONDecodeError:
             response = response.text
 
-        self.assertEqual(response, 'Full Source Code Import')
+        self.assertEqual(response['stage'], 'Full Source Code Import')
 
     def test_generator_resource_projectsource_stage_fullsourceimport(self):
         print("Running test: Generator Resource ProjectSource Stage Filescan")
@@ -189,11 +189,11 @@ class UnitTestSuite(unittest.TestCase):
         #     so we need to see if we can parse the JSON, and if not, just use the string
         try:
             response = response.json()
-            response = response['body']
+            response = json.loads(response['body']) if 'body' in response else response
         except json.JSONDecodeError:
             response = response.text
 
-        self.assertEqual(response, 'Complete')
+        self.assertEqual(response['stage'], 'Complete')
 
     def test_resource_projectsource_oversized_payload(self):
         print("Running test: Save Oversized ProjectSource data (simulated large payload)")
@@ -206,6 +206,9 @@ class UnitTestSuite(unittest.TestCase):
         # Set the 'Content-Type' header to 'text/plain'
         signedHeaders['Content-Type'] = 'text/plain'
 
+        response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/projectsource", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
         response = requests.put(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/projectsource", data=data, headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
@@ -216,7 +219,7 @@ class UnitTestSuite(unittest.TestCase):
         #     so we need to see if we can parse the JSON, and if not, just use the string
         try:
             response = response.json()
-            response = response['body']
+            response = response['body'] if 'body' in response else response
         except json.JSONDecodeError:
             response = response.text
 
