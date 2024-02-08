@@ -154,7 +154,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                                 .replace('{relativeFileName}', fileContent!.path)
                                 .replace('{architecturalSpec}', architecturalSpec);
 
-                        this.data.replace(unavailableSpecForThisFile, availableSpecForThisFile);
+                        this.data = this.data.replace(unavailableSpecForThisFile, availableSpecForThisFile);
 
                     } catch (err: any) {
                         console.log(`Error creating architectural specification for ${fileContent!.path}: ${err}`);
@@ -168,7 +168,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                                 .replace('{relativeFileName}', fileContent!.path)
                                 .replace('{architecturalSpec}', ErrorGeneratingSpecification)
 
-                        this.data.replace(unavailableSpecForThisFile, errorSpecificationForThisFile);
+                        this.data = this.data.replace(unavailableSpecForThisFile, errorSpecificationForThisFile);
 
                         await this.updateProgress(`Failed to Build AI Spec for ${fileContent!.path} due to ${err}`);
                     }

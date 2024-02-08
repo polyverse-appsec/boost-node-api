@@ -14,7 +14,7 @@ Polyverse Boost ReST API (Backend)
 - Generators will no longer reset to blank if discovery is called after a Generator completes - process stage "Initialize" to reset a Generator manually
 
 ### Bug Fixes
-- N/A
+- Fix issue preventing AI specifications from being saved to resource data
 
 ## Version 0.9.10: February 6th, 2024
 
