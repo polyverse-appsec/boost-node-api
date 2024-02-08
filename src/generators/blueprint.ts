@@ -82,7 +82,7 @@ readonly defaultBlueprint =
     async onGenerate(stage: string) : Promise<string> {
         let nextStage;
         switch (stage) {
-        case Stages.Complete:
+        case Stages.Initialize:
         case BlueprintStage.Default:
             await this.updateProgress('Generating Default Blueprint');
             this.data = this.defaultBlueprint.replace('{projectName}', this.projectData.name);

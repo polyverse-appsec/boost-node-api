@@ -11,6 +11,7 @@ Polyverse Boost ReST API (Backend)
 ### Enhancements
 - Cleaned up noisy logging - can be enabled for tracing with Env variable TRACE_LEVEL (any value)
 - Enforce per project grooming timeouts (<25 seconds); and report status of groomer in grooming calls, including errors or timeouts
+- Generators will no longer reset to blank if discovery is called after a Generator completes - process stage "Initialize" to reset a Generator manually
 
 ### Bug Fixes
 - N/A

@@ -6,6 +6,7 @@ export enum TaskStatus {
 }
 
 export enum Stages {
+    Initialize = 'Initialize',
     Complete = 'Complete',
 }
 

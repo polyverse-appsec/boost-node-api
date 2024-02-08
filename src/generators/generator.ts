@@ -5,6 +5,8 @@ import { signedAuthHeader } from "../auth";
 import { saveProjectDataResource, loadProjectDataResource } from "..";
 import { FileContent } from "../github";
 import { Stages } from "../types/GeneratorState";
+import { localSelfDispatch } from "../utility/dispatch";
+import axios from "axios";
 
 const ignore = require('ignore');
 
@@ -39,7 +41,10 @@ export class Generator {
     async generate(stage?: string): Promise<string> {
 
         if (!stage) {
-            stage = Stages.Complete;
+            stage = await this.loadCurrentStageFromGenerator();
+        } else if (stage === Stages.Complete) {
+            console.log('Generator already complete');
+            return stage;
         }
 
         this.currentStage = stage;
@@ -58,6 +63,24 @@ export class Generator {
 
     protected async onGenerate(stage: string): Promise<string> {
         throw new Error('onGenerate not implemented');
+    }
+
+    async loadCurrentStageFromGenerator() : Promise<string> {
+        try {
+            const generatorState : GeneratorState = await localSelfDispatch<GeneratorState>(
+                this.email, '', this.serviceEndpoint, `user_project/${this.projectData.org}/${this.projectData.name}/data/${this.dataType}/generator`, 'GET');
+            if (!generatorState?.stage) {
+                // if the generator doesn't exist, then we'll start from the beginning
+                return Stages.Initialize;
+            }
+            return generatorState.stage;
+        } catch (err) {
+            if (axios.isAxiosError(err) && (err?.status === 404 || err.response?.status === 404)) {
+                // if the generator doesn't exist, then we'll start from the beginning
+                return Stages.Initialize;
+            }
+            throw err;
+        }
     }
 
     async load() : Promise<void> {

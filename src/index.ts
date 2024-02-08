@@ -23,7 +23,7 @@ import { uploadProjectDataForAIAssistant } from './openai';
 import { UserProjectData } from './types/UserProjectData';
 import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
 import { ProjectResource } from './types/ProjectResource';
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 import { ProjectDataReference } from './types/ProjectDataReference';
 import { Generator } from './generators/generator';
 
@@ -41,14 +41,13 @@ import { Services, Endpoints } from './boost-python-api/endpoints';
 import { GeneratorProcessingError } from './generators/generator';
 import { ProjectSourceGenerator } from './generators/projectsource';
 import { ArchitecturalSpecificationGenerator } from './generators/aispec';
+import { localSelfDispatch, api_root_endpoint } from './utility/dispatch';
 
 export const app = express();
 
 // set limits to 1mb for text and 10mb for json
 app.use(express.json({ limit: '10mb' })); // Make sure to use express.json middleware to parse json request body
 app.use(express.text({ limit: '1mb' })); // Make sure to use express.text middleware to parse text request body
-
-const api_root_endpoint : string = '/api';
 
 /*
 // Error handling middleware
@@ -57,118 +56,6 @@ app.use((err : any, req : Request, res : Response) => {
     res.status(500).send('Internal Server Error');
 });
 */
-
-export async function localSelfDispatch<T>(
-    email: string, originalIdentityHeader: string, initialRequest: Request,
-    path: string, httpVerb: string, bodyContent?: any, timeoutMs: number = 0, throwOnTimeout: boolean = true): Promise<T> {
-
-    let selfEndpoint = `${initialRequest.protocol}://${initialRequest.get('host')}${api_root_endpoint}/${path}`;
-    // if we're running locally, then we'll use http:// no matter what
-    if (initialRequest.get('host')!.includes('localhost')) {
-        selfEndpoint = `http://${initialRequest.get('host')}${api_root_endpoint}/${path}`;
-    }
-
-    if (!timeoutMs) {
-
-        const fetchOptions : RequestInit = {
-            method: httpVerb,
-            headers: {
-                'X-Signed-Identity': originalIdentityHeader,
-            }
-        };
-
-        if (['POST', 'PUT'].includes(httpVerb) && bodyContent) {
-            fetchOptions.body = JSON.stringify(bodyContent);
-            fetchOptions.headers = {
-                ...fetchOptions.headers,
-                'Content-Type': 'application/json'
-            };
-        }
-
-        let response;
-        
-        try {
-            response = await fetch(selfEndpoint, fetchOptions);
-        } catch (error) {
-            console.error(`Request ${httpVerb} ${selfEndpoint} failed with error ${error}`);
-            throw error;
-        }
-
-        if (response.ok) {
-            if (['GET'].includes(httpVerb)) {
-                const objectResponse = await response.json();
-                return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
-            } else if (['POST', 'PUT', 'PATCH'].includes(httpVerb) && response.status === 200) {
-                let objectResponse;
-                try {
-                    objectResponse = await response.json();
-                } catch (error) {
-                    console.error(`Request ${httpVerb} ${selfEndpoint} failed with error ${error}`);
-                    return {} as T;
-                }
-                return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
-            } else { // DELETE
-                return {} as T;
-            }
-        }
-
-        throw new Error(`Request ${selfEndpoint} failed with status ${response.status}: ${response.statusText}`);
-    } else {
-        const headers = {
-            'X-Signed-Identity': originalIdentityHeader,
-            'Content-Type': 'application/json'
-        };
-    
-        const axiosConfig = {
-            headers: headers,
-            timeout: timeoutMs
-        };
-    
-        try {
-            let response;
-            switch (httpVerb.toLowerCase()) {
-                case 'get':
-                    response = await axios.get(selfEndpoint, axiosConfig);
-                    break;
-                case 'post':
-                    response = await axios.post(selfEndpoint, bodyContent, axiosConfig);
-                    break;
-                case 'put':
-                    response = await axios.put(selfEndpoint, bodyContent, axiosConfig);
-                    break;
-                case 'delete':
-                    response = await axios.delete(selfEndpoint, axiosConfig);
-                    break;
-                case 'patch':
-                    response = await axios.patch(selfEndpoint, bodyContent, axiosConfig);
-                    break;
-                default:
-                    throw new Error(`Invalid HTTP Verb: ${httpVerb}`);
-            }
-    
-            // Axios automatically parses JSON, so no need to manually parse it here.
-            return response.data as T;
-        } catch (error : any) {
-            if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
-                console.log(`TIMECHECK: TIMEOUT: ${httpVerb} ${selfEndpoint} timed out after ${timeoutMs / 1000} seconds`);
-
-                // if caller is launching an async process, and doesn't care about response, don't throw on timeout
-                if (!throwOnTimeout) {
-                    return {} as T;
-                }
-            } else {
-                // This block is for handling errors, including 404 and 500 status codes
-                if (axios.isAxiosError(error) && error.response) {
-                    console.log(`TIMECHECK: ${httpVerb} ${selfEndpoint} failed with status ${error.response.status}:${error.response.statusText} due to error:${error}`);
-                } else {
-                    // Handle other errors (e.g., network errors)
-                    console.log(`TIMECHECK: ${httpVerb} ${selfEndpoint} failed ${error}`);
-                }
-            }
-            throw error;
-        }
-    }
-}
 
 async function splitAndStoreData(
     email: string,
@@ -2362,10 +2249,15 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 last_updated: generatorState.last_updated
             };
             // we're going to start an async project status refresh (but only wait 250 ms to ensure it starts)
-            await localSelfDispatch<ProjectStatusState>(
-                email, getSignedIdentityFromHeader(req)!, req,
-                `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs, false);
-
+            try {
+                await localSelfDispatch<ProjectStatusState>(
+                    email, getSignedIdentityFromHeader(req)!, req,
+                    `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs, false);
+            } catch (error: any) {
+                if (!error.response || error.response.status !== 404) {
+                    throw error;
+                }
+            }
             // if we have completed all stages or reached a terminal point (e.g. error or non-active updating)
             //      then we'll upload what we have to the AI servers
             // this is all an async process (we don't wait for it to complete)
@@ -2533,8 +2425,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 return res.status(400).send();
             }
         } catch (error) {
-            console.error(`Handler Error: ${user_project_org_project_data_resource_generator}: Unable to handle task request:`, error);
-            return res.status(500).send('Internal Server Error');
+            return handleErrorResponse(error, req, res, `Unable to handle task request`);
         }
 
         return res
@@ -2652,10 +2543,16 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
                 .contentType('application/json')
                 .send(nextGeneratorState);
         } catch (error) {
+
+            let currentStage = resourceGeneratorProcessState?.stage;
+            if (!currentStage) {
+                currentStage = "[Current Stage";
+            }
+
             if (error instanceof GeneratorProcessingError) {
                 const processingError = error as GeneratorProcessingError;
-                if (processingError.stage != resourceGeneratorProcessState?.stage) {
-                    console.error(`${req.originalUrl}: Resetting to ${processingError.stage} due to error in ${resource} stage ${resourceGeneratorProcessState?.stage}:`, processingError);
+                if (processingError.stage != currentStage) {
+                    console.error(`${req.originalUrl}: Resetting to ${processingError.stage} due to error in ${resource} stage ${currentStage}:`, processingError);
             
                     const nextGeneratorState : ResourceGeneratorProcessState = {
                         stage: processingError.stage
@@ -2668,7 +2565,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
                 }
             }
 
-            console.error(`Error processing stage ${resourceGeneratorProcessState?.stage}:`, error);
+            console.error(`Error processing stage ${currentStage}:`, error);
+
             throw error;
         }
     } catch (error) {

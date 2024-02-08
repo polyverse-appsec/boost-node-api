@@ -26,7 +26,7 @@ readonly fileSourceEntry =
 
         let nextStage;
         switch (stage) {
-        case Stages.Complete:
+        case Stages.Initialize:
         case ProjectSourceStage.ProjectInfo:
             await this.updateProgress('Generating Initial Project Info');
             this.data = this.defaultProjectSource
