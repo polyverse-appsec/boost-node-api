@@ -10,6 +10,8 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Enable parallel resource generation in discovery to ensure discovery completes in 25 seconds or less
+- Change Blueprint generation to skip AI services (for now) by default to stay within 25 second timeout
+    - Enable AI generated Blueprints with env variable AI_BLUEPRINT
 
 ### Bug Fixes
 - N/A

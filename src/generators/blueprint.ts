@@ -6,10 +6,12 @@ import { signedAuthHeader } from '../auth';
 import { Stages } from '../types/GeneratorState';
 import { AIResponse }  from '../boost-python-api/AIResponse';
 import { AIFunctionResponse } from '../boost-python-api/AIFunctionResponse';
+import path from 'path';
 
 enum BlueprintStage {
     Default = 'Default',
     FileImport = 'File Import',
+    SourceLanguageScan = 'Source Language Scan',
     FileScan = 'File Scan',
     SampledCode = 'Sampled Code',
     BuildingBlueprint = 'Building Blueprint'
@@ -48,6 +50,15 @@ export class BlueprintGenerator extends Generator {
     constructor(serviceEndpoint: string, email: string, projectData: UserProjectData) {
         super(serviceEndpoint, email, projectData, ProjectDataType.ArchitecturalBlueprint);
     }
+
+    readonly staticBlueprint =
+`## Architectural Blueprint Summary for: {projectName}
+* The architecture of the software project is defined in the source code summary documents.`;
+
+    readonly staticBlueprintWithFilenames =
+`## Architectural Blueprint Summary for: {projectName}
+* The architecture of the software project is defined in the source code summary documents.
+* The majority of the source code is written in Programming Language with file extension {mostCommonFileExtension}`;
 
     readonly sampleBlueprint =
 `## Architectural Blueprint Summary for: {projectName}
@@ -98,7 +109,32 @@ readonly defaultBlueprint =
             // we're going to save our resulting data, so we can run sampled code
             await this.saveScratchData<string[]>(filteredFileList, BlueprintStage.FileImport);
 
-            nextStage = BlueprintStage.FileScan;
+            nextStage = BlueprintStage.SourceLanguageScan;
+
+            break;
+        }
+
+        case BlueprintStage.SourceLanguageScan:
+        {
+            const filteredFileList : string[] | undefined = await this.loadScratchData<string[]>(BlueprintStage.FileImport);
+            if (!filteredFileList) {
+                throw new GeneratorProcessingError('Unable to load file list', BlueprintStage.FileImport);
+            }
+
+            const mostCommonFileExtension = this.getMostCommonFileExtension(filteredFileList);
+            this.data =
+                this.staticBlueprintWithFilenames
+                    .replace('{projectName}', this.projectData.name)
+                    .replace('{mostCommonFileExtension}', mostCommonFileExtension);
+
+            if (process.env.AI_BLUEPRINT) {
+                nextStage = BlueprintStage.FileScan;
+
+                // if we don't want to incur the cost of AI analysis (e.g. draft blueprint)
+                //    then we'll skip it completely and just use the static blueprint
+            } else {
+                nextStage = Stages.Complete;
+            }
 
             break;
         }
@@ -198,6 +234,43 @@ readonly defaultBlueprint =
         }
 
         return nextStage;
+    }
+
+    readonly ignoredTextExtensions = ['md', 'txt', 'json'];
+    getMostCommonFileExtension(fileList: string[]) : string {
+        const fileExtensions : {[key: string]: number} = {};
+        for (const file of fileList) {
+            const extension = path.extname(file).slice(1);
+            if (extension) {
+                // ignore text extensions (md, txt, json)
+                if (this.ignoredTextExtensions.includes(extension)) {
+                    continue;
+                }
+
+                if (fileExtensions[extension]) {
+                    fileExtensions[extension]++;
+                } else {
+                    fileExtensions[extension] = 1;
+                }
+            } else {
+                // ignore files without extensions (e.g. README, LICENSE, etc.)
+                continue;
+            }
+        }
+
+        let mostCommonExtension = '';
+        let mostCommonCount = 0;
+        for (const extension in fileExtensions) {
+            if (fileExtensions[extension] > mostCommonCount) {
+                mostCommonCount = fileExtensions[extension];
+                mostCommonExtension = extension;
+            }
+        }
+        if (!mostCommonExtension) {
+            mostCommonExtension = 'Unknown';
+        }
+
+        return mostCommonExtension;
     }
 
     async createDraftBlueprint(fileList: string[]) : Promise<DraftBlueprintOutput> {
