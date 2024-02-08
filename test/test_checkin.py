@@ -130,8 +130,10 @@ class BoostBackendCheckinSuite(unittest.TestCase):
             # wait 20 seconds before probing again
             time.sleep(20)
 
+        print("Project is Fully Synchronized - Test success!")
+
     def test_user_project_resource_creation_public_project(self):
-        return self.helper_test_user_project_resource_creation_project(private=False)
+        self.helper_test_user_project_resource_creation_project(private=False)
 
     def test_user_project_resource_creation_private_project(self):
-        return self.helper_test_user_project_resource_creation_project(private=True)
+        self.helper_test_user_project_resource_creation_project(private=True)
