@@ -232,8 +232,14 @@ export class Generator {
             body: JSON.stringify(state)
         });
         if (!response.ok) {
-            const errorText = await response.text() || 'Unknown Error';
-            console.error(`Unable to update ${this.dataType} resource generator progress: ${JSON.stringify(state)} - ${response.status} - ${errorText}`);
+            if (response.status === 404) {
+                if (process.env.TRACE_LEVEL) {
+                    console.warn(`Generator not found - ignoring progress update: ${JSON.stringify(state)}`);
+                }
+            } else {
+                const errorText = await response.text() || 'Unknown Error';
+                console.error(`Unable to update ${this.dataType} resource generator progress: ${JSON.stringify(state)} - ${response.status} - ${errorText}`);
+            }
         }
     }
 
