@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.9.12: February 8th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Enable parallel resource generation in discovery to ensure discovery completes in 25 seconds or less
+
+### Bug Fixes
+- N/A
+
 ## Version 0.9.11: February 7th, 2024
 
 ### New Features

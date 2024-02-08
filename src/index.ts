@@ -41,7 +41,11 @@ import { Services, Endpoints } from './boost-python-api/endpoints';
 import { GeneratorProcessingError } from './generators/generator';
 import { ProjectSourceGenerator } from './generators/projectsource';
 import { ArchitecturalSpecificationGenerator } from './generators/aispec';
-import { localSelfDispatch, api_root_endpoint } from './utility/dispatch';
+import {
+    localSelfDispatch,
+    api_root_endpoint,
+    secondsBeforeRestRequestTimeout
+} from './utility/dispatch';
 
 export const app = express();
 
@@ -980,47 +984,56 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
         // take the original request uri and remove the trailing /discovery to get the project data
         const originalUri = req.originalUrl;
         const projectDataUri = originalUri.substring(0, originalUri.lastIndexOf('/discovery'));
-        // get the path of the project data uri - excluding the api root endpoint
         const projectDataPath = projectDataUri.substring(projectDataUri.indexOf("user_project"));
 
-        // kickoff project processing now, by creating the project resources, then initiating the first
-        //      data store upload
-        const resourcesToGenerate : ProjectDataType[] = [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification];
-        const durationInEachStep : number[] = [ Math.floor(Date.now() / 1000) ];
+        const resourcesToGenerate = [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification];
+        const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
+        
         console.log(`Starting Discovery for ${projectDataPath}`);
-        for (const resource of resourcesToGenerate) {
-            const startProcessing = {"status": "processing"};
 
-            const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
-
+        // kickoff project processing now, by creating the project resources in parallel
+        //      We'll wait for up to 25 seconds to perform upload, then we'll do an upload
+        //      with whatever we have at that time
+        const generatorPromises = resourcesToGenerate.map(async (resource) => {
             const generatorPath = `${projectDataPath}/data/${resource}/generator`;
+            const startProcessing = {"status": "processing"};
             try {
-                const newGeneratorState = await localSelfDispatch<void>(
+                const newGeneratorState = await localSelfDispatch<GeneratorState>(
                     email,
                     signedIdentity, 
                     req,
                     generatorPath,
                     'PUT',
-                    startProcessing);
+                    startProcessing,
+                    secondsBeforeRestRequestTimeout * 1000,
+                    false);
+                // check if we timed out, with an empty object
+                if (Object.keys(newGeneratorState).length === 0) {
+                    console.warn(`${req.originalUrl} Async generator for ${resource} timed out`);
+                }
                 console.log(`New Generator State: ${JSON.stringify(newGeneratorState)}`);
             } catch (error) {
                 console.error(`Discovery unable to launch generator (continuing) for ${generatorPath}`, error);
             }
-            durationInEachStep.push(Math.floor(Date.now() / 1000));
-            console.log(`Discovery Step ${resource.toString()} took: ${durationInEachStep[durationInEachStep.length - 1] - durationInEachStep[durationInEachStep.length - 2]} seconds`);
-        }
+        });
 
-        const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
-        const existingDataReferences = await localSelfDispatch<ProjectDataReference[]>(email, signedIdentity, req, `${projectDataPath}/data_references`, 'PUT');
-        durationInEachStep.push(Math.floor(Date.now() / 1000));
+        // Execute all generator creation operations in parallel
+        await Promise.all(generatorPromises);
+
+        // due to above resource generation timeout of 25 seconds, we should have about 5 seconds to
+        //      do the upload, which should be adequate time (e.g. 2-3 seconds)
+
+        // After all generators have been started, proceed with data references
+        const existingDataReferences = await localSelfDispatch<ProjectDataReference[]>(
+            email, 
+            signedIdentity, 
+            req, 
+            `${projectDataPath}/data_references`, 
+            'PUT');
+
         console.log(`Existing Data References: ${JSON.stringify(existingDataReferences)}`);
 
-        // print the time in last step
-        console.log(`Discovery Step Data References took: ${durationInEachStep[durationInEachStep.length - 1] - durationInEachStep[durationInEachStep.length - 2]} seconds`);
-
-        return res
-            .status(200)
-            .send(existingDataReferences);
+        return res.status(200).send(existingDataReferences);
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }    
@@ -1479,7 +1492,6 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         const projectGroomPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
         const projectPath = projectGroomPath.substring(0, projectGroomPath.lastIndexOf('/groom'));
 
-        const maximumDurationOfThisCallInSeconds = 25;
         const callStart = Math.floor(Date.now() / 1000);
 
         // we'll check the status of the project data
@@ -1509,7 +1521,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         }
         // if we're not synchronized, and idle, then try again
         if (projectStatus.status !== ProjectStatus.Synchronized) {
-            const timeRemainingToDiscoverInSeconds = maximumDurationOfThisCallInSeconds - (Math.floor(Date.now() / 1000) - callStart);
+            const timeRemainingToDiscoverInSeconds = secondsBeforeRestRequestTimeout - (Math.floor(Date.now() / 1000) - callStart);
             // if we have less than one second to run discovery, just skip it for now, and we'll try again later (status refresh took too long)
             if (timeRemainingToDiscoverInSeconds <= 1) {
                 const groomingState = {
@@ -2904,7 +2916,6 @@ app.post(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`,
 });
 
 const proxy_ai_endpoint = "proxy/ai/:org/:endpoint";
-const secondsBeforeRequestTimeout = 25;
 const handleProxyRequest = async (req: Request, res: Response) => {
     logRequest(req);
 
@@ -2937,7 +2948,7 @@ const handleProxyRequest = async (req: Request, res: Response) => {
                 ...signedIdentity
             },
             data: (req.method !== 'GET' && req.method !== 'HEAD') ? req.body : undefined,
-            timeout: secondsBeforeRequestTimeout * 1000
+            timeout: secondsBeforeRestRequestTimeout * 1000
         };
 
         const startTimeOfCall = Date.now();

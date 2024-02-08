@@ -4,6 +4,8 @@ import { header_X_Signed_Identity, signedAuthHeader } from '../auth';
 
 export const api_root_endpoint : string = '/api';
 
+export const secondsBeforeRestRequestTimeout = 25;
+
 export async function localSelfDispatch<T>(
     email: string, originalIdentityHeader: string, initialRequestOrSelfEndpoint: Request | string,
     path: string, httpVerb: string, bodyContent?: any, timeoutMs: number = 0, throwOnTimeout: boolean = true): Promise<T> {
