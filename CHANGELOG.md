@@ -11,6 +11,7 @@ Polyverse Boost ReST API (Backend)
 ### Enhancements
 - Enable upload of single resources when other resources are unavailable or fail to upload
 - If OpenAI Servers are overloaded and we've exceeded API throttle limit (50 calls/minute), then don't retry OpenAI calls
+- Skip OpenAI server upload of resource if the resource is already uploaded (e.g. no need to re-upload)
 
 ### Bug Fixes
 - N/A

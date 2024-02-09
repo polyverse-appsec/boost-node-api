@@ -2569,7 +2569,6 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
 });
 
 const user_project_org_project_data_references = `user_project/:org/:project/data_references`;
-
 const userProjectDataReferences = async (req: Request, res: Response) => {
 
     logRequest(req);
@@ -2619,7 +2618,6 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
             return res.status(400).send('Invalid URI');
         }
 
-        const projectDataFileIds = [];
         const projectDataNames = [];
         const projectDataTypes = [];
 
@@ -2632,8 +2630,18 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
         projectDataTypes.push(ProjectDataType.ArchitecturalBlueprint);
         projectDataNames.push(ProjectDataFilename.ArchitecturalBlueprint);
 
+        const existingProjectFileIdsRaw = await getProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references');
+        let existingProjectFileIds: Map<string, ProjectDataReference> = new Map();
+        if (existingProjectFileIdsRaw) {
+            const loadedProjectFileIds = JSON.parse(existingProjectFileIdsRaw) as ProjectDataReference[];
+            loadedProjectFileIds.map((projectDataReference) => {
+                existingProjectFileIds.set(projectDataReference.type, projectDataReference);
+            });
+        }
+
         const missingDataTypes: string[] = [];
         const uploadFailures: Map<string, Error> = new Map();
+        let refreshedProjectData = false;
         try {
             for (let i = 0; i < projectDataTypes.length; i++) {
                 let projectData = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, "", projectDataTypes[i]);
@@ -2641,6 +2649,24 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                     console.log(`${user_project_org_project_data_references}: no data found for ${projectDataTypes[i]}`);
                     missingDataTypes.push(projectDataTypes[i]);
                     continue;
+                }
+
+                try {
+                    let resourceStatus = await localSelfDispatch<ResourceStatusState>(email, getSignedIdentityFromHeader(req)!, req,
+                        `user_project/${org}/${project}/data/${projectDataTypes[i]}/status`, 'GET');
+                    const lastUploaded = existingProjectFileIds.get(projectDataTypes[i])?.last_updated;
+
+                    // there is a small race window here where an older resource version be uploaded, and before the upload
+                    //      a newer resource version is stored - but since the upload timestamp is AFTER the newer version was stored
+                    //      the newer version will not be uploaded. This would be fixed by storing a hash or timestamp of the resource
+                    //      uploaded and storing that in the project data reference as well - but for now, we'll ignore it, since
+                    //      this is a small window, and ANY future upload of the resource will resolve the issue.
+                    if (lastUploaded && lastUploaded > resourceStatus.last_updated) {
+                        console.debug(`${req.originalUrl}: Skipping upload of ${projectDataTypes[i]} - likely uploaded at ${lastUploaded} and resource updated at ${resourceStatus.last_updated}`);
+                        continue;
+                    }
+                } catch (error) {
+                    console.error(`${req.originalUrl} Refreshing upload for ${projectDataTypes[i]} due to error checking last upload time: `, error);
                 }
                 
                 if (process.env.TRACE_LEVEL) {
@@ -2652,15 +2678,19 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                     if (process.env.TRACE_LEVEL) {
                         console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${JSON.stringify(storedProjectDataId)}`);
                     }
-                    projectDataFileIds.push(storedProjectDataId);
+                    refreshedProjectData = true;
+
+                    // update the existing resources with the newly uploaded info
+                    existingProjectFileIds.set(projectDataTypes[i], storedProjectDataId);
+
                 } catch (error: any) {
                     if (error.message?.includes("exceeded")) {
                         // If rate limit exceeded error is detected, fail immediately - don't continue AI uploads
                         return handleErrorResponse(error, req, res, `Rate Limit Exceeded: ${error}`);
                     }
                     
+                    // continue trying to upload all resources we can - and record the failures
                     uploadFailures.set(projectDataTypes[i], error);
-                    // Do not return here to allow the loop to continue and collect all failures.
                     continue;
                 }
             }
@@ -2688,8 +2718,12 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
             }
         }
 
-        await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', JSON.stringify(projectDataFileIds));
+        // extract the file ids from the map (previous and any updated)
+        const projectDataFileIds = Array.from(existingProjectFileIds.values());
 
+        if (refreshedProjectData) {
+            await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', JSON.stringify(projectDataFileIds));
+        }
         return res
             .status(200)
             .contentType('application/json')
