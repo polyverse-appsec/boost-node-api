@@ -5,7 +5,7 @@ CLOUD_URL_DEV = "https://3c27qu2ddje63mw2dmuqp6oa7u0ergex.lambda-url.us-west-2.o
 CLOUD_URL_TEST = "https://sztg3725fqtcptfts5vrvcozoe0nxcew.lambda-url.us-west-2.on.aws"
 CLOUD_URL_PROD = "https://33pdosoitl22c42c7sf46tabi40qwlae.lambda-url.us-west-2.on.aws"
 
-TARGET_URL = CLOUD_URL_DEV
+TARGET_URL = LOCAL_URL  # CLOUD_URL_DEV  # LOCAL_URL
 
 EMAIL = "unittest@polytest.ai"
 PREMIUM_EMAIL = "stephen@polyverse.com"
