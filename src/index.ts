@@ -69,7 +69,7 @@ async function splitAndStoreData(
     resourcePath: string,
     analysisType: string,
     body: any
-): Promise<void> {
+    ): Promise<void> {
 
     const MAX_SIZE = 300 * 1024; // 300 KB
     const dataString = JSON.stringify(body);
@@ -2333,7 +2333,13 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         const processingError = error as GeneratorProcessingError;
                         if (processingError.stage != currentGeneratorState.stage) {
                             console.error(`${req.originalUrl}: Resetting to ${processingError.stage} due to error in ${resource} stage ${currentGeneratorState.stage}:`, processingError);
+
+                            currentGeneratorState.status_details = `Resetting to earlier stage ${processingError.stage} due to error: ${processingError}`;
+                        } else {
+                            currentGeneratorState.status_details = `Rerun current stage due to error: ${processingError}`;
                         }
+                    } else {
+                        currentGeneratorState.status_details = `${error}`;
                     }
 
                     // In case of error, set status to error

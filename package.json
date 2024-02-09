@@ -1,6 +1,6 @@
 {
   "name": "boost-rest-api",
-  "version": "0.9.12",
+  "version": "0.9.13",
   "main": "build/index.js",
   "scripts": {
     "test": "pytest",

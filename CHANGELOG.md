@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.9.13: February 8th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Report errors in generator status details when a generator fails to complete (e.g. Blueprint, AI Spec, etc)
+
+### Bug Fixes
+- N/A
+
 ## Version 0.9.12: February 8th, 2024
 
 ### New Features
