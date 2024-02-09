@@ -517,10 +517,13 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
         const publicArchiveUrl = `https://api.github.com/repos/${owner}/${repo}/zipball/${defaultBranch}`;
 
         const fileContents : FileContent[]= await downloadAndExtractRepo(publicArchiveUrl, '');
+        console.debug(`Success Retrieving ${fileContents.length} files from Public Repo ${owner}:${repo}`);
+
         return res
             .status(200)
             .contentType('application/json')
             .send(fileContents);
+
     } catch (publicError: any) {
         if (publicError.status !== 404 && publicError?.response?.data?.message !== 'Not Found') {
             if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
@@ -591,7 +594,7 @@ s            }
 
             const fileContents : FileContent[] = await downloadAndExtractRepo(archiveUrl, installationAccessToken.token);
 
-            console.log(`Success Retrieving ${fileContents.length} files from Private Repo ${repo}`)
+            console.log(`Success Retrieving ${fileContents.length} files from Private Repo ${owner}:${repo}`)
 
             return res
                 .status(200)
