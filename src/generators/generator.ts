@@ -305,20 +305,20 @@ export class Generator {
 
     async getProjectSource() : Promise<FileContent[]> {
         const encodedUri = encodeURIComponent(this.projectData.resources[0].uri);
-        const getFullSourceEndpoint = this.serviceEndpoint + `/api/user/${this.projectData.org}/connectors/github/fullsource?uri=${encodedUri}`;
-        const response = await fetch(getFullSourceEndpoint, {
-            method: 'GET',
-            headers: await signedAuthHeader(this.email)
-        });
-        if (response.ok) {
+        const fullSourcePath = `user/${this.projectData.org}/connectors/github/fullsource?uri=${encodedUri}`;
 
-            const objectResponseRaw = await response.json();
-            const fileContentList : FileContent[] = (objectResponseRaw.body?JSON.parse(objectResponseRaw.body):objectResponseRaw) as FileContent[];
-    
+        try {
+            const fileContentList : FileContent[] = await localSelfDispatch<FileContent[]>(
+                this.email, '', this.serviceEndpoint, fullSourcePath, 'GET');
+
+            console.debug(`Got project source: ${fileContentList.length} files`);
+            
             return fileContentList;
+
+        } catch (err) {
+            console.error(`Unable to get project source: ${err}`);
+            throw err;
         }
-        const errorText = await response.text() || 'Unknown Error';
-        throw new Error(`Unable to get project source: ${response.status} - ${errorText}`);
     }
 
     async getBoostIgnoreFileSpecs() : Promise<string[]> {
