@@ -2654,6 +2654,11 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                     }
                     projectDataFileIds.push(storedProjectDataId);
                 } catch (error: any) {
+                    if (error.message?.includes("exceeded")) {
+                        // If rate limit exceeded error is detected, fail immediately - don't continue AI uploads
+                        return handleErrorResponse(error, req, res, `Rate Limit Exceeded: ${error}`);
+                    }
+                    
                     uploadFailures.set(projectDataTypes[i], error);
                     // Do not return here to allow the loop to continue and collect all failures.
                     continue;

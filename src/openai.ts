@@ -75,7 +75,11 @@ const createAssistantFileWithRetry = async (dataFilename: string, data: string, 
     while (attempts <= maxRetries) {
         try {
             return await createAssistantFile(dataFilename, data);
-        } catch (error) {
+        } catch (error: any) {
+            // if we exceeded rate limit, don't retry
+            if (error.message(`exceeded`)) {
+                throw error;
+            }
             lastError = error;
             if (attempts < maxRetries) {
                 console.log(`Attempt ${attempts + 1} failed, retrying in ${retryDelay / 1000} seconds...`);
@@ -114,8 +118,27 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
     });
 
     if (!response.ok) {
-        const errorText = await response.text() || 'No error message';;
-        throw new Error(`OpenAI Upload failure for ${dataFilename} status: ${response.status}, error: ${errorText}`);
+        const errorText = await response.text();
+        try {
+            const errorObj = errorText ? JSON.parse(errorText) : null;
+
+            // Check if the error is due to rate limiting
+            if (response.status === 429 && errorObj && errorObj.error && errorObj.error.code === "rate_limit_exceeded") {
+                throw new Error(`Rate limit exceeded: ${errorObj.error.message}`);
+            } else {
+                // For other errors, include the original error message
+                throw new Error(`OpenAI Upload failure for ${dataFilename} status: ${response.status}, error: ${errorText}`);
+            }
+        } catch (error: any) {
+            // check if JSON.parse failed
+            if (error instanceof SyntaxError) {
+                // Handle JSON parsing error
+                throw new Error(`Error parsing response from OpenAI for ${dataFilename}: ${error.message}`);
+            } else {
+                // Rethrow the original error if it's not a parsing error
+                throw new Error(`OpenAI Upload failure for ${dataFilename} status: ${response.status}, error: ${errorText} - cascading error: ${error}`);
+            }
+        }
     }
 
     const responseData: OpenAIFileUploadResponse = await response.json() as OpenAIFileUploadResponse;
