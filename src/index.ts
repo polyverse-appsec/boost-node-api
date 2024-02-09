@@ -2632,36 +2632,55 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
         projectDataTypes.push(ProjectDataType.ArchitecturalBlueprint);
         projectDataNames.push(ProjectDataFilename.ArchitecturalBlueprint);
 
+        const missingDataTypes: string[] = [];
+        const uploadFailures: Map<string, Error> = new Map();
         try {
             for (let i = 0; i < projectDataTypes.length; i++) {
                 let projectData = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, "", projectDataTypes[i]);
                 if (!projectData) {
-                    // data not found in KV cache - must be manually uploaded for now per project
                     console.log(`${user_project_org_project_data_references}: no data found for ${projectDataTypes[i]}`);
-
-                    // we can't upload this resource since we don't have all the resources yet
-                    return res
-                        .status(204)
-                        .send(`No data found for ${projectDataTypes[i]}`);
+                    missingDataTypes.push(projectDataTypes[i]);
+                    continue;
                 }
-
+                
                 if (process.env.TRACE_LEVEL) {
                     console.log(`${user_project_org_project_data_references}: retrieved project data for ${projectDataTypes[i]}`);
                 }
 
                 try {
                     const storedProjectDataId = await uploadProjectDataForAIAssistant(`${userProjectData.org}_${userProjectData.name}`, uri, projectDataTypes[i], projectDataNames[i], projectData);
-
                     if (process.env.TRACE_LEVEL) {
                         console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${JSON.stringify(storedProjectDataId)}`);
                     }
                     projectDataFileIds.push(storedProjectDataId);
-                } catch (error) {
-                    return handleErrorResponse(error, req, res, `Unable to store project data on AI Servers:`);
+                } catch (error: any) {
+                    uploadFailures.set(projectDataTypes[i], error);
+                    // Do not return here to allow the loop to continue and collect all failures.
+                    continue;
                 }
             }
         } catch (error) {
             return handleErrorResponse(error, req, res, `Unable to retrieve project data`);
+        }
+
+        if (missingDataTypes.length > 0) {
+            if (missingDataTypes.length < projectDataTypes.length) {
+                console.warn(`${req.originalUrl}: Missing data for ${missingDataTypes.join(", ")}`);
+            } else {
+                return res.status(204).send(`No data found for ${missingDataTypes.join(", ")}`);
+            }
+        }
+
+        if (uploadFailures.size > 0) {
+            // Convert Map keys and values to arrays for processing
+            const failedKeys = Array.from(uploadFailures.keys());
+            const failedValues = Array.from(uploadFailures.values());
+            if (uploadFailures.size < projectDataTypes.length) {
+                console.warn(`${req.originalUrl}: Failed to upload data for ${failedKeys.join(", ")}`);
+            } else {
+                // Handle the first error specifically
+                return handleErrorResponse(failedValues[0], req, res, `Unable to store project data on AI Servers:`);
+            }
         }
 
         await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', JSON.stringify(projectDataFileIds));

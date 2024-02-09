@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.10.0: February 9th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Enable upload of single resources when other resources are unavailable or fail to upload
+
+### Bug Fixes
+- N/A
+
 ## Version 0.9.13: February 8th, 2024
 
 ### New Features
