@@ -229,7 +229,8 @@ export class ArchitecturalSpecificationGenerator extends Generator {
             body: JSON.stringify(inputData)
         });
         if (!response.ok) {
-            throw new Error(`Unable to build blueprint from project samples: ${response.status}`);
+            console.error(`Unable to build Architectural specification: ${response.status} - processing input: ${JSON.stringify(inputData)}`);
+            throw new Error(`Unable to build Architetural specification: ${response.status}`);
         }
 
         const objectResponseRaw = await response.json();
