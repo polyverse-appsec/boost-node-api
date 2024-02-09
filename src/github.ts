@@ -468,6 +468,52 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
     }
 }
 
+export async function verifyUserAccessToPrivateRepo(email: string, uri: URL, req: Request, res: Response) : Promise<boolean>{
+    const [, owner, repo] = uri.pathname.split('/');
+
+    if (!owner || !repo) {
+        throw new Error(`Invalid GitHub.com resource URI: ${uri}`);
+    }
+
+    const user = await getUser(email);
+    if (!user) {
+        throw new Error(`GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+    } else if (!user?.username) {
+        throw new Error(`Invalid GitHub App Installation - cannot find GitHub Username for ${email}`);
+    }
+
+    const installationId = (await getUser(owner))?.installationId;
+    if (!installationId) {
+        throw new Error(`GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${owner}`);
+    }
+
+    const secretStore = 'boost/GitHubApp';
+    const secretKeyPrivateKey = secretStore + '/' + 'private-key';
+    const privateKey = await getSingleSecret(secretKeyPrivateKey);
+
+    const app = new App({
+        appId: BoostGitHubAppId,
+        privateKey: privateKey,
+    });
+    const octokit = await app.getInstallationOctokit(Number(installationId));            
+
+    const collaboratorCheckInput = {
+        owner,
+        repo,
+        username: user.username
+    };
+    const response = await octokit.rest.repos.getCollaboratorPermissionLevel(collaboratorCheckInput);
+    // check if the username has access to this repo
+    if (response.status !== 200 || !response.data.permission) {
+        console.warn(`User ${user.username} does not have access to ${owner}:${repo}`);
+        return false;
+    }
+
+    console.debug(`User ${user.username} has access to ${owner}:${repo}`);
+
+    return true;
+}
+
 export async function getFullSourceFromRepo(email: string, uri: URL, req: Request, res: Response, allowPrivateAccess: boolean) {
     const [, owner, repo] = uri.pathname.split('/');
 
@@ -540,7 +586,8 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
         const publicArchiveUrl = `https://api.github.com/repos/${owner}/${repo}/zipball/${defaultBranch}`;
 
         const fileContents : FileContent[]= await downloadAndExtractRepo(publicArchiveUrl, '');
-        console.debug(`Success Retrieving ${fileContents.length} files from Public Repo ${owner}:${repo}`);
+
+        console.log(`Success Retrieving ${fileContents.length} files (${(JSON.stringify(fileContents).length / (1024 * 1024)).toFixed(2)} MB) from Public Repo ${owner}:${repo}`)
 
         return res
             .status(200)
@@ -617,13 +664,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
 
             let fileContents : FileContent[] = await downloadAndExtractRepo(archiveUrl, installationAccessToken.token);
 
-            // keep 75% of the file contents
-//            fileContents = fileContents.slice(0, Math.floor(fileContents.length * 0.9));
-
-            console.log(`Success Retrieving ${fileContents.length} files from Private Repo ${owner}:${repo}`)
-
-            // print size in MB to 2 decimal places
-            console.debug(`Size of fileContents: ${(JSON.stringify(fileContents).length / (1024 * 1024)).toFixed(2)} MB`);
+            console.log(`Success Retrieving ${fileContents.length} files (${(JSON.stringify(fileContents).length / (1024 * 1024)).toFixed(2)} MB) from Private Repo ${owner}:${repo}`)
 
             return res
                 .status(200)

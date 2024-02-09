@@ -17,7 +17,8 @@ import {
     getFilePathsFromRepo,
     getDetailsFromRepo,
     getFullSourceFromRepo,
-    RepoDetails
+    RepoDetails,
+    verifyUserAccessToPrivateRepo
 } from './github';
 import { uploadProjectDataForAIAssistant } from './openai';
 import { UserProjectData } from './types/UserProjectData';
@@ -428,7 +429,6 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_files}`, async (req: 
     }
 });
 
-
 const user_org_connectors_github_fullsource = `user/:org/connectors/github/fullsource`;
 app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
     express.text({ limit: '10mb' }),
@@ -481,6 +481,55 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
         const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
 
         return getFullSourceFromRepo(email, uri, req, res, privateAccessAllowed);
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
+const user_org_connectors_github_permission = `user/:org/connectors/github/access`;
+app.get(`${api_root_endpoint}/${user_org_connectors_github_permission}`,
+    async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        if (!req.query.uri) {
+            console.error(`URI is required`);
+            return res.status(400).send('URI is required');
+        }
+
+        let uriString = req.query.uri as string;
+
+        // Check if the URI is encoded, decode it if necessary
+        if (uriString.match(/%[0-9a-f]{2}/i)) {
+            try {
+                uriString = decodeURIComponent(uriString);
+            } catch (error) {
+                console.error(`Invalid encoded URI: ${uriString}`);
+                return res.status(400).send('Invalid encoded URI');
+            }
+        }
+
+        let uri;
+        try {
+            uri = new URL(uriString as string);
+        } catch (error) {
+            console.error(`Invalid URI: ${uriString}`);
+            return res.status(400).send('Invalid URI');
+        }
+
+        // check if this user has access to this private repo
+        const accessGranted : boolean = await verifyUserAccessToPrivateRepo(email, uri, req, res);
+
+        res
+            .status(200)
+            .contentType('application/json')
+            .send(accessGranted);
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }

@@ -9,6 +9,7 @@ TARGET_URL = LOCAL_URL  # CLOUD_URL_DEV  # LOCAL_URL
 
 EMAIL = "unittest@polytest.ai"
 PREMIUM_EMAIL = "stephen@polyverse.com"
+BASIC_EMAIL = "unittest@polyverse-test.com"
 ORG = "polyverse-test-org"
 
 LOCAL_ADMIN_EMAIL = "root@localhost"
