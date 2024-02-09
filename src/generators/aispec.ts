@@ -6,6 +6,7 @@ import { FileContent } from '../github';
 import { AIResponse } from '../boost-python-api/AIResponse';
 import { Services } from '../boost-python-api/endpoints';
 import { signedAuthHeader } from '../auth';
+import { localSelfDispatch } from '../utility/dispatch';
 const ignore = require('ignore');
 
 enum ArchitecturalSpecificationStage {
@@ -233,19 +234,16 @@ export class ArchitecturalSpecificationGenerator extends Generator {
             code: code,
             filepath: filepath
         };
-        const response = await fetch(this.serviceEndpoint + `/api/proxy/ai/${this.projectData.org}/${Services.Summarizer}`, {
-            method: 'POST',
-            headers: await signedAuthHeader(this.email),
-            body: JSON.stringify(inputData)
-        });
-        if (!response.ok) {
-            console.error(`Unable to build Architectural specification: ${response.status} - processing input: ${JSON.stringify(inputData)}`);
-            throw new Error(`Unable to build Architetural specification: ${response.status}`);
+
+        try {
+            const summarizerOutput : SummarizerOutput = await localSelfDispatch<SummarizerOutput>(
+                this.email, '', this.serviceEndpoint, `proxy/ai/${this.projectData.org}/${Services.Summarizer}`, 'POST',
+                inputData);
+            return summarizerOutput.analysis;
+
+        } catch (err) {
+            console.error(`Unable to build Architectural specification: ${err} - processing input: ${JSON.stringify(inputData)}`);
+            throw new Error(`Unable to build Architetural specification: ${err}`);
         }
-
-        const objectResponseRaw = await response.json();
-        const responseData : SummarizerOutput = (objectResponseRaw.body?JSON.parse(objectResponseRaw.body):objectResponseRaw) as SummarizerOutput;
-
-        return responseData.analysis;
     }
 }
