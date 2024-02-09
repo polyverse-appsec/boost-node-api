@@ -10,6 +10,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Report errors in generator status details when a generator fails to complete (e.g. Blueprint, AI Spec, etc)
+- Include source file path in the AI spec generation process
 
 ### Bug Fixes
 - N/A

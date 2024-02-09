@@ -16,6 +16,7 @@ enum ArchitecturalSpecificationStage {
 
 interface SummarizerInput {
     code: string;
+    filepath: string;
 }
 
 interface SummarizerOutput extends AIResponse {
@@ -124,6 +125,14 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                 if (!fileContent) {
                     nextStage = Stages.Complete;
                 }
+                if (!fileContent?.path) {
+                    console.warn(`File content missing path - skipping AI spec gen`);
+                    return ArchitecturalSpecificationStage.FileSummarization;
+                }
+                if (!fileContent?.source) {
+                    console.warn(`File content missing source - skipping AI spec gen for ${fileContent.path}`);
+                    return ArchitecturalSpecificationStage.FileSummarization;
+                }
 
                     // re-save the filtered file contents (without the newest entry)
                 await this.saveScratchData<FileContent[]>(filteredFileContents, ArchitecturalSpecificationStage.FileFiltering);
@@ -133,7 +142,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                 if (!nextStage) {
 
                     const unavailableSpecForThisFile = this.fileArchitecturalSpecificationEntry
-                        .replace('{relativeFileName}', fileContent!.path)
+                        .replace('{relativeFileName}', fileContent.path)
                         .replace('{architecturalSpec}', NoSpecificationAvailable)
 
                     const fileSummarizationStatus = await this.loadScratchData<FileSummarizationStatus>(ArchitecturalSpecificationStage.FileSummarization);
@@ -144,20 +153,20 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                     }
 
                     try {
-                        await this.updateProgress('Building AI Specification for ' + fileContent!.path);
+                        await this.updateProgress('Building AI Specification for ' + fileContent.path);
 
-                        const architecturalSpec : string = await this.createArchitecturalSpecification(fileContent!.source);
+                        const architecturalSpec : string = await this.createArchitecturalSpecification(fileContent.path, fileContent.source);
                         
                         fileSummarizationStatus.filesProcessed++;
 
                         const availableSpecForThisFile = this.fileArchitecturalSpecificationEntry
-                                .replace('{relativeFileName}', fileContent!.path)
+                                .replace('{relativeFileName}', fileContent.path)
                                 .replace('{architecturalSpec}', architecturalSpec);
 
                         this.data = this.data.replace(unavailableSpecForThisFile, availableSpecForThisFile);
 
                     } catch (err: any) {
-                        console.log(`Error creating architectural specification for ${fileContent!.path}: ${err}`);
+                        console.log(`Error creating architectural specification for ${fileContent.path}: ${err}`);
 
                         fileSummarizationStatus.numberOfErrors++;
                         fileSummarizationStatus.currentErrorStreak++;
@@ -165,7 +174,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                         await this.checkAndSetErrorState(fileSummarizationStatus, err);
 
                         const errorSpecificationForThisFile = this.fileArchitecturalSpecificationEntry
-                                .replace('{relativeFileName}', fileContent!.path)
+                                .replace('{relativeFileName}', fileContent.path)
                                 .replace('{architecturalSpec}', ErrorGeneratingSpecification)
 
                         this.data = this.data.replace(unavailableSpecForThisFile, errorSpecificationForThisFile);
@@ -219,9 +228,10 @@ export class ArchitecturalSpecificationGenerator extends Generator {
         }
     }
 
-    async createArchitecturalSpecification(code: string) : Promise<string> {
+    async createArchitecturalSpecification(filepath: string, code: string) : Promise<string> {
         const inputData : SummarizerInput = {
             code: code,
+            filepath: filepath
         };
         const response = await fetch(this.serviceEndpoint + `/api/proxy/ai/${this.projectData.org}/${Services.Summarizer}`, {
             method: 'POST',
