@@ -125,7 +125,9 @@ export class Generator {
     }
 
     async saveScratchData<T>(data: T, stage?: string) : Promise<void> {
-        console.log(`Saving Scratch ${this.dataType} data`);
+        if (process.env.TRACE_LEVEL) {
+            console.log(`Saving Scratch ${this.dataType} data`);
+        }
 
         const uri = new URL(this.projectData.resources[0].uri);
         const pathSegments = uri.pathname.split('/').filter(segment => segment);
@@ -153,8 +155,9 @@ export class Generator {
     }
 
     async loadScratchData<T>(stage?: string) : Promise<T | undefined> {
-        console.log(`Saving Scratch ${this.dataType} data`);
-
+        if (process.env.TRACE_LEVEL) {
+            console.log(`Saving Scratch ${this.dataType} data`);
+        }
         const uri = new URL(this.projectData.resources[0].uri);
         const pathSegments = uri.pathname.split('/').filter(segment => segment);
         const repoName = pathSegments.pop();
@@ -179,8 +182,10 @@ export class Generator {
     }
 
     async save() : Promise<void> {
-        console.log(`Saving ${this.dataType} data`);
-
+        if (process.env.TRACE_LEVEL) {
+            console.log(`Saving ${this.dataType} data`);
+        }
+        
         const uri = new URL(this.projectData.resources[0].uri);
         const pathSegments = uri.pathname.split('/').filter(segment => segment);
         const repoName = pathSegments.pop();

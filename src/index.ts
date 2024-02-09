@@ -2224,7 +2224,9 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
             await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', 
                 `${resource}/generator`, JSON.stringify(generatorState));
+            if (process.env.TRACE_LEVEL) {
                 console.log(`${user_project_org_project_data_resource_generator}: stored new state: ${JSON.stringify(generatorState)}`);
+            }
 
             const projectStatusRefreshDelayInMs = 250;
 
