@@ -44,7 +44,9 @@ import { ArchitecturalSpecificationGenerator } from './generators/aispec';
 import {
     localSelfDispatch,
     api_root_endpoint,
-    secondsBeforeRestRequestTimeout
+    secondsBeforeRestRequestTimeout,
+    logRequest,
+    handleErrorResponse
 } from './utility/dispatch';
 
 export const app = express();
@@ -110,35 +112,6 @@ export async function loadProjectDataResource(
     resource: string,
     path: string): Promise<string | undefined> {
     return await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, path, resource);
-}
-
-const logRequest = (req: Request) => {
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request: ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
-}
-
-const handleErrorResponse = (error: any, req: Request, res: Response, supplementalErrorMessage: string = 'Error') : Response => {
-    // Base error message with the request details
-    const errorMessage = `UNHANDLED_ERROR(Response): ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
-
-    // Check if we're in the development environment
-    if (process.env.DEPLOYMENT_STAGE === 'dev' || process.env.DEPLOYMENT_STAGE === 'test' || process.env.DEPLOYMENT_STAGE === 'local'
-        || process.env.DEPLOYMENT_STAGE === 'prod') {
-        // In development, print the full error stack if available, or the error message otherwise
-        console.error(`${supplementalErrorMessage} - ${errorMessage}`, error.stack || error);
-        // Respond with the detailed error message for debugging purposes
-        return res
-            .status(500)
-            .send(`Internal Server Error: ${supplementalErrorMessage} - ` + (error.stack || error));
-    } else { // we'll use this for 'prod' and 'test' Stages in the future
-        // In non-development environments, log the error message for privacy/security reasons
-        console.error(`${supplementalErrorMessage} - ${errorMessage}`, error.message || error);
-        // Respond with a generic error message to avoid exposing sensitive error details
-        return res
-            .status(500)
-            .send(`Internal Server Error: ${supplementalErrorMessage} - ${errorMessage}` + (error.message || error));
-    }
 }
 
 const postOrPutUserProjectDataResource = async (req: Request, res: Response) => {
@@ -2663,7 +2636,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                     // data not found in KV cache - must be manually uploaded for now per project
                     console.log(`${user_project_org_project_data_references}: no data found for ${projectDataTypes[i]}`);
 
-                    // we can't upload since we don't have all the resources yet
+                    // we can't upload this resource since we don't have all the resources yet
                     return res
                         .status(204)
                         .send(`No data found for ${projectDataTypes[i]}`);

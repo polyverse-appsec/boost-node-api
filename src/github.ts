@@ -6,6 +6,7 @@ import { getUser } from './users';
 import axios from 'axios';
 import AdmZip from 'adm-zip';
 import { App } from "octokit";
+import { handleErrorResponse } from './utility/dispatch';
 
 
 const BoostGitHubAppId = "472802";
@@ -79,8 +80,7 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
                     return res.status(429).send('Rate Limit Exceeded');
                 }
             } else {
-                console.error(`Error: retrieving file via public access`, publicError);
-                return res.status(500).send('Internal Server Error');
+                return handleErrorResponse(publicError, req, res, `Error retrieving public access file for ${owner}:${repo} at path ${filePathWithoutBranch}`);
             }
         } else {
             // 404 Not Found
@@ -134,8 +134,7 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
             .send(fileContent);
 
     } catch (error) {
-        console.error(`Error retrieving file via private access:`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res, `Error retrieving file via private access to ${owner}:${repo} at path ${filePathWithoutBranch}`);
     }
 }
 
@@ -198,8 +197,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
                     return res.status(429).send('Rate Limit Exceeded');
                 }
             } else {
-                console.error(`Error retrieving folder paths for ${owner} from ${repo}:`, publicError);
-                return res.status(500).send('Internal Server Error');
+                return handleErrorResponse(publicError, req, res, `Error retrieving folder paths for ${owner} to ${repo}`);
             }
         } else {
             console.log(`Unable to publicly retrieve folder paths for ${owner} from ${repo}:`, publicError);
@@ -253,8 +251,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
             .send(folderPaths);
 
     } catch (error) {
-        console.error(`Error retrieving folders via private access:`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res, `Error retrieving folders for ${owner} to ${repo} via private access`);
     }
 }
 
@@ -316,8 +313,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
                     return res.status(429).send('Rate Limit Exceeded');
                 }
             } else {
-                console.error(`Error retrieving file paths for ${owner} from ${repo}:`, publicError);
-                return res.status(500).send('Internal Server Error');
+                return handleErrorResponse(publicError, req, res, `Error retrieving file paths for ${owner} to ${repo}`);
             }
         } else {
             console.log(`Unable to publicly retrieve file paths for ${owner} from ${repo}:`, publicError);
@@ -371,8 +367,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
             .send(filePaths);
 
     } catch (error) {
-        console.error(`Error retrieving files for ${owner} to ${repo} via private access:`, error);
-        return res.status(500).send('Internal Server Error');
+        return handleErrorResponse(error, req, res, `Error retrieving files for ${owner} to ${repo} via private access`);
     }
 }
 
@@ -418,8 +413,8 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
                     return { errorResponse: res.status(429).send('Rate Limit Exceeded') };
                 }
             } else {
-                console.error(`Error retrieving repo details for ${owner} to ${repo}: ${publicError}`);
-                return { errorResponse: res.status(500).send('Internal Server Error') };
+                return { errorResponse: handleErrorResponse(
+                    publicError, req, res, `Error retrieving repo details for ${owner} to ${repo}`)};
             }
         } else {
             console.log(`Public access for ${owner} to ${repo} to get Repo Details, attempting authenticated access`);
@@ -467,9 +462,8 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
 
             return { data: repoDetails.data };
         } catch (authenticatedError) {
-            console.error(`Error retrieving repo data via authenticated access:`, authenticatedError);
-
-            return { errorResponse: res.status(500).send('Internal Server Error') };
+            return { errorResponse: handleErrorResponse(
+                authenticatedError, req, res, 'Error retrieving repo details via authenticated access')};
         }
     }
 }
@@ -540,9 +534,8 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
                     return res.status(429).send('Rate Limit Exceeded');
                 }
             } else {
-                console.error(`Error retrieving full source for ${owner} from ${repo}:`, publicError);
-                return res.status(500).send('Internal Server Error');
-            }
+                return handleErrorResponse(publicError, req, res, `Error retrieving full source for ${owner} from ${repo}`);
+s            }
         } else {
             console.log(`Public access for ${repo} to get Full Source failed, attempting authenticated access`);
         }
@@ -592,8 +585,8 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
             
             // Ensure we have the token
             if (!installationAccessToken?.token) {
-                console.error('Failed to retrieve installation access token');
-                return res.status(500).send('Internal Server Error');
+                const getInstallationAccessTokenError = new Error('Failed to retrieve installation access token');
+                return handleErrorResponse(getInstallationAccessTokenError, req, res);
             }
 
             const fileContents : FileContent[] = await downloadAndExtractRepo(archiveUrl, installationAccessToken.token);
@@ -605,8 +598,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
                 .contentType('application/json')
                 .send(fileContents);
         } catch (authenticatedError) {
-            console.error(`Error retrieving files via authenticated access:`, authenticatedError);
-            return res.status(500).send('Internal Server Error');
+            return handleErrorResponse(authenticatedError, req, res, 'Error retrieving full source via authenticated access');
         }
     }
 }
