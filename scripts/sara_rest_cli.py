@@ -2,6 +2,7 @@ import argparse
 import requests
 import os
 import sys
+import json
 
 # Determine the parent directory's path.
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -11,11 +12,12 @@ sys.path.append(parent_dir)
 from test.utils import get_signed_headers  # noqa
 
 # Constants for URL options
-LOCAL_URL = "http://localhost:3000"  # Placeholder, replace with your actual local URL
-
-CLOUD_URL_DEV = "https://3c27qu2ddje63mw2dmuqp6oa7u0ergex.lambda-url.us-west-2.on.aws"
-CLOUD_URL_TEST = "https://sztg3725fqtcptfts5vrvcozoe0nxcew.lambda-url.us-west-2.on.aws"
-CLOUD_URL_PROD = "https://33pdosoitl22c42c7sf46tabi40qwlae.lambda-url.us-west-2.on.aws"
+stage_url = {
+    "local": "http://localhost:3000",
+    "dev": "https://3c27qu2ddje63mw2dmuqp6oa7u0ergex.lambda-url.us-west-2.on.aws",
+    "test": "https://sztg3725fqtcptfts5vrvcozoe0nxcew.lambda-url.us-west-2.on.aws",
+    "prod": "https://33pdosoitl22c42c7sf46tabi40qwlae.lambda-url.us-west-2.on.aws"
+}
 
 
 def make_request(method, url, email):
@@ -29,8 +31,8 @@ def make_request(method, url, email):
     return response
 
 
-def main(email, org, project, method):
-    URL = LOCAL_URL  # Decide how you want to set this, maybe another CLI argument
+def main(email, org, project, method, stage):
+    URL = stage_url[stage]
     endpoints = {
         "status": f"{URL}/api/user_project/{org}/{project}/status",
         "data_references": f"{URL}/api/user_project/{org}/{project}/data_references",
@@ -65,9 +67,9 @@ def main(email, org, project, method):
         print(f"Failed({response.status_code}): {response.text}")
     else:
         if response.headers.get('content-type') == 'application/json':
-            print(response.json())
+            print(response.json() if 'body' not in response.json() else json.loads(response.json()['body']))
         else:
-            print(response.text)
+            print(response.text if 'body' not in response.json() else response.json()['body'])
 
 
 if __name__ == "__main__":
@@ -79,4 +81,4 @@ if __name__ == "__main__":
     parser.add_argument("--stage", default="local", choices=['local', 'dev', 'test', 'prod'], help="The Service to target (default: local)")
 
     args = parser.parse_args()
-    main(args.email, args.org, args.project, args.method)
+    main(args.email, args.org, args.project, args.method, args.stage)
