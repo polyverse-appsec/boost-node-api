@@ -538,7 +538,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
                 }
             } else {
                 return handleErrorResponse(publicError, req, res, `Error retrieving full source for ${owner} from ${repo}`);
-s            }
+            }
         } else {
             console.log(`Public access for ${repo} to get Full Source failed, attempting authenticated access`);
         }
