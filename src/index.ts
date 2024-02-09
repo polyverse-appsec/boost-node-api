@@ -53,7 +53,7 @@ export const app = express();
 
 // set limits to 1mb for text and 10mb for json
 app.use(express.json({ limit: '10mb' })); // Make sure to use express.json middleware to parse json request body
-app.use(express.text({ limit: '1mb' })); // Make sure to use express.text middleware to parse text request body
+app.use(express.text({ limit: '5mb' })); // Make sure to use express.text middleware to parse text request body
 
 /*
 // Error handling middleware
@@ -431,7 +431,8 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_files}`, async (req: 
 
 const user_org_connectors_github_fullsource = `user/:org/connectors/github/fullsource`;
 app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
-    express.text({ limit: '1mb' }),
+    express.text({ limit: '10mb' }),
+    express.json({ limit: '10mb' }),
     async (req: Request, res: Response) => {
 
     logRequest(req);
