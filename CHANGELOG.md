@@ -13,7 +13,7 @@ Polyverse Boost ReST API (Backend)
 - Include source file path in the AI spec generation process
 
 ### Bug Fixes
-- N/A
+- Fix projectsource/aispec source download failure - e.g. over 4mb payload size limit, by not pulling down binary files
 
 ## Version 0.9.12: February 8th, 2024
 

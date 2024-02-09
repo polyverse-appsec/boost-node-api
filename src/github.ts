@@ -477,33 +477,56 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
     }
 
     const downloadAndExtractRepo = async (url: string, authToken: string): Promise<FileContent[]> => {
-
-    const params: any = authToken ? {
-            headers: {
-                'Authorization': `Bearer ${authToken}`,
-                'Accept': 'application/vnd.github.v3+json'
-            },
-            responseType: 'arraybuffer'
-        } : {
-            responseType: 'arraybuffer'
-        };
+        const params: any = authToken ? {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                },
+                responseType: 'arraybuffer'
+            } : {
+                responseType: 'arraybuffer'
+            };
         const response = await axios.get(url, params);
         const zip = new AdmZip(response.data);
         const zipEntries = zip.getEntries();
-
+    
+        const skippedFiles : string[] = [];
+    
         // Assuming the first entry is the root folder and get its name
         const rootFolderName = zipEntries[0].entryName;
+    
+        // Skip the first entry and filter out directories and binary files
+        const filteredEntries = zipEntries.slice(1).filter(entry => {
+            if (entry.isDirectory) {
+                return false;  // Skip directories (folders)
+            }
 
-        // Skip the first entry and filter out directories
-        return zipEntries.slice(1).filter(entry => !entry.isDirectory).map(entry => {
+            if (isBinary(entry.getData())) {
+                skippedFiles.push(entry.entryName.replace(rootFolderName, ''));
+                return false;  // Skip this entry
+            }
+
+            return true;  // Include this entry
+        }).map(entry => {
             const relativePath = entry.entryName.replace(rootFolderName, '');
-            return {
-                path: relativePath,
-                source: entry.getData().toString('utf8')
-            };
+            const source = entry.getData().toString('utf8');  // Convert to UTF-8 string
+            return { path: relativePath, source: source };
         });
+    
+        if (process.env.TRACE_LEVEL) {
+            console.log(`Skipped ${skippedFiles.length} probable binary files: ${skippedFiles.join(', ')}`);
+        } else {
+            console.log(`Skipped ${skippedFiles.length} probable binary files`);
+        }
+    
+        return filteredEntries;  // Return the filtered entries
     };
-
+    
+    // Function to check if a buffer contains binary data
+    function isBinary(buffer: Buffer): boolean {
+        return buffer.includes(0x00);  // Checks for null byte
+    }    
+    
     const octokit = new Octokit();
     try {
         // Fetch repository details to get the default branch
@@ -592,9 +615,15 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
                 return handleErrorResponse(getInstallationAccessTokenError, req, res);
             }
 
-            const fileContents : FileContent[] = await downloadAndExtractRepo(archiveUrl, installationAccessToken.token);
+            let fileContents : FileContent[] = await downloadAndExtractRepo(archiveUrl, installationAccessToken.token);
+
+            // keep 75% of the file contents
+//            fileContents = fileContents.slice(0, Math.floor(fileContents.length * 0.9));
 
             console.log(`Success Retrieving ${fileContents.length} files from Private Repo ${owner}:${repo}`)
+
+            // print size in MB to 2 decimal places
+            console.debug(`Size of fileContents: ${(JSON.stringify(fileContents).length / (1024 * 1024)).toFixed(2)} MB`);
 
             return res
                 .status(200)
