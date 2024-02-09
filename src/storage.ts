@@ -133,8 +133,10 @@ export async function storeProjectData(email: string | null, sourceType: SourceT
     const dataPath = `${resourcePath}/${analysisType}`;
 
     const dataSize = Buffer.byteLength(JSON.stringify(data), 'utf8');
-    console.log(`storeProjectData for (${dataSize} bytes): ${projectPath}${dataPath}`);
-
+    if (process.env.TRACE_LEVEL) {
+        console.log(`storeProjectData for (${dataSize} bytes): ${projectPath}${dataPath}`);
+    }
+    
     const params : PutCommandInput = {
         TableName: analysisDatastoreTableName,
         Item: {
