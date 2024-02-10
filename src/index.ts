@@ -204,6 +204,7 @@ async function loadProjectData(email: string, org: string, project: string): Pro
 
     // if we didn't have a timestamp on the project data, then let's add it now (temporary rebuild step of the data store)
     if (!projectData.last_updated) {
+        console.warn(`loadProjectData: added last_updated to ${org}/${project}`);
         await storeProjectData(email, SourceType.General, org, project, '', 'project', JSON.stringify(userProjectData));
     }
 
