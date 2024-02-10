@@ -45,9 +45,10 @@ import { ArchitecturalSpecificationGenerator } from './generators/aispec';
 import {
     localSelfDispatch,
     api_root_endpoint,
-    secondsBeforeRestRequestTimeout,
+    secondsBeforeRestRequestMaximumTimeout,
     logRequest,
-    handleErrorResponse
+    handleErrorResponse,
+    secondsBeforeRestRequestShortTimeout
 } from './utility/dispatch';
 
 export const app = express();
@@ -636,7 +637,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
         // get the path of the project data uri - excluding the api root endpoint
         const projectDataPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
         try {
-            await localSelfDispatch<void>(email, signedIdentity, req, `${projectDataPath}/discovery`, 'POST');
+            await localSelfDispatch<void>(email, signedIdentity, req, `${projectDataPath}/discover`, 'POST');
         } catch (error) {
             console.error(`Unable to launch discovery for ${projectDataPath}`, error);
         }
@@ -743,10 +744,10 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         // so we'll use the axios timeout to ensure we don't wait too long for the discovery process
         const maximumDiscoveryTimeoutOnProjectCreationInSeconds = 15;
 
-        let selfEndpoint = `${req.protocol}://${req.get('host')}${req.originalUrl}/discovery`;
+        let selfEndpoint = `${req.protocol}://${req.get('host')}${req.originalUrl}/discover`;
         // if we're running locally, then we'll use http:// no matter what
         if (req.get('host')!.includes('localhost')) {
-            selfEndpoint = `http://${req.get('host')}${req.originalUrl}/discovery`;
+            selfEndpoint = `http://${req.get('host')}${req.originalUrl}/discover`;
         }
         const authHeader = await signedAuthHeader(email);
         await axios.post(selfEndpoint, undefined, {
@@ -994,8 +995,12 @@ interface ProjectGoals {
     goals?: string;
 }
 
-const user_project_org_project_discovery = `user_project/:org/:project/discovery`;
-app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (req: Request, res: Response) => {
+interface DiscoverState {
+    resetResources?: boolean;
+}
+
+const user_project_org_project_discover = `user_project/:org/:project/discover`;
+app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -1005,22 +1010,46 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
             return;
         }
 
-        // take the original request uri and remove the trailing /discovery to get the project data
+        let body = req.body;
+        let initializeResourcesToStart = false;
+        if (body) {
+            if (typeof body !== 'string') {
+                // Check if body is a Buffer
+                if (Buffer.isBuffer(body)) {
+                    body = body.toString('utf8');
+                } else if (Array.isArray(body)) {
+                    body = Buffer.from(body).toString('utf8');
+                } else {
+                    body = JSON.stringify(body);
+                }
+            }
+            const discoverState : DiscoverState = JSON.parse(body);
+            initializeResourcesToStart = discoverState.resetResources? discoverState.resetResources : false;
+        }
+
+        // take the original request uri and remove the trailing /discover to get the project data
         const originalUri = req.originalUrl;
-        const projectDataUri = originalUri.substring(0, originalUri.lastIndexOf('/discovery'));
+        const projectDataUri = originalUri.substring(0, originalUri.lastIndexOf('/discover'));
         const projectDataPath = projectDataUri.substring(projectDataUri.indexOf("user_project"));
 
         const resourcesToGenerate = [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification];
         const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
-        
-        console.log(`Starting Discovery for ${projectDataPath}`);
+
+        const startProcessing : GeneratorState = {
+            status: TaskStatus.Processing,
+            };
+
+        // if the user wants to reset the resources, then we'll ask each generator to restart
+        if (initializeResourcesToStart) {
+            startProcessing.stage = Stages.Initialize;
+        }
 
         // kickoff project processing now, by creating the project resources in parallel
         //      We'll wait for up to 25 seconds to perform upload, then we'll do an upload
         //      with whatever we have at that time
         const generatorPromises = resourcesToGenerate.map(async (resource) => {
             const generatorPath = `${projectDataPath}/data/${resource}/generator`;
-            const startProcessing = {"status": "processing"};
+
             try {
                 const newGeneratorState = await localSelfDispatch<GeneratorState>(
                     email,
@@ -1029,7 +1058,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
                     generatorPath,
                     'PUT',
                     startProcessing,
-                    secondsBeforeRestRequestTimeout * 1000,
+                    secondsBeforeRestRequestShortTimeout * 1000,
                     false);
                 // check if we timed out, with an empty object
                 if (Object.keys(newGeneratorState).length === 0) {
@@ -1600,7 +1629,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         }
         // if we're not synchronized, and idle, then try again
         if (projectStatus.status !== ProjectStatus.Synchronized) {
-            const timeRemainingToDiscoverInSeconds = secondsBeforeRestRequestTimeout - (Math.floor(Date.now() / 1000) - callStart);
+            const timeRemainingToDiscoverInSeconds = secondsBeforeRestRequestMaximumTimeout - (Math.floor(Date.now() / 1000) - callStart);
             // if we have less than one second to run discovery, just skip it for now, and we'll try again later (status refresh took too long)
             if (timeRemainingToDiscoverInSeconds <= 1) {
                 const groomingState = {
@@ -1620,7 +1649,14 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 console.log(`Launching Groomed Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
 
                 const originalIdentityHeader = getSignedIdentityFromHeader(req);
-                const discoveryResult = await localSelfDispatch<ProjectDataReference[]>(email, originalIdentityHeader!, req, `${projectPath}/discovery`, 'POST', undefined, timeRemainingToDiscoverInSeconds * 1000);
+                const discoveryState : DiscoverState = {
+                    resetResources: true
+                };
+                const discoveryResult = await localSelfDispatch<ProjectDataReference[]>(
+                    email, originalIdentityHeader!, req,
+                    `${projectPath}/discover`, 'POST',
+                    projectStatus.status === ProjectStatus.OutOfDateProjectData?discoveryState:undefined,
+                    timeRemainingToDiscoverInSeconds * 1000);
 
                 const groomingState : ProjectGroomState = {
                     status: GroomingStatus.Grooming,
@@ -3094,7 +3130,7 @@ const handleProxyRequest = async (req: Request, res: Response) => {
                 ...signedIdentity
             },
             data: (req.method !== 'GET' && req.method !== 'HEAD') ? req.body : undefined,
-            timeout: secondsBeforeRestRequestTimeout * 1000
+            timeout: secondsBeforeRestRequestMaximumTimeout * 1000
         };
 
         const startTimeOfCall = Date.now();

@@ -4,7 +4,9 @@ import { header_X_Signed_Identity, signedAuthHeader } from '../auth';
 
 export const api_root_endpoint : string = '/api';
 
-export const secondsBeforeRestRequestTimeout = 25;
+export const secondsBeforeRestRequestMaximumTimeout = 25;
+
+export const secondsBeforeRestRequestShortTimeout = 10;
 
 export const logRequest = (req: Request) => {
     if (process.env.DEPLOYMENT_STAGE === 'dev') {
