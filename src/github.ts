@@ -19,6 +19,7 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
     if (fullFileUri) {
         // Extract owner, repo, and path from fullFileUri
         [, owner, repo, ...pathParts] = fullFileUri.pathname.split('/');
+        repoUri = new URL(`${fullFileUri.protocol}//${fullFileUri.host}/${owner}/${repo}`);
     } else {
         // Extract owner and repo from repoUri
         // Assume repoUri is like "https://github.com/owner/repo"
@@ -91,6 +92,15 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
     if (!allowPrivateAccess) {
         console.error(`Error: Private Access Not Allowed for this Plan: ${filePath}`);
         return res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
+    }
+
+    // check if this user has access to this private repo
+    const accessGrantedToPrivateRepo : boolean = await verifyUserAccessToPrivateRepo(email, repoUri);
+    if (!accessGrantedToPrivateRepo) {
+        console.error(`Error: User ${email} does not have access to ${owner}:${repo}`);
+        return res
+            .status(403)
+            .send(`User ${email} does not have access to ${owner}:${repo}`);
     }
 
     // Process for private access
@@ -205,10 +215,18 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
     }
 
     if (!allowPrivateAccess) {
-        console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
+        console.error(`Error: Private Access Not Allowed for this Plan: ${owner}:${repo}`);
         return res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
     }
 
+    // check if this user has access to this private repo
+    const accessGrantedToPrivateRepo : boolean = await verifyUserAccessToPrivateRepo(email, uri);
+    if (!accessGrantedToPrivateRepo) {
+        console.error(`Error: User ${email} does not have access to ${owner}:${repo}`);
+        return res
+            .status(403)
+            .send(`User ${email} does not have access to ${owner}:${repo}`);
+    }
     // Private access part
     try {
         // try by the repo org first, then by the user
@@ -325,6 +343,15 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
         return res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
     }
 
+    // check if this user has access to this private repo
+    const accessGrantedToPrivateRepo : boolean = await verifyUserAccessToPrivateRepo(email, uri);
+    if (!accessGrantedToPrivateRepo) {
+        console.error(`Error: User ${email} does not have access to ${owner}:${repo}`);
+        return res
+            .status(403)
+            .send(`User ${email} does not have access to ${owner}:${repo}`);
+    }
+
     // Private access part
     try {
         // try by the repo org first, then by the user
@@ -424,7 +451,16 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
             console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
             return { errorResponse: res.status(401).send('Access to Private GitHub Resources is not allowed for this Account') };
         }
-    
+
+        // check if this user has access to this private repo
+        const accessGrantedToPrivateRepo : boolean = await verifyUserAccessToPrivateRepo(email, uri);
+        if (!accessGrantedToPrivateRepo) {
+            console.error(`Error: User ${email} does not have access to ${owner}:${repo}`);
+            return { errorResponse: res
+                .status(403)
+                .send(`User ${email} does not have access to ${owner}:${repo}`) };
+        }
+
         // Public access failed, switch to authenticated access
         try {
             // try by the repo org first, then by the user
@@ -468,7 +504,7 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
     }
 }
 
-export async function verifyUserAccessToPrivateRepo(email: string, uri: URL, req: Request, res: Response) : Promise<boolean>{
+export async function verifyUserAccessToPrivateRepo(email: string, uri: URL) : Promise<boolean>{
     const [, owner, repo] = uri.pathname.split('/');
 
     if (!owner || !repo) {

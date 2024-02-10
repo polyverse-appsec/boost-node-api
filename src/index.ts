@@ -524,7 +524,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_permission}`,
         }
 
         // check if this user has access to this private repo
-        const accessGranted : boolean = await verifyUserAccessToPrivateRepo(email, uri, req, res);
+        const accessGranted : boolean = await verifyUserAccessToPrivateRepo(email, uri);
 
         res
             .status(200)
