@@ -55,6 +55,7 @@ export class Generator {
 
         if (this.currentStage === Stages.Reset) {
             console.info(`${this.projectData.org}:${this.projectData.name} ${this.dataType} Generator resetting data`);
+            this.currentStage = Stages.StaticDefault;
         }
         // make sure the current stage is a valid Stages or valid stage for this generator
         else if (!(Object.values(Stages).filter(value => typeof value === 'string') as string[]).includes(this.currentStage) ||
