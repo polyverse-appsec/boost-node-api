@@ -53,7 +53,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
 
         let nextStage : string = "";
         switch (stage) {
-        case ArchitecturalSpecificationStage.ProjectInfo:
+        case Stages.StaticDefault:
             await this.updateProgress('Generating Initial Project Info');
             this.data = this.defaultArchitecturalSpecification
                 .replace('{projectName}', this.projectData.name)
