@@ -8,6 +8,7 @@ Polyverse Boost ReST API (Backend)
 ### New Features
 - Add GitHub Project/Repo check service API - allowing a user to check if they can access a GitHub Project/Repo
     - /api/user/{org}/connectors/github/access (GET) - to check if a user can access a GitHub Project/Repo
+- Add Project Grooming State retrieval API - using /api/user_project/{org}/{project}/groom (GET)
 
 ### Enhancements
 - Enable upload of single resources when other resources are unavailable or fail to upload

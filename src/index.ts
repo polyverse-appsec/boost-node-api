@@ -1202,7 +1202,9 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
             projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, project_subpath, 'POST');
         }
 
-        console.log(`Project Status: ${JSON.stringify(projectStatus)}`);
+        if (process.env.TRACE_LEVEL) {
+            console.log(`Project Status: ${JSON.stringify(projectStatus)}`);
+        }
 
         return res
             .status(200)
@@ -1501,6 +1503,36 @@ interface ProjectGroomState {
 }
 
 const user_project_org_project_groom = `user_project/:org/:project/groom`;
+app.get(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const { org, project } = req.params;
+
+        const groomStatusRaw = await getProjectData(email, SourceType.General, org, project, '', 'groom');
+        if (!groomStatusRaw) {
+            return res
+                .status(404)
+                .send('Project Groom Status not found');
+        }
+        const groomStatus: ProjectGroomState = JSON.parse(groomStatusRaw);
+
+        return res
+            .status(200)
+            .contentType('application/json')
+            .send(groomStatus);
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
 app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Request, res: Response) => {
 
     logRequest(req);
@@ -1517,6 +1549,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
 
         const callStart = Math.floor(Date.now() / 1000);
 
+        const storeGroomingState = async (groomingState: ProjectGroomState) => {
+            await storeProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom', JSON.stringify(groomingState));
+        }
+
         // we'll check the status of the project data
         let projectStatus : ProjectStatusState;
         try {
@@ -1526,8 +1562,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 console.error(`Project Status not found; Project may not exist or hasn't been discovered yet`);
                 return res.status(404).send('Project not found');
             }
-            console.error(`Unable to query Project Status`, error);
-            return res.status(500).send('Internal Server Error');
+            return handleErrorResponse(error, req, res, `Unable to query Project Status`);
         }
 
         // if the project is actively updating/discovery, then groomer will be idle
@@ -1537,6 +1572,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 status_details: 'Project is actively updating',
                 last_updated: Math.floor(Date.now() / 1000)
             };
+
+            await storeGroomingState(groomingState);
+
             return res
                 .status(200)
                 .contentType('application/json')
@@ -1552,6 +1590,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                     status_details: `Insufficient time to rediscover: ${timeRemainingToDiscoverInSeconds} seconds remaining`,
                     last_updated: Math.floor(Date.now() / 1000)
                 };
+
+                await storeGroomingState(groomingState);
+
                 return res
                     .status(200)
                     .contentType('application/json')
@@ -1575,17 +1616,23 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                     groomingState.status_details = `Launched Discovery ${JSON.stringify(discoveryResult)}`;
                 }
 
+                await storeGroomingState(groomingState);
+
                 return res
                     .status(200)
                     .contentType('application/json')
                     .send(groomingState);
             } catch (error) {
                 console.error(`Groomer unable to launch discovery for ${projectPath}`, error);
+
                 const groomingState = {
                     status: GroomingStatus.Error,
                     status_details: `Error launching discovery: ${error}`,
                     last_updated: Math.floor(Date.now() / 1000)
                 };
+
+                await storeGroomingState(groomingState);
+
                 return res
                     .status(200)
                     .contentType('application/json')
@@ -1598,6 +1645,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             status_details: 'Project is synchronized and idle',
             last_updated: Math.floor(Date.now() / 1000)
         };
+
+        await storeGroomingState(groomingState);
 
         return res
             .status(200)
