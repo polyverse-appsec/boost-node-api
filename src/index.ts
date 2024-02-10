@@ -198,6 +198,7 @@ async function loadProjectData(email: string, org: string, project: string): Pro
         name : project,
         guidelines : projectData.guidelines? projectData.guidelines : '',
         resources : projectData.resources? projectData.resources : [],
+        last_updated : projectData.last_updated? projectData.last_updated : (Date.now() / 1000).toString(),
     };
 
     return projectData;
@@ -625,10 +626,10 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
             return res.status(404).send('Project not found');
         }
         Object.assign(projectData, updates);
-        const storedProjectString = JSON.stringify(projectData);
 
-        await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProjectString);
-        console.log(`${user_project_org_project}: updated data`);
+        projectData.last_updated = Date.now() / 1000;
+
+        await storeProjectData(email, SourceType.General, org, project, '', 'project', JSON.stringify(projectData));
 
         const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
 
@@ -707,6 +708,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             name : project,
             guidelines : updatedProject.guidelines? updatedProject.guidelines : '',
             resources : updatedProject.resources? updatedProject.resources : [],
+            last_updated : Date.now() / 1000,
         };
 
         const projectPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
@@ -732,9 +734,9 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             return res;
         }
 
-        const storedProjectString = JSON.stringify(storedProject);
+        storedProject.last_updated = Date.now() / 1000;
 
-        await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProjectString);
+        await storeProjectData(email, SourceType.General, org, project, '', 'project', JSON.stringify(storedProject));
 
         // because the discovery process may take more than 15 seconds, we never want to fail the project creation
         //      no matter how long discovery takes or even if discovery runs
@@ -848,7 +850,6 @@ app.delete(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reque
         }
 
         await deleteProjectData(email, SourceType.General, org, project, '', 'project');
-        console.log(`${user_project_org_project}: deleted data`);
 
         return res
             .status(200)
@@ -1680,7 +1681,6 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req:
         }
 
         await deleteProjectData(email, SourceType.General, org, project, '', 'goals');
-        console.log(`${user_project_org_project_goals}: deleted data`);
 
         return res
             .status(200)
@@ -1810,8 +1810,6 @@ app.get(`${api_root_endpoint}/${user_project_org_project_config_boostignore}`, a
         ]);
 
         const ignoreFileSpecs : string[] = Array.from(combinedIgnorePatterns);
-
-        console.log(`${user_project_org_project_config_boostignore}: read-only .boostignore returned`);
 
         return res
             .status(200)
@@ -1990,8 +1988,6 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource}`, asy
         
         await deleteProjectData(email, SourceType.GitHub, ownerName, repoName, '', resource);
 
-        console.log(`${user_project_org_project_data_resource}: deleted data`);
-
         return res
             .status(200)
             .send();
@@ -2047,8 +2043,6 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource_genera
         const { _, __, resource } = req.params;
 
         await deleteProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`);
-
-        console.log(`${user_project_org_project_data_resource_generator}: deleted data`);
 
         return res
             .status(200)
@@ -2905,7 +2899,6 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, a
         }
 
         await deleteProjectData(email, SourceType.General, org, project, '', 'data_references');
-        console.log(`${user_project_org_project_data_references}: deleted data`);
 
         return res
             .status(200)
@@ -2954,8 +2947,6 @@ app.delete(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}
         }
 
         await deleteProjectData(email, convertToSourceType(source), owner, project, decodedPath, analysisType);
-
-        console.log(`analysis data: deleted data`);
 
         return res
             .status(200)

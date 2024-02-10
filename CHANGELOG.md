@@ -15,6 +15,7 @@ Polyverse Boost ReST API (Backend)
 - If OpenAI Servers are overloaded and we've exceeded API throttle limit (50 calls/minute), then don't retry OpenAI calls
 - Skip OpenAI server upload of resource if the resource is already uploaded (e.g. no need to re-upload)
 - Close Security hole where an account without access to a Private Repo could analyze the private content if the Private Repo's Organization installed the GitHub App for it
+- Add Project Created/Updated time - e.g. last_updated on Project at /api/user_project/{org}/{project} (GET)
 
 ### Bug Fixes
 - Fix error handling for missing repo param when retrieving a file from GitHub
