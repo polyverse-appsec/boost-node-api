@@ -4,7 +4,7 @@ import json
 
 from utils import get_signed_headers
 
-from constants import TARGET_URL, EMAIL, PREMIUM_EMAIL, ORG, BASIC_EMAIL
+from constants import TARGET_URL, EMAIL, PREMIUM_EMAIL, ORG, BASIC_EMAIL, BASIC_EMAIL_WITH_GITHUB_APP
 
 
 class GitHubUnitTestSuite(unittest.TestCase):
@@ -55,13 +55,21 @@ class GitHubUnitTestSuite(unittest.TestCase):
         response = response.text if 'body' not in response else response['body']
         self.assertTrue("GitHub App Installation not found" in response)
 
-    def test_basic_user_access_to_private_repo_fail(self):
+    def test_basic_user_access_to_private_repo_fail_no_app(self):
         print("Running test: Check that Basic user WITHOUT access to private repo can see it - no app install")
         signedHeaders = get_signed_headers(BASIC_EMAIL)
         response = requests.get(f"{TARGET_URL}/api/user/{ORG}/connectors/github/access?uri=https://github.com/polyverse-appsec/sara", headers=signedHeaders)
         self.assertEqual(response.status_code, 500)
         response = response.text if 'body' not in response else response['body']
         self.assertTrue("GitHub App Installation not found" in response)
+
+    def test_basic_user_access_to_private_repo_fail(self):
+        print("Running test: Check that Basic user WITHOUT access to private repo can see it")
+        signedHeaders = get_signed_headers(BASIC_EMAIL_WITH_GITHUB_APP)
+        response = requests.get(f"{TARGET_URL}/api/user/{ORG}/connectors/github/access?uri=https://github.com/polyverse-appsec/sara", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+        response = response.json() if 'body' not in response else json.loads(response['body'])
+        self.assertTrue(not response)
 
     def test_retrieve_folders(self):
         print("Running test: Retrieve all folders from a public project")

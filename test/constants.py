@@ -10,6 +10,7 @@ TARGET_URL = LOCAL_URL  # CLOUD_URL_DEV  # LOCAL_URL
 EMAIL = "unittest@polytest.ai"
 PREMIUM_EMAIL = "stephen@polyverse.com"
 BASIC_EMAIL = "unittest@polyverse-test.com"
+BASIC_EMAIL_WITH_GITHUB_APP = "Sara.polyverse.test@gmail.com"
 ORG = "polyverse-test-org"
 
 LOCAL_ADMIN_EMAIL = "root@localhost"
