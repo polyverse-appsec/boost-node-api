@@ -4,7 +4,7 @@ import time
 
 from utils import get_signed_headers
 
-from constants import TARGET_URL, EMAIL, PUBLIC_PROJECT, TEST_ORG, PUBLIC_PROJECT_NAME, TEST_PROJECT_NAME, FREE_EMAIL, FREE_ORG, FREE_PROJECT_NAME, PRIVATE_PROJECT
+from constants import TARGET_URL, EMAIL, PUBLIC_PROJECT, TEST_ORG, PUBLIC_PROJECT_NAME, TEST_PROJECT_NAME, FREE_EMAIL, FREE_ORG, FREE_PROJECT_NAME, PRIVATE_PROJECT, PREMIUM_EMAIL
 
 
 class NegativeTestsServiceSuite(unittest.TestCase):
@@ -48,3 +48,9 @@ class NegativeTestsServiceSuite(unittest.TestCase):
         signedHeaders = get_signed_headers(EMAIL)
         response = requests.get(f"{TARGET_URL}/api/user_project/{FREE_ORG}/{FREE_PROJECT_NAME}", headers=signedHeaders)
         self.assertEqual(response.status_code, 404)
+
+    def test_retrieve_file_private_access_repo_path_invalid_params(self):
+        print("Negative Test: Retrieve a private file from the team's project based on invalid uri and path")
+        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
+        response = requests.get(f"{TARGET_URL}/api/user/{TEST_ORG}/connectors/github/file?uri=https://github.com/polyverse-appsec/sara/&path=README.md", headers=signedHeaders)
+        self.assertEqual(response.status_code, 400)

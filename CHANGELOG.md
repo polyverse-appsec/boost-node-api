@@ -16,7 +16,7 @@ Polyverse Boost ReST API (Backend)
 - Close Security hole where an account without access to a Private Repo could analyze the private content if the Private Repo's Organization installed the GitHub App for it
 
 ### Bug Fixes
-- N/A
+- Fix error handling for missing repo param when retrieving a file from GitHub
 
 ## Version 0.9.13: February 8th, 2024
 

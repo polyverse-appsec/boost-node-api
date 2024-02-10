@@ -36,7 +36,7 @@ class GitHubUnitTestSuite(unittest.TestCase):
     def test_retrieve_file_private_access_repo_path(self):
         print("Running test: Retrieve a private file from the team's project based on repo and path")
         signedHeaders = get_signed_headers(PREMIUM_EMAIL)
-        response = requests.get(f"{TARGET_URL}/api/user/{ORG}/connectors/github/file?uri=https://github.com/polyverse-appsec/sara/&path=README.md", headers=signedHeaders)
+        response = requests.get(f"{TARGET_URL}/api/user/{ORG}/connectors/github/file?repo=https://github.com/polyverse-appsec/sara/&path=README.md", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
     def test_premium_user_access_to_private_repo_success(self):

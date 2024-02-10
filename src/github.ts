@@ -29,7 +29,7 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
     }
 
     // Check if owner, repo, and pathParts are valid
-    if (!owner || !repo || pathParts.length === 0) {
+    if (!owner || !repo || pathParts.length === 0 || !pathParts[0]) {
         console.error(`Error: Invalid GitHub.com resource URI: ${fullFileUri || repoUri}`);
         return res.status(400).send('Invalid URI');
     }
