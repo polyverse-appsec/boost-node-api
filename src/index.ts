@@ -202,6 +202,11 @@ async function loadProjectData(email: string, org: string, project: string): Pro
         last_updated : projectData.last_updated? projectData.last_updated : (Date.now() / 1000).toString(),
     };
 
+    // if we didn't have a timestamp on the project data, then let's add it now (temporary rebuild step of the data store)
+    if (!projectData.last_updated) {
+        await storeProjectData(email, SourceType.General, org, project, '', 'project', JSON.stringify(userProjectData));
+    }
+
     return projectData;
 }
 
