@@ -16,6 +16,7 @@ Polyverse Boost ReST API (Backend)
 - Skip OpenAI server upload of resource if the resource is already uploaded (e.g. no need to re-upload)
 - Close Security hole where an account without access to a Private Repo could analyze the private content if the Private Repo's Organization installed the GitHub App for it
 - Add Project Created/Updated time - e.g. last_updated on Project at /api/user_project/{org}/{project} (GET)
+- Project Status reports if the Project was updated since the last synchronization to AI Servers
 
 ### Bug Fixes
 - Fix error handling for missing repo param when retrieving a file from GitHub

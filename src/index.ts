@@ -1065,6 +1065,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
 
 enum ProjectStatus {
     Unknown = 'Unknown',                                    // project not found
+    OutOfDateProjectData = 'Out of Date Project Data',      // project data out of date with source (e.g. newer source)
     ResourcesMissing = 'Resources Missing',                 // project uris found, but not resources
     // ResourcesOutOfDate = 'Resources Out of Date',        // Resources out of date with source (e.g. newer source)
     ResourcesIncomplete = 'Resources Incomplete',           // resources found, but not completely generated
@@ -1461,6 +1462,21 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             // if the last resource completed generation time is newer than the last synchronized time, then we're out of date
             projectStatus.status = ProjectStatus.AIResourcesOutOfDate;
             projectStatus.details = `Resources Completed Generation, but not Uploaded to AI Servers`;
+
+            console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+
+            await saveProjectStatusUpdate();
+
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(projectStatus);
+        }
+
+        // if all data is synhronized but the last synchronized data is older than the project data, then we're out of date
+        if (projectData.last_updated > projectStatus.last_synchronized) {
+            projectStatus.status = ProjectStatus.OutOfDateProjectData;
+            projectStatus.details = `Project was updated since last synchronization`;
 
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
