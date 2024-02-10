@@ -18,6 +18,7 @@ Polyverse Boost ReST API (Backend)
 - Add Project Created/Updated time - e.g. last_updated on Project at /api/user_project/{org}/{project} (GET)
 - Project Status reports if the Project was updated since the last synchronization to AI Servers
 - During Project Grooming Pass - if Project Data is out of date (e.g. Repo modified since last analysis synchronization), then re-initialize all Resource Generators
+- Simplify all generators to support 'Reset' re-initialization stage and start with a common StaticDefault stage
 
 ### Bug Fixes
 - Fix error handling for missing repo param when retrieving a file from GitHub

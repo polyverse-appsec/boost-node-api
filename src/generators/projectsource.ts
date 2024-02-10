@@ -22,12 +22,15 @@ readonly defaultProjectSource =
 readonly fileSourceEntry =
 `# Contents of {relativeFileName}:\n{fileSource}\n\n`
 
+    get validStages() : string[] {
+        return Object.values(ProjectSourceStage);
+    }
+
     async onGenerate(stage: string) : Promise<string> {
 
-        let nextStage;
+        let nextStage : string = "";
         switch (stage) {
-        case Stages.Initialize:
-        case ProjectSourceStage.ProjectInfo:
+        case Stages.StaticDefault:
             await this.updateProgress('Generating Initial Project Info');
             this.data = this.defaultProjectSource
                 .replace('{projectName}', this.projectData.name)
@@ -82,10 +85,8 @@ readonly fileSourceEntry =
                 }
 
                 nextStage = Stages.Complete;
+                break;
             }
-            break;
-        default:
-            throw new Error(`Invalid Generator: ${this.resourceUri} Stage: ${stage}`);
         }
 
         return nextStage;

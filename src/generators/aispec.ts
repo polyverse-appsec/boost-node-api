@@ -36,6 +36,10 @@ export class ArchitecturalSpecificationGenerator extends Generator {
         super(serviceEndpoint, email, projectData, ProjectDataType.ProjectSpecification);
     }
 
+    get validStages() : string[] {
+        return Object.values(ArchitecturalSpecificationStage);
+    }
+
     readonly defaultArchitecturalSpecification =
         `# Summary for {projectName}:\n\n\n`
 
@@ -49,7 +53,6 @@ export class ArchitecturalSpecificationGenerator extends Generator {
 
         let nextStage : string = "";
         switch (stage) {
-        case Stages.Initialize:
         case ArchitecturalSpecificationStage.ProjectInfo:
             await this.updateProgress('Generating Initial Project Info');
             this.data = this.defaultArchitecturalSpecification
@@ -195,8 +198,6 @@ export class ArchitecturalSpecificationGenerator extends Generator {
             }
             break;
         }
-        default:
-            throw new Error(`Invalid Generator: ${this.resourceUri} Stage: ${stage}`);
         }
 
         return nextStage;

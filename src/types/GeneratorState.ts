@@ -6,7 +6,8 @@ export enum TaskStatus {
 }
 
 export enum Stages {
-    Initialize = 'Initialize',
+    Reset = 'Reset',
+    StaticDefault = 'Static Default',
     Complete = 'Complete',
 }
 

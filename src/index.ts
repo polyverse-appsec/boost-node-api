@@ -1041,7 +1041,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
 
         // if the user wants to reset the resources, then we'll ask each generator to restart
         if (initializeResourcesToStart) {
-            startProcessing.stage = Stages.Initialize;
+            startProcessing.stage = Stages.Reset;
         }
 
         // kickoff project processing now, by creating the project resources in parallel

@@ -38,23 +38,41 @@ export class Generator {
         this.data = '';
     }
 
+    get validStages() : string[] {
+        throw new Error('validStages not implemented');
+    }
+
     async generate(stage?: string): Promise<string> {
 
         if (!stage) {
             stage = await this.loadCurrentStageFromGenerator();
         } else if (stage === Stages.Complete) {
-            console.log('Generator already complete');
+            console.log(`${this.projectData.org}:${this.projectData.name} ${this.dataType} Generator already complete`);
             return stage;
         }
 
         this.currentStage = stage;
 
+        if (this.currentStage === Stages.Reset) {
+            console.info(`${this.projectData.org}:${this.projectData.name} ${this.dataType} Generator resetting data`);
+        }
+        // make sure the current stage is a valid Stages or valid stage for this generator
+        else if (!(Object.values(Stages).filter(value => typeof value === 'string') as string[]).includes(this.currentStage) ||
+                 !(this.validStages.filter(value => typeof value === 'string') as string[]).includes(this.currentStage)) {
+            throw new GeneratorProcessingError(`Invalid Stage: ${this.currentStage}`, Stages.Reset);
+        }
+
+        // run the generator for this stage
         const nextStage = await this.onGenerate(stage);
+
+        if (!nextStage) {
+            throw new Error(`No Next Stage Defined from Stage:${this.currentStage} for ${this.projectData.org}:${this.projectData.name} ${this.dataType} Generator`);
+        }
 
         if (this.data) {
             await this.save();
         } else {
-            console.log(`No ${this.dataType} data was generated - skipping save`);
+            console.debug(`${this.projectData.org}:${this.projectData.name} ${this.dataType} No Data Generated - Skipping Save`);
         }
         await this.updateProgress('Finished Stage ' + stage);
 
@@ -71,13 +89,13 @@ export class Generator {
                 this.email, '', this.serviceEndpoint, `user_project/${this.projectData.org}/${this.projectData.name}/data/${this.dataType}/generator`, 'GET');
             if (!generatorState?.stage) {
                 // if the generator doesn't exist, then we'll start from the beginning
-                return Stages.Initialize;
+                return Stages.Reset;
             }
             return generatorState.stage;
         } catch (err) {
             if (axios.isAxiosError(err) && (err?.status === 404 || err.response?.status === 404)) {
                 // if the generator doesn't exist, then we'll start from the beginning
-                return Stages.Initialize;
+                return Stages.Reset;
             }
             throw err;
         }
@@ -104,7 +122,7 @@ export class Generator {
 
         if (!response.ok) {
             const errorText = await response.text() || 'Unknown Error';
-            throw new Error(`Unable to Load Generated Resource: ${response.status} - ${errorText}`);
+            throw new Error(`Unable to Load Generated Resource ${this.resourceUri}: ${response.status} - ${errorText}`);
         }
         
         const dataResponseRaw = await response.text();

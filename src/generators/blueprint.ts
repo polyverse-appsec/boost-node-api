@@ -90,11 +90,14 @@ readonly defaultBlueprint =
 * Analysis of the architectural soundness and best practices: Not yet determined
 * Architectural Problems Identified: Not yet determined`
 
+    get validStages() : string[] {
+        return Object.values(BlueprintStage);
+    }
+
     async onGenerate(stage: string) : Promise<string> {
-        let nextStage;
+        let nextStage : string = "";
         switch (stage) {
-        case Stages.Initialize:
-        case BlueprintStage.Default:
+        case Stages.StaticDefault:
             await this.updateProgress('Generating Default Blueprint');
             this.data = this.defaultBlueprint.replace('{projectName}', this.projectData.name);
 
@@ -228,9 +231,6 @@ readonly defaultBlueprint =
             nextStage = Stages.Complete;
             break;
         }
-
-        default:
-            throw new Error(`Invalid Generator: ${this.resourceUri} Stage: ${stage}`);
         }
 
         return nextStage;
