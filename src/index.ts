@@ -2385,6 +2385,12 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 console.log(`${user_project_org_project_data_resource_generator}: stored new state: ${JSON.stringify(generatorState)}`);
             }
 
+            if (generatorState.status === TaskStatus.Processing) {
+                // if we're still processing, then we'll skip a full project refresh and resource upload
+                //  and wait for a terminal state - complete/idle or error
+                return;
+            }
+
             const projectStatusRefreshDelayInMs = 250;
 
             // force a refresh of the project status

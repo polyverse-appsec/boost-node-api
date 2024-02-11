@@ -22,6 +22,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Bug Fixes
 - Fix error handling for missing repo param when retrieving a file from GitHub
+- Ensure we only upload resources to OpenAI when completed or a stage fails (e.g. not in progress) to reduce OpenAI Server load
 
 ## Version 0.9.13: February 8th, 2024
 
