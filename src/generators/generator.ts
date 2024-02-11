@@ -58,13 +58,13 @@ export class Generator {
             this.currentStage = Stages.StaticDefault;
         }
         // make sure the current stage is a valid Stages or valid stage for this generator
-        else if (!(Object.values(Stages).filter(value => typeof value === 'string') as string[]).includes(this.currentStage) ||
+        else if (!(Object.values(Stages).filter(value => typeof value === 'string') as string[]).includes(this.currentStage) &&
                  !(this.validStages.filter(value => typeof value === 'string') as string[]).includes(this.currentStage)) {
-            throw new GeneratorProcessingError(`Invalid Stage: ${this.currentStage}`, Stages.Reset);
+            throw new GeneratorProcessingError(`${this.projectData.org}:${this.projectData.name} Invalid Stage: ${this.currentStage}`, Stages.Reset);
         }
 
         // run the generator for this stage
-        const nextStage = await this.onGenerate(stage);
+        const nextStage = await this.onGenerate(this.currentStage);
 
         if (!nextStage) {
             throw new Error(`Missing next Stage Defined from Stage:${this.currentStage} for ${this.projectData.org}:${this.projectData.name} ${this.dataType} Generator`);
