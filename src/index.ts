@@ -3008,7 +3008,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
 
                 try {
 
-                    const storedProjectDataId = await uploadProjectDataForAIAssistant(`${userProjectData.org}_${userProjectData.name}`, uri, projectDataTypes[i], projectDataNames[i], projectData);
+                    const storedProjectDataId = await uploadProjectDataForAIAssistant(email, `${userProjectData.org}_${userProjectData.name}`, uri, projectDataTypes[i], projectDataNames[i], projectData);
                     if (process.env.TRACE_LEVEL) {
                         console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${JSON.stringify(storedProjectDataId)}`);
                     }

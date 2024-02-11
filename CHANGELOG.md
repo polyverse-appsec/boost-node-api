@@ -23,6 +23,8 @@ Polyverse Boost ReST API (Backend)
 - Only run Groomer for a Project if it hasn't run in at least 10 minutes
 - change last_updated to lastUpdated for all resources and generators - consistent casing and use of camelCase instead of snake_case in JSON
 - Project Discovery Groomer will stop new automatic attempts if last 3 discoveries have failed with an error
+- Ensure all Resources uploaded to OpenAI include the account email (along with project owner and project name) - for account data isolation
+- Add support for simulating OpenAI file uploads (e.g. for testing) - by setting the environment variable SIMULATE_OPENAI_UPLOAD
 
 ### Bug Fixes
 - Fix error handling for missing repo param when retrieving a file from GitHub

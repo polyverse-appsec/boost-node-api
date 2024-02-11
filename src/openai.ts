@@ -4,7 +4,7 @@ import { ProjectDataReference } from './types/ProjectDataReference';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 
-export async function uploadProjectDataForAIAssistant(projectName: string, uri: URL, dataTypeId: string, simpleFilename: string, projectData: string) : Promise<ProjectDataReference> {
+export async function uploadProjectDataForAIAssistant(email: string, projectName: string, uri: URL, dataTypeId: string, simpleFilename: string, projectData: string) : Promise<ProjectDataReference> {
 
     if (!projectData) {
         throw new Error('Invalid project data');
@@ -24,7 +24,7 @@ export async function uploadProjectDataForAIAssistant(projectName: string, uri: 
         throw new Error(`Invalid URI: ${uri}`);
     }
 
-    const projectQualifiedFullFilename = `${projectName}_${generateFilenameFromGitHubProject(ownerName, repoName)}_${simpleFilename}`;
+    const projectQualifiedFullFilename = `${projectName}_${generateFilenameFromGitHubProject(email, ownerName, repoName)}_${simpleFilename}`;
 
     if (process.env.TRACE_LEVEL) {
         console.debug(`AI file resource name: ${projectQualifiedFullFilename}`);
@@ -42,13 +42,14 @@ export async function uploadProjectDataForAIAssistant(projectName: string, uri: 
     return dataResource;
 }
 
-function generateFilenameFromGitHubProject(part1: string, part2: string): string {
+function generateFilenameFromGitHubProject(part0: string, part1: string, part2: string): string {
     // Replace any non-alphanumeric characters (including dots) with underscores
+    const safePart0 = part0.replace(/[^a-zA-Z0-9]/g, '_');
     const safePart1 = part1.replace(/[^a-zA-Z0-9]/g, '_');
     const safePart2 = part2.replace(/[^a-zA-Z0-9]/g, '_');
 
     // Combine the parts with an underscore
-    return `${safePart1}_${safePart2}`;
+    return `${safePart0}_${safePart1}_${safePart2}`;
 }
 
 export interface OpenAIFileUploadResponse {
@@ -105,6 +106,22 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
     const formData = new FormData();
     formData.append('purpose', 'assistants');
     formData.append('file', Buffer.from(data), { filename: dataFilename} as FormData.AppendOptions);
+
+    if (process.env.SIMULATE_OPENAI_UPLOAD) {
+        // create a random filename that looks like file-UiXGn8C8EspnjK6mkezQMhhh
+        const simulatedFileId = `file-${Math.random().toString(36).substring(7)}`;
+        const simulatedFileData : OpenAIFileUploadResponse = {
+            id: simulatedFileId,
+            object: 'file',
+            bytes: dataSize,
+            created_at: Date.now(),
+            filename: dataFilename,
+            purpose: 'assistants',
+        };
+        console.error(`Simulated file upload: ${simulatedFileData.id} ${simulatedFileData.filename} at ${simulatedFileData.created_at} bytes: ${simulatedFileData.bytes}`);
+
+        return simulatedFileData
+    }
 
     const response = await fetch(createFileRest, {
         method: 'POST',
