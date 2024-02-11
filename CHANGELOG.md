@@ -20,6 +20,7 @@ Polyverse Boost ReST API (Backend)
 - During Project Grooming Pass - if Project Data is out of date (e.g. Repo modified since last analysis synchronization), then re-initialize all Resource Generators
 - Simplify all generators to support 'Reset' re-initialization stage and start with a common StaticDefault stage
 - Ensure DELETE of /api/user_project/{org}/{project}/data_references also removes any OpenAI files associated with the project
+- Only run Groomer for a Project if it hasn't run in at least 10 minutes
 
 ### Bug Fixes
 - Fix error handling for missing repo param when retrieving a file from GitHub

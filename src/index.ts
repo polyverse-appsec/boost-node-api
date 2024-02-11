@@ -57,6 +57,17 @@ export const app = express();
 app.use(express.json({ limit: '10mb' })); // Make sure to use express.json middleware to parse json request body
 app.use(express.text({ limit: '5mb' })); // Make sure to use express.text middleware to parse text request body
 
+// for pretty printing dates in error messages and logs
+const usFormatter = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+
 /*
 // Error handling middleware
 app.use((err : any, req : Request, res : Response) => {
@@ -1442,7 +1453,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             const firstResourceGeneratingDate = new Date(firstResourceGeneratingTime * 1000);
 
             projectStatus.status = ProjectStatus.OutOfDateProjectData;
-            projectStatus.details = `Project was updated ${projectLastUpdatedDate} since resources were last generated at ${firstResourceGeneratingDate}`;
+            projectStatus.details = `Project was updated ${usFormatter.format(projectLastUpdatedDate)} since resources were last generated at ${usFormatter.format(firstResourceGeneratingDate)}`;
 
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
@@ -1517,7 +1528,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         if (!projectStatus.last_synchronized) {
             // if we've never synchronized the data, then report not synchronized
             projectStatus.status = ProjectStatus.ResourcesNotSynchronized;
-            projectStatus.details = `Resources Completed Generation at ${lastResourceCompletedDate.toISOString()} but never Synchronized to AI Servers`;
+            projectStatus.details = `Resources Completed Generation at ${usFormatter.format(lastResourceCompletedDate)} but never Synchronized to AI Servers`;
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
@@ -1534,7 +1545,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             // if the last resource completed generation time is newer than the last synchronized time, then we're out of date
             projectStatus.status = ProjectStatus.AIResourcesOutOfDate;
             const lastSynchronizedDate = new Date(projectStatus.last_synchronized * 1000);
-            projectStatus.details = `Resources Completed Generation at ${lastResourceCompletedDate.toISOString()} is newer than last Synchronized AI Server at ${lastSynchronizedDate.toISOString()}`;
+            projectStatus.details = `Resources Completed Generation at ${usFormatter.format(lastResourceCompletedDate)} is newer than last Synchronized AI Server at ${usFormatter.format(lastSynchronizedDate)}`;
 
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
@@ -1574,6 +1585,7 @@ interface ProjectGroomState {
     status: GroomingStatus;
     status_details?: string;
     consecutive_errors?: number;
+    lastDiscoveryStart?: number;
     last_updated: number;
 }
 
@@ -1623,9 +1635,29 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         const projectPath = projectGroomPath.substring(0, projectGroomPath.lastIndexOf('/groom'));
 
         const callStart = Math.floor(Date.now() / 1000);
+        const groomingCyclesToWaitForSettling = DefaultGroomingIntervalInMinutes * 2;
 
         const storeGroomingState = async (groomingState: ProjectGroomState) => {
             await storeProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom', JSON.stringify(groomingState));
+        }
+
+        const currentGroomingStateRaw = await getProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom');
+        if (currentGroomingStateRaw) {
+            const currentGroomingState: ProjectGroomState = JSON.parse(currentGroomingStateRaw);
+
+            // if the last grooming run was less than 10 minutes ago, then we'll skip this run
+            if (currentGroomingState.last_updated > (callStart - (groomingCyclesToWaitForSettling * 60))) {
+
+                // return http busy request
+                const groomerBusy : ProjectGroomState = {
+                    status: GroomingStatus.Skipping,
+                    status_details: 'Grooming already in progress at ' + currentGroomingState.last_updated,
+                    last_updated: Math.floor(Date.now() / 1000)
+                };
+                return res
+                    .status(429)
+                    .send(groomerBusy);
+            }
         }
 
         // we'll check the status of the project data
@@ -1655,8 +1687,18 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 .contentType('application/json')
                 .send(groomingState);
         }
-        // if we're not synchronized, and idle, then try again
-        if (projectStatus.status !== ProjectStatus.Synchronized) {
+
+        // if we're synchronized, and idle, then try again
+        if (projectStatus.status === ProjectStatus.Synchronized ||
+            projectStatus.status === ProjectStatus.OutOfDateProjectData) {
+            const synchronizedDate = new Date(projectStatus.last_synchronized! * 1000);
+            const groomingState = {
+                status: GroomingStatus.Skipping,
+                status_details: `Project is synchronized as of ${usFormatter.format(synchronizedDate)} - Skipping Grooming`,
+                last_updated: Math.floor(Date.now() / 1000)
+            };
+
+
             const timeRemainingToDiscoverInSeconds = secondsBeforeRestRequestMaximumTimeout - (Math.floor(Date.now() / 1000) - callStart);
             // if we have less than one second to run discovery, just skip it for now, and we'll try again later (status refresh took too long)
             if (timeRemainingToDiscoverInSeconds <= 1) {
@@ -1680,6 +1722,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 const discoveryState : DiscoverState = {
                     resetResources: true
                 };
+                const discoveryStart = Math.floor(Date.now() / 1000);
                 const discoveryResult = await localSelfDispatch<ProjectDataReference[]>(
                     email, originalIdentityHeader!, req,
                     `${projectPath}/discover`, 'POST',
@@ -1688,14 +1731,16 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
 
                 const groomingState : ProjectGroomState = {
                     status: GroomingStatus.Grooming,
+                    lastDiscoveryStart: discoveryStart,
                     last_updated: Math.floor(Date.now() / 1000)
                 };
 
                     // if discovery result is an empty object (i.e. {}), then we launched discovery but don't know if it finished (e.g. timeout waiting)
+                const discoveryTime = new Date(discoveryStart * 1000);
                 if (!discoveryResult || !Object.keys(discoveryResult).length) {
-                    groomingState.status_details = `Launched Async Discovery, but no result yet`;
+                    groomingState.status_details = `Launched Async Discovery at ${usFormatter.format(discoveryTime)}, but no result yet`;
                 } else {
-                    groomingState.status_details = `Launched Discovery ${JSON.stringify(discoveryResult)}`;
+                    groomingState.status_details = `Launched Discovery at ${usFormatter.format(discoveryTime)} ${JSON.stringify(discoveryResult)}`;
                 }
 
                 await storeGroomingState(groomingState);
@@ -3442,6 +3487,8 @@ app.get("/test", (req: Request, res: Response, next) => {
 
 import { AuthType } from './auth';
 
+const DefaultGroomingIntervalInMinutes = 5;
+
 let existingInterval : NodeJS.Timeout | undefined = undefined;
 const api_timer_config = `timer/config`;
 app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: Response, next) => {
@@ -3455,7 +3502,7 @@ app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: R
         }
 
         const milliseconds = 1000;
-        const defaultInterval = 5 * 60;
+        const defaultInterval = DefaultGroomingIntervalInMinutes * 60;
 
         // if caller posted a body, and the body is a JSON version of a number, then that's the interval (in seconds) we'll use
         // if body is empty, then default to 5 minutes
