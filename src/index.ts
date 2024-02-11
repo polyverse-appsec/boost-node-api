@@ -1575,7 +1575,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 });
 
 enum GroomingStatus {
-    Completed = 'Completed',
+    Idle = 'Idle',
     Grooming = 'Grooming',
     Skipping = 'Skipping',
     Error = 'Error'
@@ -1688,97 +1688,88 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 .send(groomingState);
         }
 
-        // if we're synchronized, and idle, then try again
-        if (projectStatus.status === ProjectStatus.Synchronized ||
-            projectStatus.status === ProjectStatus.OutOfDateProjectData) {
+        // if project is synchronized, the nothing to do
+        if (projectStatus.status === ProjectStatus.Synchronized) {
             const synchronizedDate = new Date(projectStatus.lastSynchronized! * 1000);
             const groomingState = {
+                status: GroomingStatus.Idle,
+                status_details: `Project is synchronized as of ${usFormatter.format(synchronizedDate)} - Idling Groomer`,
+                lastUpdated: Math.floor(Date.now() / 1000)
+            };
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(groomingState);
+        }
+
+        const timeRemainingToDiscoverInSeconds = secondsBeforeRestRequestMaximumTimeout - (Math.floor(Date.now() / 1000) - callStart);
+        // if we have less than one second to run discovery, just skip it for now, and we'll try again later (status refresh took too long)
+        if (timeRemainingToDiscoverInSeconds <= 1) {
+            const groomingState = {
                 status: GroomingStatus.Skipping,
-                status_details: `Project is synchronized as of ${usFormatter.format(synchronizedDate)} - Skipping Grooming`,
+                status_details: `Insufficient time to rediscover: ${timeRemainingToDiscoverInSeconds} seconds remaining`,
                 lastUpdated: Math.floor(Date.now() / 1000)
             };
 
+            await storeGroomingState(groomingState);
 
-            const timeRemainingToDiscoverInSeconds = secondsBeforeRestRequestMaximumTimeout - (Math.floor(Date.now() / 1000) - callStart);
-            // if we have less than one second to run discovery, just skip it for now, and we'll try again later (status refresh took too long)
-            if (timeRemainingToDiscoverInSeconds <= 1) {
-                const groomingState = {
-                    status: GroomingStatus.Skipping,
-                    status_details: `Insufficient time to rediscover: ${timeRemainingToDiscoverInSeconds} seconds remaining`,
-                    lastUpdated: Math.floor(Date.now() / 1000)
-                };
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(groomingState);
+        }
+        try {
+            console.log(`Launching Groomed Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
 
-                await storeGroomingState(groomingState);
+            const originalIdentityHeader = getSignedIdentityFromHeader(req);
+            const discoveryState : DiscoverState = {
+                resetResources: true
+            };
+            const discoveryStart = Math.floor(Date.now() / 1000);
+            const discoveryResult = await localSelfDispatch<ProjectDataReference[]>(
+                email, originalIdentityHeader!, req,
+                `${projectPath}/discover`, 'POST',
+                projectStatus.status === ProjectStatus.OutOfDateProjectData?discoveryState:undefined,
+                timeRemainingToDiscoverInSeconds * 1000);
 
-                return res
-                    .status(200)
-                    .contentType('application/json')
-                    .send(groomingState);
+            const groomingState : ProjectGroomState = {
+                status: GroomingStatus.Grooming,
+                lastDiscoveryStart: discoveryStart,
+                lastUpdated: Math.floor(Date.now() / 1000)
+            };
+
+                // if discovery result is an empty object (i.e. {}), then we launched discovery but don't know if it finished (e.g. timeout waiting)
+            const discoveryTime = new Date(discoveryStart * 1000);
+            if (!discoveryResult || !Object.keys(discoveryResult).length) {
+                groomingState.status_details = `Launched Async Discovery at ${usFormatter.format(discoveryTime)}, but no result yet`;
+            } else {
+                groomingState.status = GroomingStatus.Idle;
+                groomingState.status_details = `Launched Discovery at ${usFormatter.format(discoveryTime)} ${JSON.stringify(discoveryResult)}`;
             }
-            try {
-                console.log(`Launching Groomed Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
 
-                const originalIdentityHeader = getSignedIdentityFromHeader(req);
-                const discoveryState : DiscoverState = {
-                    resetResources: true
-                };
-                const discoveryStart = Math.floor(Date.now() / 1000);
-                const discoveryResult = await localSelfDispatch<ProjectDataReference[]>(
-                    email, originalIdentityHeader!, req,
-                    `${projectPath}/discover`, 'POST',
-                    projectStatus.status === ProjectStatus.OutOfDateProjectData?discoveryState:undefined,
-                    timeRemainingToDiscoverInSeconds * 1000);
+            await storeGroomingState(groomingState);
 
-                const groomingState : ProjectGroomState = {
-                    status: GroomingStatus.Grooming,
-                    lastDiscoveryStart: discoveryStart,
-                    lastUpdated: Math.floor(Date.now() / 1000)
-                };
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(groomingState);
+        } catch (error) {
+            console.error(`Groomer unable to launch discovery for ${projectPath}`, error);
 
-                    // if discovery result is an empty object (i.e. {}), then we launched discovery but don't know if it finished (e.g. timeout waiting)
-                const discoveryTime = new Date(discoveryStart * 1000);
-                if (!discoveryResult || !Object.keys(discoveryResult).length) {
-                    groomingState.status_details = `Launched Async Discovery at ${usFormatter.format(discoveryTime)}, but no result yet`;
-                } else {
-                    groomingState.status_details = `Launched Discovery at ${usFormatter.format(discoveryTime)} ${JSON.stringify(discoveryResult)}`;
-                }
+            const groomingState = {
+                status: GroomingStatus.Error,
+                status_details: `Error launching discovery: ${error}`,
+                lastUpdated: Math.floor(Date.now() / 1000)
+            };
 
-                await storeGroomingState(groomingState);
+            await storeGroomingState(groomingState);
 
-                return res
-                    .status(200)
-                    .contentType('application/json')
-                    .send(groomingState);
-            } catch (error) {
-                console.error(`Groomer unable to launch discovery for ${projectPath}`, error);
-
-                const groomingState = {
-                    status: GroomingStatus.Error,
-                    status_details: `Error launching discovery: ${error}`,
-                    lastUpdated: Math.floor(Date.now() / 1000)
-                };
-
-                await storeGroomingState(groomingState);
-
-                return res
-                    .status(200)
-                    .contentType('application/json')
-                    .send(groomingState);
-            }
+            return res
+                .status(200)
+                .contentType('application/json')
+                .send(groomingState);
         }
 
-        const groomingState = {
-            status: GroomingStatus.Completed,
-            status_details: 'Project is synchronized and idle',
-            lastUpdated: Math.floor(Date.now() / 1000)
-        };
-
-        await storeGroomingState(groomingState);
-
-        return res
-            .status(200)
-            .contentType('application/json')
-            .send(groomingState);
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }    
