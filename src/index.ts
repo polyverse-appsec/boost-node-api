@@ -20,7 +20,7 @@ import {
     RepoDetails,
     verifyUserAccessToPrivateRepo
 } from './github';
-import { uploadProjectDataForAIAssistant } from './openai';
+import { deleteAssistantFile, uploadProjectDataForAIAssistant } from './openai';
 import { UserProjectData } from './types/UserProjectData';
 import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
 import { ProjectResource } from './types/ProjectResource';
@@ -741,6 +741,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             return res;
         }
 
+        // refresh the project updated time - since we've finished validation
         storedProject.last_updated = Date.now() / 1000;
 
         await storeProjectData(email, SourceType.General, org, project, '', 'project', JSON.stringify(storedProject));
@@ -2391,6 +2392,8 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 return;
             }
 
+            // we have completed all stages or reached a terminal point (e.g. error or non-active updating)
+
             const projectStatusRefreshDelayInMs = 250;
 
             // force a refresh of the project status
@@ -2408,8 +2411,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     throw error;
                 }
             }
-            // if we have completed all stages or reached a terminal point (e.g. error or non-active updating)
-            //      then we'll upload what we have to the AI servers
+            // upload what resources we have to the AI servers
             // this is all an async process (we don't wait for it to complete)
             try {
                 await localSelfDispatch<ProjectDataReference[]>(email, getSignedIdentityFromHeader(req)!, req,
@@ -2852,6 +2854,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                 }
 
                 try {
+
                     const storedProjectDataId = await uploadProjectDataForAIAssistant(`${userProjectData.org}_${userProjectData.name}`, uri, projectDataTypes[i], projectDataNames[i], projectData);
                     if (process.env.TRACE_LEVEL) {
                         console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${JSON.stringify(storedProjectDataId)}`);
@@ -2984,7 +2987,23 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, a
             return res.status(400).send('Invalid resource path');
         }
 
-        await deleteProjectData(email, SourceType.General, org, project, '', 'data_references');
+        const dataReferencesRaw = await getProjectData(email, SourceType.General, org, project, '', 'data_references');
+        if (!dataReferencesRaw) {
+
+            console.warn(`${req.originalUrl} No data references found for DELETE`);
+
+        } else {
+            const dataReferences = JSON.parse(dataReferencesRaw) as ProjectDataReference[];
+            for (let i = 0; i < dataReferences.length; i++) {
+                try {
+                    await deleteAssistantFile(dataReferences[i].id);
+                } catch (error) {
+                    console.error(`Error deleting file ${dataReferences[i].id}:`, error);
+                }
+            }
+
+            await deleteProjectData(email, SourceType.General, org, project, '', 'data_references');
+        }
 
         return res
             .status(200)

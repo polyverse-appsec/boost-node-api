@@ -75,6 +75,10 @@ class BoostBackendCheckinSuite(unittest.TestCase):
                 response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/{resource}", headers=signedHeaders)
                 self.assertEqual(response.status_code, 200)
 
+            # delete the data_references (and associated openai files)
+            response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data_references", headers=signedHeaders)
+            self.assertEqual(response.status_code, 200)
+
             # delete the project
             response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}", headers=signedHeaders)
             self.assertEqual(response.status_code, 200)

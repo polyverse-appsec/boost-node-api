@@ -1,6 +1,4 @@
-import { Request, Response } from 'express';
-import { SourceType, storeProjectData } from './storage';
-import { getSingleSecret, getSecretsAsObject as getSecretsAsObject } from './secrets';
+import { getSecretsAsObject as getSecretsAsObject } from './secrets';
 import { ProjectDataReference } from './types/ProjectDataReference';
 
 import fetch from 'node-fetch';
@@ -99,7 +97,7 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
         throw new Error('OpenAI API key not found');
     }
 
-    const url = 'https://api.openai.com/v1/files';
+    const createFileRest = 'https://api.openai.com/v1/files';
 
     const dataSize = Buffer.byteLength(data, 'utf8');
     console.log(`createAssistantFile for (${dataSize} bytes): ${dataFilename}`);
@@ -108,7 +106,7 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
     formData.append('purpose', 'assistants');
     formData.append('file', Buffer.from(data), { filename: dataFilename} as FormData.AppendOptions);
 
-    const response = await fetch(url, {
+    const response = await fetch(createFileRest, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${openAiKey}`,
@@ -143,4 +141,49 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
 
     const responseData: OpenAIFileUploadResponse = await response.json() as OpenAIFileUploadResponse;
     return responseData; // Return only the id from the response
+};
+
+export const deleteAssistantFile = async (fileId: string): Promise<void> => {
+    const secretData : any = await getSecretsAsObject('exetokendev');
+    let openAiKey = secretData['openai-personal'];
+
+    if (!openAiKey) {
+        throw new Error('OpenAI API key not found');
+    }
+
+    const deleteFileIdRest = 'https://api.openai.com/v1/files/${fileId}';
+
+    const response = await fetch(deleteFileIdRest, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${openAiKey}`,
+        },
+    });
+
+    if (response.ok) {
+        return;
+    }
+
+    const errorText = await response.text();
+    try {
+        const errorObj = errorText ? JSON.parse(errorText) : null;
+
+        // Check if the error is due to rate limiting
+        if (response.status === 429 && errorObj && errorObj.error && errorObj.error.code === "rate_limit_exceeded") {
+            throw new Error(`Rate limit exceeded: ${errorObj.error.message}`);
+        } else {
+            // For other errors, include the original error message
+            throw new Error(`OpenAI Delete file failure for ${fileId} status: ${response.status}, error: ${errorText}`);
+        }
+    } catch (error: any) {
+        // check if JSON.parse failed
+        if (error instanceof SyntaxError) {
+            // Handle JSON parsing error
+            throw new Error(`Error parsing response from OpenAI Delete File for ${fileId}: ${error.message}`);
+        } else {
+            // Rethrow the original error if it's not a parsing error
+            throw new Error(`OpenAI Delete File failure for ${fileId} status: ${response.status}, error: ${errorText} - cascading error: ${error}`);
+        }
+    }
+
 };
