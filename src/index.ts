@@ -1645,18 +1645,22 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         if (currentGroomingStateRaw) {
             const currentGroomingState: ProjectGroomState = JSON.parse(currentGroomingStateRaw);
 
-            // if the last grooming run was less than 10 minutes ago, then we'll skip this run
+            // if the last grooming run was less than 2 cycles minutes ago, then we'll skip this run
             if (currentGroomingState.lastUpdated > (callStart - (groomingCyclesToWaitForSettling * 60))) {
 
-                // return http busy request
-                const groomerBusy : ProjectGroomState = {
-                    status: GroomingStatus.Skipping,
-                    status_details: 'Grooming already in progress at ' + currentGroomingState.lastUpdated,
-                    lastUpdated: Math.floor(Date.now() / 1000)
-                };
-                return res
-                    .status(429)
-                    .send(groomerBusy);
+                // we only skip if we were actively grooming before... otherwise, we'll just let it run
+                if (currentGroomingState.status === GroomingStatus.Grooming) {
+
+                    // return http busy request
+                    const groomerBusy : ProjectGroomState = {
+                        status: GroomingStatus.Skipping,
+                        status_details: 'Grooming already in progress at ' + currentGroomingState.lastUpdated,
+                        lastUpdated: Math.floor(Date.now() / 1000)
+                    };
+                    return res
+                        .status(429)
+                        .send(groomerBusy);
+                }
             }
         }
 
@@ -1718,6 +1722,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 .contentType('application/json')
                 .send(groomingState);
         }
+
         try {
             console.log(`Launching Groomed Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
 
@@ -1743,7 +1748,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             if (!discoveryResult || !Object.keys(discoveryResult).length) {
                 groomingState.status_details = `Launched Async Discovery at ${usFormatter.format(discoveryTime)}, but no result yet`;
             } else {
-                groomingState.status = GroomingStatus.Idle;
+                // even though discovery launched, and didn't timeout... we don't know if it finished or not
+                //      only that the async launch didn't timeout/fail
                 groomingState.status_details = `Launched Discovery at ${usFormatter.format(discoveryTime)} ${JSON.stringify(discoveryResult)}`;
             }
 
