@@ -77,7 +77,7 @@ const createAssistantFileWithRetry = async (dataFilename: string, data: string, 
             return await createAssistantFile(dataFilename, data);
         } catch (error: any) {
             // if we exceeded rate limit, don't retry
-            if (error.message(`exceeded`)) {
+            if (error.message.includes(`exceeded`)) {
                 throw error;
             }
             lastError = error;
