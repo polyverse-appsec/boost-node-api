@@ -13,7 +13,7 @@ export enum Stages {
 
 export interface GeneratorState {
     stage?: string;
-    last_updated?: number;
+    lastUpdated?: number;
     status: TaskStatus;
     status_details?: string;
 }

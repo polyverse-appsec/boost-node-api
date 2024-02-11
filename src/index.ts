@@ -185,7 +185,7 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
         await saveProjectDataResource(email, ownerName, repoName, resource, '', body);
 
         const resourceStatus : ResourceStatusState = {
-            last_updated: Math.floor(Date.now() / 1000)
+            lastUpdated: Math.floor(Date.now() / 1000)
         }
 
         await storeProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status", JSON.stringify(resourceStatus));
@@ -210,12 +210,12 @@ async function loadProjectData(email: string, org: string, project: string): Pro
         name : project,
         guidelines : projectData.guidelines? projectData.guidelines : '',
         resources : projectData.resources? projectData.resources : [],
-        last_updated : projectData.last_updated? projectData.last_updated : (Date.now() / 1000).toString(),
+        lastUpdated : projectData.lastUpdated? projectData.lastUpdated : (Date.now() / 1000).toString(),
     };
 
     // if we didn't have a timestamp on the project data, then let's add it now (temporary rebuild step of the data store)
-    if (!projectData.last_updated) {
-        console.warn(`loadProjectData: added last_updated to ${org}/${project}`);
+    if (!projectData.lastUpdated) {
+        console.warn(`loadProjectData: added lastUpdated to ${org}/${project}`);
         await storeProjectData(email, SourceType.General, org, project, '', 'project', JSON.stringify(userProjectData));
     }
 
@@ -645,7 +645,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
         }
         Object.assign(projectData, updates);
 
-        projectData.last_updated = Date.now() / 1000;
+        projectData.lastUpdated = Date.now() / 1000;
 
         await storeProjectData(email, SourceType.General, org, project, '', 'project', JSON.stringify(projectData));
 
@@ -726,7 +726,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             name : project,
             guidelines : updatedProject.guidelines? updatedProject.guidelines : '',
             resources : updatedProject.resources? updatedProject.resources : [],
-            last_updated : Date.now() / 1000,
+            lastUpdated : Date.now() / 1000,
         };
 
         const projectPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
@@ -753,7 +753,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         }
 
         // refresh the project updated time - since we've finished validation
-        storedProject.last_updated = Date.now() / 1000;
+        storedProject.lastUpdated = Date.now() / 1000;
 
         await storeProjectData(email, SourceType.General, org, project, '', 'project', JSON.stringify(storedProject));
 
@@ -1132,7 +1132,7 @@ interface ProjectStatusState {
     last_synchronized?: number;
     activelyUpdating?: boolean;
     details?: string;
-    last_updated: number;
+    lastUpdated: number;
 }
 
 const MinutesToWaitBeforeGeneratorConsideredStalled = 3;
@@ -1285,7 +1285,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             last_synchronized: undefined,
             synchronized: false,
             activelyUpdating: false,
-            last_updated : Math.floor(Date.now() / 1000) // default something and refresh when saved
+            lastUpdated : Math.floor(Date.now() / 1000) // default something and refresh when saved
         };
 
         // get the resource uri for this project
@@ -1306,10 +1306,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         }
 
         for (const dataReference of dataReferences) {
-            if (dataReference.last_updated) {
-                // pick the newest last_updated date - so we report the last updated date of the most recent resource sync
-                if (!projectStatus.last_synchronized || projectStatus.last_synchronized < dataReference.last_updated) {
-                    projectStatus.last_synchronized = dataReference.last_updated;
+            if (dataReference.lastUpdated) {
+                // pick the newest lastUpdated date - so we report the last updated date of the most recent resource sync
+                if (!projectStatus.last_synchronized || projectStatus.last_synchronized < dataReference.lastUpdated) {
+                    projectStatus.last_synchronized = dataReference.lastUpdated;
                 }
                 break;
             }
@@ -1336,7 +1336,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             // save the project status
             try {
                 // set current timestamp
-                projectStatus.last_updated = Math.floor(Date.now() / 1000);
+                projectStatus.lastUpdated = Math.floor(Date.now() / 1000);
 
                 await storeProjectData(email, SourceType.General, org, project, '', 'status', JSON.stringify(projectStatus));
 
@@ -1393,8 +1393,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
             // if this generator was last updated before the current known first generating time, then we'll assume it was the first
             firstResourceGeneratingTime = firstResourceGeneratingTime?
-                Math.min(firstResourceGeneratingTime, generatorStatus.last_updated?generatorStatus.last_updated:firstResourceGeneratingTime):
-                generatorStatus.last_updated;
+                Math.min(firstResourceGeneratingTime, generatorStatus.lastUpdated?generatorStatus.lastUpdated:firstResourceGeneratingTime):
+                generatorStatus.lastUpdated;
 
             if (generatorStatus.stage !== Stages.Complete) {
                 currentResourceStatus.push(generatorStatus.status);
@@ -1402,11 +1402,11 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 // we nede to determine if the generator is still processing, and if so, what the last updated time
                 if (generatorStatus.status === TaskStatus.Processing) {
                     if (!lastResourceGeneratingTime) {
-                        lastResourceGeneratingTime =  generatorStatus.last_updated;
-                    } else if (!generatorStatus.last_updated) {
+                        lastResourceGeneratingTime =  generatorStatus.lastUpdated;
+                    } else if (!generatorStatus.lastUpdated) {
                         console.log(`Can't get last generated time for: ${resource}`);
-                    } else if (lastResourceGeneratingTime < generatorStatus.last_updated) {
-                        lastResourceGeneratingTime = generatorStatus.last_updated;
+                    } else if (lastResourceGeneratingTime < generatorStatus.lastUpdated) {
+                        lastResourceGeneratingTime = generatorStatus.lastUpdated;
                     }
                 }
 
@@ -1416,10 +1416,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 continue;
             }
             // if we've gotten here, then the generator is complete, so we'll use the last completed time
-            if (!lastResourceCompletedGenerationTime || !generatorStatus.last_updated ||
-                 lastResourceCompletedGenerationTime < generatorStatus.last_updated) {
+            if (!lastResourceCompletedGenerationTime || !generatorStatus.lastUpdated ||
+                 lastResourceCompletedGenerationTime < generatorStatus.lastUpdated) {
                     // store the latest completion time
-                lastResourceCompletedGenerationTime = generatorStatus.last_updated;
+                lastResourceCompletedGenerationTime = generatorStatus.lastUpdated;
             }
         }
         // check if we're actively processing
@@ -1448,8 +1448,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
         // if the first resource was generated BEFORE the current project timestamp, then at least one of our resources is out of date
         //      so we'll mark the whole project as out of date
-        if (firstResourceGeneratingTime && projectData.last_updated > firstResourceGeneratingTime) {
-            const projectLastUpdatedDate = new Date(projectData.last_updated * 1000);
+        if (firstResourceGeneratingTime && projectData.lastUpdated > firstResourceGeneratingTime) {
+            const projectLastUpdatedDate = new Date(projectData.lastUpdated * 1000);
             const firstResourceGeneratingDate = new Date(firstResourceGeneratingTime * 1000);
 
             projectStatus.status = ProjectStatus.OutOfDateProjectData;
@@ -1586,7 +1586,7 @@ interface ProjectGroomState {
     status_details?: string;
     consecutive_errors?: number;
     lastDiscoveryStart?: number;
-    last_updated: number;
+    lastUpdated: number;
 }
 
 const user_project_org_project_groom = `user_project/:org/:project/groom`;
@@ -1646,13 +1646,13 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             const currentGroomingState: ProjectGroomState = JSON.parse(currentGroomingStateRaw);
 
             // if the last grooming run was less than 10 minutes ago, then we'll skip this run
-            if (currentGroomingState.last_updated > (callStart - (groomingCyclesToWaitForSettling * 60))) {
+            if (currentGroomingState.lastUpdated > (callStart - (groomingCyclesToWaitForSettling * 60))) {
 
                 // return http busy request
                 const groomerBusy : ProjectGroomState = {
                     status: GroomingStatus.Skipping,
-                    status_details: 'Grooming already in progress at ' + currentGroomingState.last_updated,
-                    last_updated: Math.floor(Date.now() / 1000)
+                    status_details: 'Grooming already in progress at ' + currentGroomingState.lastUpdated,
+                    lastUpdated: Math.floor(Date.now() / 1000)
                 };
                 return res
                     .status(429)
@@ -1677,7 +1677,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             const groomingState = {
                 status: GroomingStatus.Skipping,
                 status_details: 'Project is actively updating',
-                last_updated: Math.floor(Date.now() / 1000)
+                lastUpdated: Math.floor(Date.now() / 1000)
             };
 
             await storeGroomingState(groomingState);
@@ -1695,7 +1695,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             const groomingState = {
                 status: GroomingStatus.Skipping,
                 status_details: `Project is synchronized as of ${usFormatter.format(synchronizedDate)} - Skipping Grooming`,
-                last_updated: Math.floor(Date.now() / 1000)
+                lastUpdated: Math.floor(Date.now() / 1000)
             };
 
 
@@ -1705,7 +1705,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 const groomingState = {
                     status: GroomingStatus.Skipping,
                     status_details: `Insufficient time to rediscover: ${timeRemainingToDiscoverInSeconds} seconds remaining`,
-                    last_updated: Math.floor(Date.now() / 1000)
+                    lastUpdated: Math.floor(Date.now() / 1000)
                 };
 
                 await storeGroomingState(groomingState);
@@ -1732,7 +1732,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 const groomingState : ProjectGroomState = {
                     status: GroomingStatus.Grooming,
                     lastDiscoveryStart: discoveryStart,
-                    last_updated: Math.floor(Date.now() / 1000)
+                    lastUpdated: Math.floor(Date.now() / 1000)
                 };
 
                     // if discovery result is an empty object (i.e. {}), then we launched discovery but don't know if it finished (e.g. timeout waiting)
@@ -1755,7 +1755,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 const groomingState = {
                     status: GroomingStatus.Error,
                     status_details: `Error launching discovery: ${error}`,
-                    last_updated: Math.floor(Date.now() / 1000)
+                    lastUpdated: Math.floor(Date.now() / 1000)
                 };
 
                 await storeGroomingState(groomingState);
@@ -1770,7 +1770,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         const groomingState = {
             status: GroomingStatus.Completed,
             status_details: 'Project is synchronized and idle',
-            last_updated: Math.floor(Date.now() / 1000)
+            lastUpdated: Math.floor(Date.now() / 1000)
         };
 
         await storeGroomingState(groomingState);
@@ -2001,7 +2001,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async 
 });
 
 interface ResourceStatusState {
-    last_updated: number;
+    lastUpdated: number;
 }
 
 const user_project_org_project_data_resource_status = `user_project/:org/:project/data/:resource/status`;
@@ -2055,7 +2055,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
             }
             // resource exists, so we'll generate the status
             const resourceStatusWithTimestamp : ResourceStatusState = {
-                last_updated: Math.floor(Date.now() / 1000)
+                lastUpdated: Math.floor(Date.now() / 1000)
             };
             resourceStatusRaw = JSON.stringify(resourceStatusWithTimestamp);
             await storeProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status", resourceStatusRaw);
@@ -2310,8 +2310,8 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
             console.error(`Invalid PATCH status: ${input.status}`);
             return res.status(400).send(`Invalid PATCH status: ${input.status}`)
         }
-        if (input.last_updated) {
-            currentGeneratorState.last_updated = input.last_updated;
+        if (input.lastUpdated) {
+            currentGeneratorState.lastUpdated = input.lastUpdated;
         }
         if (input.status_details) {
             currentGeneratorState.status_details = input.status_details;
@@ -2321,8 +2321,8 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         }
 
         const updateGeneratorState = async (generatorState: GeneratorState) => {
-            if (!generatorState.last_updated) {
-                generatorState.last_updated = Math.floor(Date.now() / 1000);
+            if (!generatorState.lastUpdated) {
+                generatorState.lastUpdated = Math.floor(Date.now() / 1000);
             }
 
             await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', 
@@ -2388,7 +2388,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 .send({
                     status: TaskStatus.Idle,
                     stage: Stages.Complete,
-                    last_updated: Math.floor(Date.now() / 1000),
+                    lastUpdated: Math.floor(Date.now() / 1000),
                     status_details: `No resources to generate data from`,
                 } as GeneratorState);
         }
@@ -2437,8 +2437,8 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
         };
 
         const updateGeneratorState = async (generatorState: GeneratorState) => {
-            if (!generatorState.last_updated) {
-                generatorState.last_updated = Math.floor(Date.now() / 1000);
+            if (!generatorState.lastUpdated) {
+                generatorState.lastUpdated = Math.floor(Date.now() / 1000);
             }
 
             await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', 
@@ -2460,7 +2460,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             // force a refresh of the project status
             const projectStatusRefreshRequest : ProjectStatusState = {
                 status: ProjectStatus.Unknown,
-                last_updated: generatorState.last_updated
+                lastUpdated: generatorState.lastUpdated
             };
             // we're going to start an async project status refresh (but only wait 250 ms to ensure it starts)
             try {
@@ -2489,7 +2489,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
                 try {
                     currentGeneratorState.status = TaskStatus.Processing;
-                    currentGeneratorState.last_updated = undefined; // get a refreshed last updated timestamp 
+                    currentGeneratorState.lastUpdated = undefined; // get a refreshed last updated timestamp 
                     await updateGeneratorState(currentGeneratorState);
 
                     // Launch the processing task
@@ -2547,7 +2547,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
                     // In case of error, set status to error
                     currentGeneratorState.status = TaskStatus.Error;
-                    currentGeneratorState.last_updated = undefined; // get a refreshed last updated timestamp
+                    currentGeneratorState.lastUpdated = undefined; // get a refreshed last updated timestamp
 
                     await updateGeneratorState(currentGeneratorState);
 
@@ -2633,8 +2633,8 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     // if we have been processing for less than 3 minutes, then we'll return busy HTTP status code
                     //      We choose 3 minutes because the forked rate above waits 2 seconds before returning
                     //      so if a new task runs, we'd expect to update processing time at least every 1-2 minutes
-                    if (currentGeneratorState.last_updated &&
-                        currentGeneratorState.last_updated > (Math.floor(Date.now() / 1000) - 60 * MinutesToWaitBeforeGeneratorConsideredStalled)) {
+                    if (currentGeneratorState.lastUpdated &&
+                        currentGeneratorState.lastUpdated > (Math.floor(Date.now() / 1000) - 60 * MinutesToWaitBeforeGeneratorConsideredStalled)) {
                         // if caller wants us to be idle, and we're busy processing, we'll return busy HTTP
                         //      status code
                         return res
@@ -2895,15 +2895,15 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                 try {
                     let resourceStatus = await localSelfDispatch<ResourceStatusState>(email, getSignedIdentityFromHeader(req)!, req,
                         `user_project/${org}/${project}/data/${projectDataTypes[i]}/status`, 'GET');
-                    const lastUploaded = existingProjectFileIds.get(projectDataTypes[i])?.last_updated;
+                    const lastUploaded = existingProjectFileIds.get(projectDataTypes[i])?.lastUpdated;
 
                     // there is a small race window here where an older resource version be uploaded, and before the upload
                     //      a newer resource version is stored - but since the upload timestamp is AFTER the newer version was stored
                     //      the newer version will not be uploaded. This would be fixed by storing a hash or timestamp of the resource
                     //      uploaded and storing that in the project data reference as well - but for now, we'll ignore it, since
                     //      this is a small window, and ANY future upload of the resource will resolve the issue.
-                    if (lastUploaded && lastUploaded > resourceStatus.last_updated) {
-                        console.debug(`${req.originalUrl}: Skipping upload of ${projectDataTypes[i]} - likely uploaded at ${lastUploaded} and resource updated at ${resourceStatus.last_updated}`);
+                    if (lastUploaded && lastUploaded > resourceStatus.lastUpdated) {
+                        console.debug(`${req.originalUrl}: Skipping upload of ${projectDataTypes[i]} - likely uploaded at ${lastUploaded} and resource updated at ${resourceStatus.lastUpdated}`);
                         continue;
                     }
                 } catch (error) {

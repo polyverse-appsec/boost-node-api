@@ -6,5 +6,5 @@ export interface UserProjectData {
     owner? : string,
     guidelines : string,
     resources : ProjectResource[],
-    last_updated : number,
+    lastUpdated : number,
 }

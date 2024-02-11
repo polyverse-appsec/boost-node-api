@@ -237,7 +237,7 @@ export class Generator {
 
     async updateProgress(statusUpdate: string) : Promise<void> {
         const state: GeneratorState = {
-            last_updated: Math.floor(Date.now() / 1000),
+            lastUpdated: Math.floor(Date.now() / 1000),
             status: TaskStatus.Processing,
             status_details: statusUpdate
         }

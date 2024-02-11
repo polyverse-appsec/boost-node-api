@@ -36,7 +36,7 @@ export async function uploadProjectDataForAIAssistant(projectName: string, uri: 
         type: `${dataTypeId}`,
         id: openAiFile.id,
         // return current time in unix system time format
-        last_updated: openAiFile.created_at,
+        lastUpdated: openAiFile.created_at,
     }
 
     return dataResource;

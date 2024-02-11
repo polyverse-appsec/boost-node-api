@@ -15,12 +15,13 @@ Polyverse Boost ReST API (Backend)
 - If OpenAI Servers are overloaded and we've exceeded API throttle limit (50 calls/minute), then don't retry OpenAI calls
 - Skip OpenAI server upload of resource if the resource is already uploaded (e.g. no need to re-upload)
 - Close Security hole where an account without access to a Private Repo could analyze the private content if the Private Repo's Organization installed the GitHub App for it
-- Add Project Created/Updated time - e.g. last_updated on Project at /api/user_project/{org}/{project} (GET)
+- Add Project Created/Updated time - e.g. lastUpdated on Project at /api/user_project/{org}/{project} (GET)
 - Project Status reports if the Project was updated since the last synchronization to AI Servers
 - During Project Grooming Pass - if Project Data is out of date (e.g. Repo modified since last analysis synchronization), then re-initialize all Resource Generators
 - Simplify all generators to support 'Reset' re-initialization stage and start with a common StaticDefault stage
 - Ensure DELETE of /api/user_project/{org}/{project}/data_references also removes any OpenAI files associated with the project
 - Only run Groomer for a Project if it hasn't run in at least 10 minutes
+- change last_updated to lastUpdated for all resources and generators - consistent casing and use of camelCase instead of snake_case in JSON
 
 ### Bug Fixes
 - Fix error handling for missing repo param when retrieving a file from GitHub
@@ -110,7 +111,7 @@ Polyverse Boost ReST API (Backend)
 - Project Status reports on Resources in Error (not just missing or incomplete) at /api/user_project/{org}/{project}/status (GET)
 
 ### Bug Fixes
-- Always return Resource Status (with last_updated time) for Resources that exist /api/user_project/{org}/{project}/data/{resource}/status (GET) - was returning no resource if no timestamp was stored
+- Always return Resource Status (with lastUpdated time) for Resources that exist /api/user_project/{org}/{project}/data/{resource}/status (GET) - was returning no resource if no timestamp was stored
 - Fix JSON/String decoding from buffer for Generator POST/PUT/PATCH and process (was failing to parse)
 - Report 400 if bad JSON input for body in POST/PATCH/PUT APIs
 
@@ -249,7 +250,7 @@ Polyverse Boost ReST API (Backend)
 ### Bug Fixes
 - Enable any resource with github.com as the domain to work (was failing if the resource was www.github.com)
 - Many bugfixes for Blueprint generator to complete successfully
-- Fixes to Resource Generator Patch and PUT/POST Service APIs to correctly update last_updated timestamp
+- Fixes to Resource Generator Patch and PUT/POST Service APIs to correctly update lastUpdated timestamp
 
 ## Version 0.8.1: January 15th, 2024
 

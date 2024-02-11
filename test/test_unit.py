@@ -147,8 +147,8 @@ class UnitTestSuite(unittest.TestCase):
 
         response = requests.get(f"{TARGET_URL}/api/user_project/{ORG}/{PUBLIC_PROJECT_NAME}-test/data/blueprint/status", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
-        self.assertNotEqual(response.json()['last_updated'], None)
-        self.assertGreater(response.json()['last_updated'], unixtime)
+        self.assertNotEqual(response.json()['lastUpdated'], None)
+        self.assertGreater(response.json()['lastUpdated'], unixtime)
 
     def test_generator_resource_projectsource_stage_filescan(self):
         print("Running test: Generator Resource ProjectSource Stage Filescan")
