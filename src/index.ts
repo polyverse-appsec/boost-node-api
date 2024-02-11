@@ -1064,13 +1064,16 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
                     generatorPath,
                     'PUT',
                     startProcessing,
-                    secondsBeforeRestRequestShortTimeout * 1000,
+                    secondsBeforeRestRequestMaximumTimeout * 1000,
                     false);
                 // check if we timed out, with an empty object
                 if (Object.keys(newGeneratorState).length === 0) {
                     console.warn(`${req.originalUrl} Async generator for ${resource} timed out`);
+                } else {
+                    if (process.env.TRACE_LEVEL) {
+                        console.log(`${req.originalUrl} New Generator State: ${JSON.stringify(newGeneratorState)}`);
+                    }
                 }
-                console.log(`New Generator State: ${JSON.stringify(newGeneratorState)}`);
             } catch (error) {
                 console.error(`Discovery unable to launch generator (continuing) for ${generatorPath}`, error);
             }
@@ -1350,7 +1353,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             let resourceStatus : ResourceStatusState;
             try {
                 resourceStatus = await localSelfDispatch<ResourceStatusState>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data/${resource}/status`, 'GET');
-                console.debug(`Resource ${resource} Status: ${JSON.stringify(resourceStatus)}`);
+                if (process.env.TRACE_LEVEL) {
+                    console.debug(`Resource ${resource} Status: ${JSON.stringify(resourceStatus)}`);
+                }
             } catch (error) {
                 missingResources.push(resource);
             }
@@ -2434,20 +2439,22 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     const pathToProcess = `${req.originalUrl.substring(req.originalUrl.indexOf('user_project'))}/process`;
 
                     const processStartTime = Math.floor(Date.now() / 1000);
-                    console.log(`TIMECHECK: ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"}: processing started at ${processStartTime}`);
 
-                    const newGeneratorState = await localSelfDispatch<ResourceGeneratorProcessState>(email, getSignedIdentityFromHeader(req)!, req, pathToProcess, "POST", processNextStageState.stage?processNextStageState:undefined);
+                    const newGeneratorState = await localSelfDispatch<ResourceGeneratorProcessState>(email, getSignedIdentityFromHeader(req)!, req, pathToProcess, "POST", processNextStageState.stage?processNextStageState:undefined,
+                        secondsBeforeRestRequestMaximumTimeout * 1000, false);
                     if (!newGeneratorState?.stage) {
-                        throw new Error(`Missing stage returned: ${pathToProcess}`);
+                        throw new Error(`${req.originalUrl} Processor timed out ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"} Stage`);
+                    } else {
+                        const processEndTime = Math.floor(Date.now() / 1000);
+                        if (process.env.TRACE_LEVEL) {
+                            console.log(`TIMECHECK: ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"}: processing started:${processStartTime} ended:${processEndTime} (${processEndTime - processStartTime} seconds) - move to stage:${currentGeneratorState.stage}`);
+                        }
                     }
                     currentGeneratorState.stage = newGeneratorState.stage;
 
-                    const processEndTime = Math.floor(Date.now() / 1000);
-                    console.log(`TIMECHECK: ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"}: processing ended at ${processEndTime} (${processEndTime - processStartTime} seconds) - move to stage:${currentGeneratorState.stage}`);
-
                     // if we've finished all stages, then we'll set the status to complete and idle
                     if (currentGeneratorState.stage === Stages.Complete) {
-                        console.log(`${user_project_org_project_data_resource_generator}: completed all stages`);
+                        console.log(`${req.originalUrl}: completed all stages`);
 
                         currentGeneratorState.status = TaskStatus.Idle;
                     }
@@ -2484,7 +2491,9 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     // we need to terminate the current call so we don't create a long blocking HTTP call
                     //      so we'll start a new async HTTP request - detached from the caller to continue processing
                     //      the next stage
-                    console.log(`${user_project_org_project_data_resource_generator}: starting async processing for ${JSON.stringify(currentGeneratorState)}`);
+                    if (process.env.TRACE_LEVEL) {
+                        console.log(`${req.originalUrl}: starting async processing for ${JSON.stringify(currentGeneratorState)}`);
+                    }
 
                     // create a new request object
                     const newProcessingRequest : GeneratorState = {
@@ -2504,7 +2513,9 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     }
 
                     const authHeader = await signedAuthHeader(email);
-                    console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} starting async processing`);
+                    if (process.env.TRACE_LEVEL) {
+                        console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} starting async processing`);
+                    }
                     // we're going to wait for completion or 1 second to pass
                     await axios.put(selfEndpoint, newProcessingRequest, {
                             headers: {
@@ -2514,12 +2525,16 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                             timeout: 1000 })
                         .then(response => {
                             // if the new task stage completes in 1 seconds, we'll wait...
-                            console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} completed async processing`);
+                            if (process.env.TRACE_LEVEL) {
+                                console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} completed async processing`);
+                            }
                         })
                             // otherwise, we'll move on
                         .catch(error => {
                             if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
-                                console.log(`TIMECHECK: TIMEOUT: ${org}:${project}:${resource}:${currentGeneratorState.stage} async processing timed out after 1 seconds`);
+                                if (process.env.TRACE_LEVEL) {
+                                    console.log(`TIMECHECK: TIMEOUT: ${org}:${project}:${resource}:${currentGeneratorState.stage} async processing timed out after 1 seconds`);
+                                }
                             } else {
                                 // This block is for handling errors, including 404 and 500 status codes
                                 if (axios.isAxiosError(error) && error.response) {
@@ -2530,8 +2545,10 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                                 }
                             }
                         });
-                    console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} After async processing`);
-                                    
+                    if (process.env.TRACE_LEVEL) {
+                        console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} After async processing`);
+                    }
+
                     // Return a response immediately without waiting for the async process
                     return res
                         .status(202)
@@ -2539,7 +2556,9 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         .send(currentGeneratorState);
                 }
             } else if (userGeneratorRequest.status === TaskStatus.Idle) {
-                console.log(`${user_project_org_project_data_resource_generator}: idle task: ${JSON.stringify(userGeneratorRequest)}`);
+                if (process.env.TRACE_LEVEL) {
+                    console.log(`${req.originalUrl}: idle task: ${JSON.stringify(userGeneratorRequest)}`);
+                }
 
                 if (currentGeneratorState.status === TaskStatus.Processing) {
                     // if we have been processing for less than 3 minutes, then we'll return busy HTTP status code
@@ -2797,7 +2816,9 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
             for (let i = 0; i < projectDataTypes.length; i++) {
                 let projectData = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, "", projectDataTypes[i]);
                 if (!projectData) {
-                    console.log(`${user_project_org_project_data_references}: no data found for ${projectDataTypes[i]}`);
+                    if (process.env.TRACE_LEVEL) {
+                        console.log(`${req.originalUrl}: no data found for ${projectDataTypes[i]}`);
+                    }
                     missingDataTypes.push(projectDataTypes[i]);
                     continue;
                 }

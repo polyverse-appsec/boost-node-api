@@ -67,7 +67,7 @@ export class Generator {
         const nextStage = await this.onGenerate(stage);
 
         if (!nextStage) {
-            throw new Error(`No Next Stage Defined from Stage:${this.currentStage} for ${this.projectData.org}:${this.projectData.name} ${this.dataType} Generator`);
+            throw new Error(`Missing next Stage Defined from Stage:${this.currentStage} for ${this.projectData.org}:${this.projectData.name} ${this.dataType} Generator`);
         }
 
         if (this.data) {
