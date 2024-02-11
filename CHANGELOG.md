@@ -22,6 +22,7 @@ Polyverse Boost ReST API (Backend)
 - Ensure DELETE of /api/user_project/{org}/{project}/data_references also removes any OpenAI files associated with the project
 - Only run Groomer for a Project if it hasn't run in at least 10 minutes
 - change last_updated to lastUpdated for all resources and generators - consistent casing and use of camelCase instead of snake_case in JSON
+- Project Discovery Groomer will stop new automatic attempts if last 3 discoveries have failed with an error
 
 ### Bug Fixes
 - Fix error handling for missing repo param when retrieving a file from GitHub

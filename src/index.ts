@@ -1584,7 +1584,7 @@ enum GroomingStatus {
 interface ProjectGroomState {
     status: GroomingStatus;
     status_details?: string;
-    consecutiveErrors?: number;
+    consecutiveErrors: number;
     lastDiscoveryStart?: number;
     lastUpdated: number;
 }
@@ -1620,6 +1620,35 @@ app.get(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Re
     }
 });
 
+const didLastDiscoverySucceedOrFail = (groomStatus: ProjectGroomState, projectStatus: ProjectStatusState) : boolean | undefined => {
+    // if we didn't launch a discovery, then assume it would have succeeded
+    if (!groomStatus.lastDiscoveryStart) {
+        return true;
+    }
+
+    // if groomer launched after last project status then unknown
+    if (groomStatus.lastDiscoveryStart > projectStatus.lastUpdated) {
+        return undefined;
+    }
+
+    // if the last synchronized time of the project is before our groomer ran, then unknown
+    if (projectStatus.lastSynchronized && groomStatus.lastDiscoveryStart >= projectStatus.lastSynchronized) {
+        return undefined;
+    }
+
+    // if the project is synchronized and the groomer launched before the last synchronization, then we're good
+    if (projectStatus.lastSynchronized &&
+        groomStatus.lastDiscoveryStart < projectStatus.lastSynchronized) {
+        return true;
+    }
+
+    // otherwise, we'll assume the groomer discovery launched before the last project update (or update attempt)
+    //      and we're not synchronized - due to an error
+    return false;
+}
+
+const MaxGroomingErrorsBeforeManualDiscovery = 3;
+
 app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Request, res: Response) => {
 
     logRequest(req);
@@ -1642,19 +1671,41 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         }
 
         const currentGroomingStateRaw = await getProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom');
-        if (currentGroomingStateRaw) {
-            const currentGroomingState: ProjectGroomState = JSON.parse(currentGroomingStateRaw);
+        const currentGroomingState: ProjectGroomState | undefined = currentGroomingStateRaw?JSON.parse(currentGroomingStateRaw):undefined;
 
-            // if the last grooming run was less than 2 cycles minutes ago, then we'll skip this run
-            if (currentGroomingState.lastUpdated > (callStart - (groomingCyclesToWaitForSettling * 60))) {
+        if (currentGroomingState) {
+
+            const cycleBusyWindowPercentage = 0.75; // don't overlap last 75% of the grooming cycle
+            // we only run at most once every grooming cycle - with adjustment for lag (e.g. checking status took part of the last cycle)
+            //  this ensures we settle whatever processing happened in the last cycle
+            if (currentGroomingState.lastUpdated > (callStart - (cycleBusyWindowPercentage * DefaultGroomingIntervalInMinutes * 60))) {
+                const nextOpeningDate = new Date((currentGroomingState.lastUpdated + ((1 - cycleBusyWindowPercentage) * DefaultGroomingIntervalInMinutes * 60)) * 1000);
+                const groomerBusy : ProjectGroomState = {
+                    status: GroomingStatus.Skipping,
+                    status_details: `Last Grooming cycle still active - next opening at ${usFormatter.format(nextOpeningDate)}`,
+                    consecutiveErrors: 0, // we're skipping so we don't know the error status
+                    lastDiscoveryStart: currentGroomingState.lastDiscoveryStart,
+                    lastUpdated: Math.floor(Date.now() / 1000)
+                };
+                return res
+                    .status(429)
+                    .send(groomerBusy);
+            }
+
+            // if the last discovery run was less than 2 cycles minutes ago, then we'll skip this run
+            if (currentGroomingState.lastDiscoveryStart &&
+                currentGroomingState.lastDiscoveryStart > (callStart - (groomingCyclesToWaitForSettling * 60))) {
 
                 // we only skip if we were actively grooming before... otherwise, we'll just let it run
+                //      (e.g. if we hit an error or another issue)
                 if (currentGroomingState.status === GroomingStatus.Grooming) {
 
                     // return http busy request
                     const groomerBusy : ProjectGroomState = {
                         status: GroomingStatus.Skipping,
                         status_details: 'Grooming already in progress at ' + currentGroomingState.lastUpdated,
+                        consecutiveErrors: 0, // we're skipping so we don't know the error status
+                        lastDiscoveryStart: currentGroomingState.lastDiscoveryStart,
                         lastUpdated: Math.floor(Date.now() / 1000)
                     };
                     return res
@@ -1681,6 +1732,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             const groomingState = {
                 status: GroomingStatus.Skipping,
                 status_details: 'Project is actively updating',
+                consecutiveErrors: currentGroomingState?currentGroomingState.consecutiveErrors:0,
+                lastDiscoveryStart: currentGroomingState?currentGroomingState.lastDiscoveryStart:undefined,
                 lastUpdated: Math.floor(Date.now() / 1000)
             };
 
@@ -1698,6 +1751,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             const groomingState = {
                 status: GroomingStatus.Idle,
                 status_details: `Project is synchronized as of ${usFormatter.format(synchronizedDate)} - Idling Groomer`,
+                consecutiveErrors: 0, // since the project synchronized, assume groomer did or could work, so reset the error counter
+                lastDiscoveryStart: currentGroomingState?currentGroomingState.lastDiscoveryStart:undefined,
                 lastUpdated: Math.floor(Date.now() / 1000)
             };
             return res
@@ -1712,6 +1767,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             const groomingState = {
                 status: GroomingStatus.Skipping,
                 status_details: `Insufficient time to rediscover: ${timeRemainingToDiscoverInSeconds} seconds remaining`,
+                consecutiveErrors: currentGroomingState?currentGroomingState.consecutiveErrors:0,
+                lastDiscoveryStart: currentGroomingState?currentGroomingState.lastDiscoveryStart:undefined,
                 lastUpdated: Math.floor(Date.now() / 1000)
             };
 
@@ -1723,57 +1780,95 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 .send(groomingState);
         }
 
+        // get the result of the last discovery launched by discovery
+        const lastDiscoveryResult: boolean | undefined = currentGroomingState?didLastDiscoverySucceedOrFail(currentGroomingState, projectStatus):undefined;
+
+        // if last discovery result was a success - then we can re-run groomer discovery again
+        if (lastDiscoveryResult === true) {
+            // reset the error counter if we worked
+            if (currentGroomingState?.consecutiveErrors) {
+                currentGroomingState.consecutiveErrors = 0;
+            }
+        } else if (lastDiscoveryResult === false && currentGroomingState) {
+            // if the last discovery failed, then we need to check if we reached our limit of errors
+            //      that will block the groomer indefinitely from automatically launching discovery
+            // to unblock groomer, discovery must be manually started
+
+            // if we have reached our error limit, then we'll just skip grooming - and stay in error state
+            if (currentGroomingState.consecutiveErrors >= MaxGroomingErrorsBeforeManualDiscovery) {
+                const groomingState = {
+                    status: GroomingStatus.Error,
+                    status_details: `Groomer has reached maximum errors (${MaxGroomingErrorsBeforeManualDiscovery}) - Manual Discovery Required`,
+                    lastDiscoveryStart: currentGroomingState.lastDiscoveryStart,
+                    consecutiveErrors: currentGroomingState.consecutiveErrors,
+                    lastUpdated: Math.floor(Date.now() / 1000)
+                };
+
+                await storeGroomingState(groomingState);
+
+                return res
+                    .status(200)
+                    .contentType('application/json')
+                    .send(groomingState);
+            }
+
+            currentGroomingState.consecutiveErrors++;
+        } else {
+            // if we don't know if the last discovery worked, or we're starting fresh (no current groomer state), then we'll just start grooming
+            //      and we'll assume it will work
+        }
+
+        const originalIdentityHeader = getSignedIdentityFromHeader(req);
+        const discoveryWithResetState : DiscoverState = {
+            resetResources: true
+        };
+
+        const discoveryStart = Math.floor(Date.now() / 1000);
+        const launchedGroomingState : ProjectGroomState = {
+            status: GroomingStatus.Grooming,
+            lastDiscoveryStart: discoveryStart,
+            consecutiveErrors: currentGroomingState?currentGroomingState.consecutiveErrors:0,
+            lastUpdated: Math.floor(Date.now() / 1000)
+        };
+
         try {
             console.log(`Launching Groomed Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
 
-            const originalIdentityHeader = getSignedIdentityFromHeader(req);
-            const discoveryState : DiscoverState = {
-                resetResources: true
-            };
-            const discoveryStart = Math.floor(Date.now() / 1000);
             const discoveryResult = await localSelfDispatch<ProjectDataReference[]>(
                 email, originalIdentityHeader!, req,
                 `${projectPath}/discover`, 'POST',
-                projectStatus.status === ProjectStatus.OutOfDateProjectData?discoveryState:undefined,
+                projectStatus.status === ProjectStatus.OutOfDateProjectData?discoveryWithResetState:undefined,
                 timeRemainingToDiscoverInSeconds * 1000);
-
-            const groomingState : ProjectGroomState = {
-                status: GroomingStatus.Grooming,
-                lastDiscoveryStart: discoveryStart,
-                lastUpdated: Math.floor(Date.now() / 1000)
-            };
 
                 // if discovery result is an empty object (i.e. {}), then we launched discovery but don't know if it finished (e.g. timeout waiting)
             const discoveryTime = new Date(discoveryStart * 1000);
             if (!discoveryResult || !Object.keys(discoveryResult).length) {
-                groomingState.status_details = `Launched Async Discovery at ${usFormatter.format(discoveryTime)}, but no result yet`;
+                launchedGroomingState.status_details = `Launched Async Discovery at ${usFormatter.format(discoveryTime)}, but no result yet`;
             } else {
                 // even though discovery launched, and didn't timeout... we don't know if it finished or not
                 //      only that the async launch didn't timeout/fail
-                groomingState.status_details = `Launched Discovery at ${usFormatter.format(discoveryTime)} ${JSON.stringify(discoveryResult)}`;
+                launchedGroomingState.status_details = `Launched Discovery at ${usFormatter.format(discoveryTime)} ${JSON.stringify(discoveryResult)}`;
             }
 
-            await storeGroomingState(groomingState);
+            await storeGroomingState(launchedGroomingState);
 
             return res
                 .status(200)
                 .contentType('application/json')
-                .send(groomingState);
+                .send(launchedGroomingState);
         } catch (error) {
             console.error(`Groomer unable to launch discovery for ${projectPath}`, error);
 
-            const groomingState = {
-                status: GroomingStatus.Error,
-                status_details: `Error launching discovery: ${error}`,
-                lastUpdated: Math.floor(Date.now() / 1000)
-            };
+            launchedGroomingState.status = GroomingStatus.Error;
+            launchedGroomingState.status_details = `Error launching discovery: ${error}`;
+            launchedGroomingState.consecutiveErrors++;
 
-            await storeGroomingState(groomingState);
+            await storeGroomingState(launchedGroomingState);
 
             return res
                 .status(200)
                 .contentType('application/json')
-                .send(groomingState);
+                .send(launchedGroomingState);
         }
 
     } catch (error) {
