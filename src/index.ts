@@ -1300,7 +1300,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             dataReferences = await localSelfDispatch<ProjectDataReference[]>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data_references`, 'GET');
         } catch (error) {
             // if we get an error, then we'll assume the project doesn't exist
-            console.error(`Project Data References not found; Project may not exist or hasn't been discovered yet`);
+            console.error(`${req.originalUrl}: Project Data References not found; Project may not exist or hasn't been discovered yet: ${error}`);
 
             // we can continue on, since we're just missing the last synchronized time - which probably didn't happen anyway
         }
@@ -2929,12 +2929,16 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
         if (!userProjectData.resources || userProjectData.resources.length === 0) {
             console.warn(`No resources found in project: ${userProjectData.org}/${userProjectData.name}`);
 
+            // we reset the project data references to empty - since we have no resources to upload, and we want to update the cache
+            const emptyProjectDataFileIds: ProjectDataReference[] = [];
+            await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', JSON.stringify(emptyProjectDataFileIds));
+
             // if we have no resources, we won't generate any data files
             // in the future, we should support generating blank or minimal data files so user can chat without Repository data
             return res
                 .status(200)
                 .contentType('application/json')
-                .send([]);
+                .send(emptyProjectDataFileIds);
         }
         const uri = new URL(userProjectData.resources[0].uri);
 
