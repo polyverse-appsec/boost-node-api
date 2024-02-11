@@ -1364,6 +1364,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
         let lastResourceCompletedGenerationTime: number | undefined = undefined;
         let lastResourceGeneratingTime: number | undefined = undefined;
+        let firstResourceGeneratingTime: number | undefined = undefined;
+
         const incompleteResources : string[] = [];
         const currentResourceStatus : TaskStatus[] = [];
         for (const resource of [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification]) {
@@ -1377,6 +1379,12 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
                 continue;
             }
+
+            // if this generator was last updated before the current known first generating time, then we'll assume it was the first
+            firstResourceGeneratingTime = firstResourceGeneratingTime?
+                Math.min(firstResourceGeneratingTime, generatorStatus.last_updated?generatorStatus.last_updated:firstResourceGeneratingTime):
+                generatorStatus.last_updated;
+
             if (generatorStatus.stage !== Stages.Complete) {
                 currentResourceStatus.push(generatorStatus.status);
 
@@ -1427,10 +1435,14 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 .send(projectStatus);
         }
 
-        // if all data is synhronized but the last synchronized data is older than the project data, then we're out of date
-        if (projectStatus?.last_synchronized && projectData.last_updated > projectStatus.last_synchronized) {
+        // if the first resource was generated BEFORE the current project timestamp, then at least one of our resources is out of date
+        //      so we'll mark the whole project as out of date
+        if (firstResourceGeneratingTime && projectData.last_updated > firstResourceGeneratingTime) {
+            const projectLastUpdatedDate = new Date(projectData.last_updated * 1000);
+            const firstResourceGeneratingDate = new Date(firstResourceGeneratingTime * 1000);
+
             projectStatus.status = ProjectStatus.OutOfDateProjectData;
-            projectStatus.details = `Project was updated since last synchronization`;
+            projectStatus.details = `Project was updated ${projectLastUpdatedDate} since resources were last generated at ${firstResourceGeneratingDate}`;
 
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
@@ -1440,7 +1452,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 .status(200)
                 .contentType('application/json')
                 .send(projectStatus);
-        }
+        }        
 
         const inErrorState : boolean = currentResourceStatus.filter(status => status === TaskStatus.Error).length > 0;
         if (inErrorState) {
@@ -1498,12 +1510,15 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 .send(projectStatus);
         }
 
+        const lastResourceCompletedDate = new Date(lastResourceCompletedGenerationTime * 1000);
+
         // now that our resources have completed generation, we want to make sure the data_references timestamp is AFTER the generators completed
         //      otherwise, we'll report that the resources are not synchronized
         if (!projectStatus.last_synchronized) {
             // if we've never synchronized the data, then report not synchronized
             projectStatus.status = ProjectStatus.ResourcesNotSynchronized;
-            console.error(`Project Status: Resources Completed Generation but not Uploaded to AI Servers`);
+            projectStatus.details = `Resources Completed Generation at ${lastResourceCompletedDate.toISOString()} but never Synchronized to AI Servers`;
+            console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -1518,7 +1533,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         if (projectStatus.last_synchronized < lastResourceCompletedGenerationTime) {
             // if the last resource completed generation time is newer than the last synchronized time, then we're out of date
             projectStatus.status = ProjectStatus.AIResourcesOutOfDate;
-            projectStatus.details = `Resources Completed Generation, but not Uploaded to AI Servers`;
+            const lastSynchronizedDate = new Date(projectStatus.last_synchronized * 1000);
+            projectStatus.details = `Resources Completed Generation at ${lastResourceCompletedDate.toISOString()} is newer than last Synchronized AI Server at ${lastSynchronizedDate.toISOString()}`;
 
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
@@ -1535,7 +1551,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         projectStatus.synchronized = true;
         projectStatus.details = `All Resources Completely Generated and Uploaded to AI Servers`;
 
-        console.log(`Project Status OK: ${JSON.stringify(projectStatus)}`);
+        console.log(`Project Status SYNCHRONIZED: ${JSON.stringify(projectStatus)}`);
 
         await saveProjectStatusUpdate();
 
