@@ -103,7 +103,9 @@ export class Generator {
     }
 
     async load() : Promise<void> {
-        console.log(`Loading ${this.dataType} data`);
+        if (process.env.TRACE_LEVEL) {
+            console.log(`${this.projectData.name}:${this.projectData.org} Generator Loading ${this.dataType} data`);
+        }
 
         const authHeader = await signedAuthHeader(this.email);
 

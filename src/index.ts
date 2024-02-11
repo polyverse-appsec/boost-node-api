@@ -2608,7 +2608,7 @@ app.route(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
 async function processStage(serviceEndpoint: string, email: string, project: UserProjectData, resource: string, stage?: string) {
     
     if (stage) {
-        console.log(`Processing ${resource} stage ${stage}...`);
+        console.log(`${project.org}:${project.name} Processing ${resource} stage ${stage}...`);
     }
     let thisGenerator : Generator;
     switch (resource) {
@@ -3137,8 +3137,6 @@ const handleProxyRequest = async (req: Request, res: Response) => {
             return res.status(401).send('Unauthorized');
         }
 
-        console.log(`Proxy request by ${email}: ${endpoint}`);
-
         const signedIdentity = await signedAuthHeader(email, org);
 
         let externalEndpoint;
@@ -3165,7 +3163,9 @@ const handleProxyRequest = async (req: Request, res: Response) => {
             const response = await axios(axiosOptions);
             const endTimeOfCall = Date.now();
 
-            console.log(`Proxy response: ${response.status} ${response.statusText} (${(endTimeOfCall - startTimeOfCall) / 1000} seconds)`);
+            if (process.env.TRACE_LEVEL) {
+                console.log(`${externalEndpoint} Proxy response: ${response.status} ${response.statusText} (${(endTimeOfCall - startTimeOfCall) / 1000} seconds)`);
+            }
 
             return res
                 .status(response.status)
