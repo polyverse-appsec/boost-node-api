@@ -1129,7 +1129,7 @@ enum ProjectStatus {
 interface ProjectStatusState {
     status: ProjectStatus;
     synchronized?: boolean;
-    last_synchronized?: number;
+    lastSynchronized?: number;
     activelyUpdating?: boolean;
     details?: string;
     lastUpdated: number;
@@ -1282,7 +1282,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
         const projectStatus : ProjectStatusState = {
             status: ProjectStatus.Unknown,
-            last_synchronized: undefined,
+            lastSynchronized: undefined,
             synchronized: false,
             activelyUpdating: false,
             lastUpdated : Math.floor(Date.now() / 1000) // default something and refresh when saved
@@ -1308,8 +1308,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         for (const dataReference of dataReferences) {
             if (dataReference.lastUpdated) {
                 // pick the newest lastUpdated date - so we report the last updated date of the most recent resource sync
-                if (!projectStatus.last_synchronized || projectStatus.last_synchronized < dataReference.lastUpdated) {
-                    projectStatus.last_synchronized = dataReference.lastUpdated;
+                if (!projectStatus.lastSynchronized || projectStatus.lastSynchronized < dataReference.lastUpdated) {
+                    projectStatus.lastSynchronized = dataReference.lastUpdated;
                 }
                 break;
             }
@@ -1525,7 +1525,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
         // now that our resources have completed generation, we want to make sure the data_references timestamp is AFTER the generators completed
         //      otherwise, we'll report that the resources are not synchronized
-        if (!projectStatus.last_synchronized) {
+        if (!projectStatus.lastSynchronized) {
             // if we've never synchronized the data, then report not synchronized
             projectStatus.status = ProjectStatus.ResourcesNotSynchronized;
             projectStatus.details = `Resources Completed Generation at ${usFormatter.format(lastResourceCompletedDate)} but never Synchronized to AI Servers`;
@@ -1541,10 +1541,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
         // now we have completed resources and previously synchronized data, so now we'll check if the resource data is newer than the
         //      last synchronized time for the AI server upload
-        if (projectStatus.last_synchronized < lastResourceCompletedGenerationTime) {
+        if (projectStatus.lastSynchronized < lastResourceCompletedGenerationTime) {
             // if the last resource completed generation time is newer than the last synchronized time, then we're out of date
             projectStatus.status = ProjectStatus.AIResourcesOutOfDate;
-            const lastSynchronizedDate = new Date(projectStatus.last_synchronized * 1000);
+            const lastSynchronizedDate = new Date(projectStatus.lastSynchronized * 1000);
             projectStatus.details = `Resources Completed Generation at ${usFormatter.format(lastResourceCompletedDate)} is newer than last Synchronized AI Server at ${usFormatter.format(lastSynchronizedDate)}`;
 
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
@@ -1584,7 +1584,7 @@ enum GroomingStatus {
 interface ProjectGroomState {
     status: GroomingStatus;
     status_details?: string;
-    consecutive_errors?: number;
+    consecutiveErrors?: number;
     lastDiscoveryStart?: number;
     lastUpdated: number;
 }
@@ -1691,7 +1691,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         // if we're synchronized, and idle, then try again
         if (projectStatus.status === ProjectStatus.Synchronized ||
             projectStatus.status === ProjectStatus.OutOfDateProjectData) {
-            const synchronizedDate = new Date(projectStatus.last_synchronized! * 1000);
+            const synchronizedDate = new Date(projectStatus.lastSynchronized! * 1000);
             const groomingState = {
                 status: GroomingStatus.Skipping,
                 status_details: `Project is synchronized as of ${usFormatter.format(synchronizedDate)} - Skipping Grooming`,
