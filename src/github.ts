@@ -518,9 +518,9 @@ export async function verifyUserAccessToPrivateRepo(email: string, uri: URL) : P
         throw new Error(`Invalid GitHub App Installation - cannot find GitHub Username for ${email}`);
     }
 
-    const installationId = (await getUser(owner))?.installationId;
+    let installationId = (await getUser(owner))?.installationId;
     if (!installationId) {
-        throw new Error(`GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${owner}`);
+        installationId = user.installationId;
     }
 
     const secretStore = 'boost/GitHubApp';
@@ -531,20 +531,43 @@ export async function verifyUserAccessToPrivateRepo(email: string, uri: URL) : P
         appId: BoostGitHubAppId,
         privateKey: privateKey,
     });
-    const octokit = await app.getInstallationOctokit(Number(installationId));            
+    const octokit = await app.getInstallationOctokit(Number(installationId));
+
+    // check if the user can see the repos (if we are using a user's connection to github)
+    if (installationId === user.installationId) {
+
+        try {
+            const response = await octokit.rest.repos.get({owner, repo,});
+            if (response.data.private === false) {
+                if (process.env.TRACE_LEVEL) {
+                    console.log(`${owner}/${repo} is Public`);
+                }
+                return true;
+            }
+            if (process.env.TRACE_LEVEL) {
+                console.warn(`${owner}/${repo} is Private - but user ${user.username} has access it`);
+            }
+        } catch (error) {
+            console.warn(`Error checking access Repo Access for ${user.username} to ${owner}:${repo}:`, error);
+        }
+    }
 
     const collaboratorCheckInput = {
         owner,
         repo,
         username: user.username
     };
-    const response = await octokit.rest.repos.getCollaboratorPermissionLevel(collaboratorCheckInput);
-    // check if the username has access to this repo
-    if (response.status !== 200 || !response.data.permission) {
-        console.warn(`User ${user.username} does not have access to ${owner}:${repo}`);
+    try {
+        const response = await octokit.rest.repos.getCollaboratorPermissionLevel(collaboratorCheckInput);
+        // check if the username has access to this repo
+        if (response.status !== 200 || !response.data.permission) {
+            console.warn(`User ${user.username} does not have access to ${owner}:${repo}`);
+            return false;
+        }
+    } catch (error) {
+        console.error(`Error checking Collaborator Permission access for ${user.username} to ${owner}:${repo}:`, error);
         return false;
     }
-
     console.debug(`User ${user.username} has access to ${owner}:${repo}`);
 
     return true;
