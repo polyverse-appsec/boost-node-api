@@ -8,6 +8,18 @@ export const secondsBeforeRestRequestMaximumTimeout = 25;
 
 export const secondsBeforeRestRequestShortTimeout = 10;
 
+export const HTTP_SUCCESS = 200;
+export const HTTP_SUCCESS_ACCEPTED = 202;
+export const HTTP_SUCCESS_NO_CONTENT = 204;
+
+export const HTTP_FAILURE_NOT_FOUND = 404;
+export const HTTP_FAILURE_BAD_REQUEST_INPUT = 400;
+export const HTTP_FAILURE_NO_ACCESS = 403;
+export const HTTP_FAILURE_UNAUTHORIZED = 401;
+export const HTTP_FAILURE_BUSY = 429;
+
+export const HTTP_FAILURE_INTERNAL_SERVER_ERROR = 500;
+
 export const logRequest = (req: Request) => {
     if (process.env.DEPLOYMENT_STAGE === 'dev') {
         console.log(`Request: ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`);
@@ -25,14 +37,14 @@ export const handleErrorResponse = (error: any, req: Request, res: Response, sup
         console.error(`${supplementalErrorMessage} - ${errorMessage}`, error.stack || error);
         // Respond with the detailed error message for debugging purposes
         return res
-            .status(500)
+            .status(HTTP_FAILURE_INTERNAL_SERVER_ERROR)
             .send(`Internal Server Error: ${supplementalErrorMessage} - ` + (error.stack || error));
     } else { // we'll use this for 'prod' and 'test' Stages in the future
         // In non-development environments, log the error message for privacy/security reasons
         console.error(`${supplementalErrorMessage} - ${errorMessage}`, error.message || error);
         // Respond with a generic error message to avoid exposing sensitive error details
         return res
-            .status(500)
+            .status(HTTP_FAILURE_INTERNAL_SERVER_ERROR)
             .send(`Internal Server Error: ${supplementalErrorMessage} - ${errorMessage}` + (error.message || error));
     }
 }
@@ -148,7 +160,7 @@ export async function localSelfDispatch<T>(
                     return {} as T;
                 }
             } else {
-                // This block is for handling errors, including 404 and 500 status codes
+                // This block is for handling errors, including HTTP_FAILURE_NOT_FOUND and HTTP_FAILURE_INTERNAL_SERVER_ERROR status codes
                 if (axios.isAxiosError(error) && error.response) {
                     console.log(`TIMECHECK: ${httpVerb} ${selfEndpoint} failed with status ${error.response.status}:${error.response.statusText} due to error:${error}`);
                 } else {

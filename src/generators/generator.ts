@@ -5,7 +5,7 @@ import { signedAuthHeader } from "../auth";
 import { saveProjectDataResource, loadProjectDataResource } from "..";
 import { FileContent } from "../github";
 import { Stages } from "../types/GeneratorState";
-import { localSelfDispatch } from "../utility/dispatch";
+import { localSelfDispatch, HTTP_FAILURE_NOT_FOUND } from "../utility/dispatch";
 import axios from "axios";
 
 const ignore = require('ignore');
@@ -94,7 +94,7 @@ export class Generator {
             }
             return generatorState.stage;
         } catch (err) {
-            if (axios.isAxiosError(err) && (err?.status === 404 || err.response?.status === 404)) {
+            if (axios.isAxiosError(err) && (err?.status === HTTP_FAILURE_NOT_FOUND || err.response?.status === HTTP_FAILURE_NOT_FOUND)) {
                 // if the generator doesn't exist, then we'll start from the beginning
                 return Stages.Reset;
             }
@@ -117,8 +117,8 @@ export class Generator {
             }
         });
 
-        // if we got 404 Not Found, that's OK - we'll just start with an empty string
-        if (response.status === 404) {
+        // if we got HTTP_FAILURE_NOT_FOUND Not Found, that's OK - we'll just start with an empty string
+        if (response.status === HTTP_FAILURE_NOT_FOUND) {
             console.log(`No ${this.dataType} data found via Load`);
             return;
         }
@@ -258,7 +258,7 @@ export class Generator {
             body: JSON.stringify(state)
         });
         if (!response.ok) {
-            if (response.status === 404) {
+            if (response.status === HTTP_FAILURE_NOT_FOUND) {
                 if (process.env.TRACE_LEVEL) {
                     console.warn(`Generator not found - ignoring progress update: ${JSON.stringify(state)}`);
                 }

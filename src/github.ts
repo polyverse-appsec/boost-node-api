@@ -6,7 +6,15 @@ import { getUser } from './users';
 import axios from 'axios';
 import AdmZip from 'adm-zip';
 import { App } from "octokit";
-import { handleErrorResponse } from './utility/dispatch';
+import {
+    handleErrorResponse,
+    HTTP_SUCCESS,
+    HTTP_FAILURE_BAD_REQUEST_INPUT,
+    HTTP_FAILURE_NOT_FOUND,
+    HTTP_FAILURE_NO_ACCESS,
+    HTTP_FAILURE_UNAUTHORIZED,
+    HTTP_FAILURE_BUSY
+} from './utility/dispatch';
 
 
 const BoostGitHubAppId = "472802";
@@ -31,7 +39,7 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
     // Check if owner, repo, and pathParts are valid
     if (!owner || !repo || pathParts.length === 0 || !pathParts[0]) {
         console.error(`Error: Invalid GitHub.com resource URI: ${fullFileUri || repoUri}`);
-        return res.status(400).send('Invalid URI');
+        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
     }
 
     // Convert pathParts array back to a string path if necessary
@@ -61,14 +69,14 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
         console.log(`Success Retrieving File ${filePathWithoutBranch} from Public Repo ${repo}`)
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .set('X-Resource-Access', 'public')
             .contentType('text/plain')
             .send(fileContent);
 
     } catch (publicError : any) {
-        if (publicError.status !== 404 && publicError?.response?.data?.message !== 'Not Found') {
-            if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
+        if (publicError.status !== HTTP_FAILURE_NOT_FOUND && publicError?.response?.data?.message !== 'Not Found') {
+            if (publicError.status === HTTP_FAILURE_NO_ACCESS && publicError.response.headers['x-ratelimit-remaining'] === '0') {
                 // Handle rate limit exceeded error
                 const resetTime = publicError.response.headers['x-ratelimit-reset'];
 
@@ -78,20 +86,20 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
                 } else {
                     console.error(`Rate limit exceeded for Public Access to ${repo} File ${filePathWithoutBranch}. Reset time: ${new Date(resetTime * 1000)}`);
                     // return a rate limit response
-                    return res.status(429).send('Rate Limit Exceeded');
+                    return res.status(HTTP_FAILURE_BUSY).send('Rate Limit Exceeded');
                 }
             } else {
                 return handleErrorResponse(publicError, req, res, `Error retrieving public access file for ${owner}:${repo} at path ${filePathWithoutBranch}`);
             }
         } else {
-            // 404 Not Found
+            // HTTP_FAILURE_NOT_FOUND Not Found
             console.log(`Cannot access repo ${owner}/${repo} at path ${filePathWithoutBranch}`);
         }
     }
 
     if (!allowPrivateAccess) {
         console.error(`Error: Private Access Not Allowed for this Plan: ${filePath}`);
-        return res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
+        return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Access to Private GitHub Resources is not allowed for this Account');
     }
 
     // check if this user has access to this private repo
@@ -99,7 +107,7 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
     if (!accessGrantedToPrivateRepo) {
         console.error(`Error: User ${email} does not have access to ${owner}:${repo}`);
         return res
-            .status(403)
+            .status(HTTP_FAILURE_NO_ACCESS)
             .send(`User ${email} does not have access to ${owner}:${repo}`);
     }
 
@@ -111,13 +119,13 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
             user = await getUser(email);
             if (!user) {
                 console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
             }
         }
         const installationId = user?.installationId;
         if (!installationId) {
             console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-            return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
         }
 
         const secretStore = 'boost/GitHubApp';
@@ -138,7 +146,7 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
         console.log(`Success Retrieving File ${filePathWithoutBranch} from Private Repo ${repo}`)
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .set('X-Resource-Access', 'private')
             .contentType('text/plain')
             .send(fileContent);
@@ -153,7 +161,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
 
     if (!owner || !repo) {
         console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
-        return res.status(400).send('Invalid URI');
+        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
     }
     
     const getFolderPaths = async (octokit: Octokit, owner: string, repo : string, path = '') : Promise<string[]> => {
@@ -189,12 +197,12 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
         const folderPaths = await getFolderPaths(octokit, owner, repo);
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(folderPaths);
     } catch (publicError: any) {
-        if (publicError.status !== 404 && publicError?.response?.data?.message !== 'Not Found') {
-            if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
+        if (publicError.status !== HTTP_FAILURE_NOT_FOUND && publicError?.response?.data?.message !== 'Not Found') {
+            if (publicError.status === HTTP_FAILURE_NO_ACCESS && publicError.response.headers['x-ratelimit-remaining'] === '0') {
                 // Handle rate limit exceeded error
                 const resetTime = publicError.response.headers['x-ratelimit-reset'];
 
@@ -204,7 +212,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
                 } else {
                     console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} folder paths. Reset time: ${new Date(resetTime * 1000)}`);
                     // return a rate limit response
-                    return res.status(429).send('Rate Limit Exceeded');
+                    return res.status(HTTP_FAILURE_BUSY).send('Rate Limit Exceeded');
                 }
             } else {
                 return handleErrorResponse(publicError, req, res, `Error retrieving folder paths for ${owner} to ${repo}`);
@@ -216,7 +224,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
 
     if (!allowPrivateAccess) {
         console.error(`Error: Private Access Not Allowed for this Plan: ${owner}:${repo}`);
-        return res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
+        return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Access to Private GitHub Resources is not allowed for this Account');
     }
 
     // check if this user has access to this private repo
@@ -224,7 +232,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
     if (!accessGrantedToPrivateRepo) {
         console.error(`Error: User ${email} does not have access to ${owner}:${repo}`);
         return res
-            .status(403)
+            .status(HTTP_FAILURE_NO_ACCESS)
             .send(`User ${email} does not have access to ${owner}:${repo}`);
     }
     // Private access part
@@ -235,13 +243,13 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
             user = await getUser(email);
             if (!user) {
                 console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
             }
         }
         const installationId = user?.installationId;
         if (!installationId) {
             console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-            return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
         }
 
         const secretStore = 'boost/GitHubApp';
@@ -264,7 +272,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
 
         return res
             .set('X-Resource-Access', 'private')
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(folderPaths);
 
@@ -278,7 +286,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
 
     if (!owner || !repo) {
         console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
-        return res.status(400).send('Invalid URI');
+        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
     }
 
     const getFilePaths = async (octokit : Octokit, owner : string, repo : string, path = '') : Promise<string[]> => {
@@ -315,12 +323,12 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
         console.log(`Success Retrieving ${filePaths.length} file paths from Public Repo ${repo}`)
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(filePaths);
     } catch (publicError : any) {
-        if (publicError.status !== 404 && publicError?.response?.data?.message !== 'Not Found') {
-            if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
+        if (publicError.status !== HTTP_FAILURE_NOT_FOUND && publicError?.response?.data?.message !== 'Not Found') {
+            if (publicError.status === HTTP_FAILURE_NO_ACCESS && publicError.response.headers['x-ratelimit-remaining'] === '0') {
                 // Handle rate limit exceeded error
                 const resetTime = publicError.response.headers['x-ratelimit-reset'];
                 if (allowPrivateAccess) {
@@ -328,7 +336,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
                 } else {
                     console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} file paths. Reset time: ${new Date(resetTime * 1000)}`);
                     // return a rate limit response
-                    return res.status(429).send('Rate Limit Exceeded');
+                    return res.status(HTTP_FAILURE_BUSY).send('Rate Limit Exceeded');
                 }
             } else {
                 return handleErrorResponse(publicError, req, res, `Error retrieving file paths for ${owner} to ${repo}`);
@@ -340,7 +348,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
 
     if (!allowPrivateAccess) {
         console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
-        return res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
+        return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Access to Private GitHub Resources is not allowed for this Account');
     }
 
     // check if this user has access to this private repo
@@ -348,7 +356,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
     if (!accessGrantedToPrivateRepo) {
         console.error(`Error: User ${email} does not have access to ${owner}:${repo}`);
         return res
-            .status(403)
+            .status(HTTP_FAILURE_NO_ACCESS)
             .send(`User ${email} does not have access to ${owner}:${repo}`);
     }
 
@@ -360,13 +368,13 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
             user = await getUser(email);
             if (!user) {
                 console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
             }
         }
         const installationId = user?.installationId;
         if (!installationId) {
             console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-            return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
         }
 
         const secretStore = 'boost/GitHubApp';
@@ -389,7 +397,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
 
         return res
             .set('X-Resource-Access', 'private')
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(filePaths);
 
@@ -414,7 +422,7 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
 
     if (!owner || !repo) {
         console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
-        return { errorResponse: res.status(400).send('Invalid URI') };
+        return { errorResponse: res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI') };
     }
 
     const octokit = new Octokit();
@@ -428,8 +436,8 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
         return { data: repoDetails.data };
 
     } catch (publicError: any) {
-        if (publicError.status !== 404 && publicError?.response?.data?.message !== 'Not Found') {
-            if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
+        if (publicError.status !== HTTP_FAILURE_NOT_FOUND && publicError?.response?.data?.message !== 'Not Found') {
+            if (publicError.status === HTTP_FAILURE_NO_ACCESS && publicError.response.headers['x-ratelimit-remaining'] === '0') {
                 // Handle rate limit exceeded error
                 const resetTime = publicError.response.headers['x-ratelimit-reset'];
                 if (allowPrivateAccess) {
@@ -437,7 +445,7 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
                 } else {
                     console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} details. Reset time: ${new Date(resetTime * 1000)}`);
                     // return a rate limit response
-                    return { errorResponse: res.status(429).send('Rate Limit Exceeded') };
+                    return { errorResponse: res.status(HTTP_FAILURE_BUSY).send('Rate Limit Exceeded') };
                 }
             } else {
                 return { errorResponse: handleErrorResponse(
@@ -449,7 +457,7 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
 
         if (!allowPrivateAccess) {
             console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
-            return { errorResponse: res.status(401).send('Access to Private GitHub Resources is not allowed for this Account') };
+            return { errorResponse: res.status(HTTP_FAILURE_UNAUTHORIZED).send('Access to Private GitHub Resources is not allowed for this Account') };
         }
 
         // check if this user has access to this private repo
@@ -457,7 +465,7 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
         if (!accessGrantedToPrivateRepo) {
             console.error(`Error: User ${email} does not have access to ${owner}:${repo}`);
             return { errorResponse: res
-                .status(403)
+                .status(HTTP_FAILURE_NO_ACCESS)
                 .send(`User ${email} does not have access to ${owner}:${repo}`) };
         }
 
@@ -469,13 +477,13 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
                 user = await getUser(email);
                 if (!user) {
                     console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                    return { errorResponse: res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`) };
+                    return { errorResponse: res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`) };
                 }
             }
             const installationId = user?.installationId;
             if (!installationId) {
                 console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                return { errorResponse: res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`) };
+                return { errorResponse: res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`) };
             }
 
             const secretStore = 'boost/GitHubApp';
@@ -560,7 +568,7 @@ export async function verifyUserAccessToPrivateRepo(email: string, uri: URL) : P
     try {
         const response = await octokit.rest.repos.getCollaboratorPermissionLevel(collaboratorCheckInput);
         // check if the username has access to this repo
-        if (response.status !== 200 || !response.data.permission) {
+        if (response.status !== HTTP_SUCCESS || !response.data.permission) {
             console.warn(`User ${user.username} does not have access to ${owner}:${repo}`);
             return false;
         }
@@ -578,7 +586,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
 
     if (!owner || !repo) {
         console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
-        return res.status(400).send('Invalid URI');
+        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
     }
 
     const downloadAndExtractRepo = async (url: string, authToken: string): Promise<FileContent[]> => {
@@ -649,13 +657,13 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
         console.log(`Success Retrieving ${fileContents.length} files (${(JSON.stringify(fileContents).length / (1024 * 1024)).toFixed(2)} MB) from Public Repo ${owner}:${repo}`)
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(fileContents);
 
     } catch (publicError: any) {
-        if (publicError.status !== 404 && publicError?.response?.data?.message !== 'Not Found') {
-            if (publicError.status === 403 && publicError.response.headers['x-ratelimit-remaining'] === '0') {
+        if (publicError.status !== HTTP_FAILURE_NOT_FOUND && publicError?.response?.data?.message !== 'Not Found') {
+            if (publicError.status === HTTP_FAILURE_NO_ACCESS && publicError.response.headers['x-ratelimit-remaining'] === '0') {
                 // Handle rate limit exceeded error
                 const resetTime = publicError.response.headers['x-ratelimit-reset'];
                 if (allowPrivateAccess) {
@@ -663,7 +671,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
                 } else {
                     console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} full source. Reset time: ${new Date(resetTime * 1000)}`);
                     // return a rate limit response
-                    return res.status(429).send('Rate Limit Exceeded');
+                    return res.status(HTTP_FAILURE_BUSY).send('Rate Limit Exceeded');
                 }
             } else {
                 return handleErrorResponse(publicError, req, res, `Error retrieving full source for ${owner} from ${repo}`);
@@ -674,7 +682,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
 
         if (!allowPrivateAccess) {
             console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
-            return res.status(401).send('Access to Private GitHub Resources is not allowed for this Account');
+            return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Access to Private GitHub Resources is not allowed for this Account');
         }
     
         // Public access failed, switch to authenticated access
@@ -685,13 +693,13 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
                 user = await getUser(email);
                 if (!user) {
                     console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                    return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                    return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
                 }
             }
             const installationId = user?.installationId;
             if (!installationId) {
                 console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                return res.status(400).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
             }
 
             const secretStore = 'boost/GitHubApp';
@@ -726,7 +734,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
             console.log(`Success Retrieving ${fileContents.length} files (${(JSON.stringify(fileContents).length / (1024 * 1024)).toFixed(2)} MB) from Private Repo ${owner}:${repo}`)
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(fileContents);
         } catch (authenticatedError) {

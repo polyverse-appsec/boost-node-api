@@ -4,6 +4,8 @@ import * as jwt from 'jsonwebtoken';
 
 import { getSingleSecret } from './secrets';
 
+import { HTTP_FAILURE_UNAUTHORIZED } from './utility/dispatch';
+
 export const header_X_Signed_Identity = 'X-Signed-Identity';
 export const header_X_Signing_Algorithm = 'X-Signing-Algorithm';
 
@@ -38,7 +40,7 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
         }
         if (!signingKey) {
             console.error(`Unauthorized: Signing key is required`);
-            res.status(401).send('Unauthorized');
+            res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             return undefined;
         }
     
@@ -58,14 +60,14 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
             // Check the expiration
             if (identity.expires && identity.expires < (Date.now() / 1000)) {
                 console.error(`Unauthorized: Signed identity expired`);
-                res.status(401).send('Unauthorized');
+                res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
                 return undefined;
             }
 
             email = normalizeEmail(identity.email);
         } catch (err) {
             console.error(`Unauthorized: Invalid signed identity: ${err} - Identity Header: ${identityJWT}`);
-            res.status(401).send('Unauthorized');
+            res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             return undefined;
         }
     }
@@ -75,13 +77,13 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
         const userAccountHeader = Object.keys(req.headers).find(key => key.toLowerCase() === 'x-user-account');
         if (!userAccountHeader || !req.headers[userAccountHeader]) {
             console.error(`Unauthorized: Email is required`);
-            res.status(401).send('Unauthorized');
+            res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             return undefined;
         }
         // only support this header if we are running locally and not in AWS / Cloud
         if (!process.env.ENABLE_UNSIGNED_AUTHN) {
             console.error(`Unauthorized: UNSIGNED_AUTHN is not enabled; set ENABLE_UNSIGNED_AUTHN=true to enable`);
-            res.status(401).send('Unauthorized');
+            res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             return undefined;
         } else {
             console.warn(`ENABLE_UNSIGNED_AUTHN is enabled; BUT MOST APIs will NOT work with this user authentication model, since most APIs use identity delegation`);
@@ -101,7 +103,7 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
     if (accessType === AuthType.Admin) {
         if (email !== local_sys_admin_email) {
             console.error(`Unauthorized: Admin access is required`);
-            res.status(401).send('Unauthorized');
+            res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             return undefined;
         }
         console.log(`Admin access granted: ${email}`);

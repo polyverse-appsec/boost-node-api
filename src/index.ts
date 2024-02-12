@@ -48,7 +48,14 @@ import {
     secondsBeforeRestRequestMaximumTimeout,
     logRequest,
     handleErrorResponse,
-    secondsBeforeRestRequestShortTimeout
+    HTTP_SUCCESS,
+    HTTP_FAILURE_INTERNAL_SERVER_ERROR,
+    HTTP_FAILURE_NOT_FOUND,
+    HTTP_FAILURE_BAD_REQUEST_INPUT,
+    HTTP_FAILURE_UNAUTHORIZED,
+    HTTP_FAILURE_BUSY,
+    HTTP_SUCCESS_ACCEPTED,
+    HTTP_SUCCESS_NO_CONTENT
 } from './utility/dispatch';
 
 export const app = express();
@@ -72,7 +79,7 @@ const usFormatter = new Intl.DateTimeFormat('en-US', {
 // Error handling middleware
 app.use((err : any, req : Request, res : Response) => {
     console.error(`Request ${req} failed with error ${err}`);
-    res.status(500).send('Internal Server Error');
+    res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
 });
 */
 
@@ -147,7 +154,7 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
                 console.error(`Project is required`);
             }
 
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const email = await validateUser(req, res);
@@ -157,7 +164,7 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
 
         const projectData = await loadProjectData(email, org, project) as UserProjectData;
         if (!projectData) {
-            return res.status(404).send('Project not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
 
         const uri = new URL(projectData.resources[0].uri);
@@ -168,7 +175,7 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
         const repoName = pathSegments.pop();
         const ownerName = pathSegments.pop();
         if (!repoName || !ownerName) {
-            return res.status(400).send(`Invalid URI: ${uri}`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid URI: ${uri}`);
         }
 
         // we store the project data under the owner (instead of email) so all users in the org can see the data
@@ -183,7 +190,7 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
 
         if (body === '') {
             console.error(`${user_profile}: empty body`);
-            return res.status(400).send('Missing body');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
 
         const { _, __, resource } = req.params;
@@ -196,7 +203,7 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
 
         await storeProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status", JSON.stringify(resourceStatus));
 
-        return res.status(200).send();
+        return res.status(HTTP_SUCCESS).send();
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }
@@ -274,7 +281,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: R
         if (!req.query.uri) {
             if (!req.query.repo && !req.query.path) {
                 console.error(`URI is required`);
-                return res.status(400).send('URI or Repo/Path is required');
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('URI or Repo/Path is required');
             }
         }
 
@@ -292,7 +299,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: R
                     uriString = decodeURIComponent(uriString);
                 } catch (error) {
                     console.error(`Invalid encoded URI: ${uriString}`);
-                    return res.status(400).send('Invalid encoded URI');
+                    return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded URI');
                 }
             }
 
@@ -300,7 +307,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: R
                 uri = new URL(uriString as string);
             } catch (error) {
                 console.error(`Invalid URI: ${uriString}`);
-                return res.status(400).send('Invalid URI');
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
             }
         } else if (repoString && pathString) {
             if (repoString.match(/%[0-9a-f]{2}/i)) {
@@ -308,21 +315,21 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: R
                     repoString = decodeURIComponent(repoString);
                 } catch (error) {
                     console.error(`Invalid encoded repo: ${repoString}`);
-                    return res.status(400).send('Invalid encoded repo');
+                    return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded repo');
                 }
             }
             try {
                 repo = new URL(repoString as string);
             } catch (error) {
                 console.error(`Invalid repo: ${repoString}`);
-                return res.status(400).send('Invalid repo');
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid repo');
             }
             if (pathString.match(/%[0-9a-f]{2}/i)) {
                 try {
                     path = decodeURIComponent(pathString);
                 } catch (error) {
                     console.error(`Invalid encoded path: ${pathString}`);
-                    return res.status(400).send('Invalid encoded path');
+                    return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded path');
                 }
             } else {
                 path = pathString;
@@ -334,7 +341,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: R
         const signedIdentity = getSignedIdentityFromHeader(req);
         if (!signedIdentity) {
             console.error(`Unauthorized: Signed Header missing`);
-            return res.status(401).send('Unauthorized');
+            return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
         }
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
         const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
@@ -359,7 +366,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_folders}`, async (req
 
         if (!req.query.uri) {
             console.error(`URI is required`);
-            return res.status(400).send('URI is required');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('URI is required');
         }
 
         let uriString = req.query.uri as string;
@@ -370,7 +377,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_folders}`, async (req
                 uriString = decodeURIComponent(uriString);
             } catch (error) {
                 console.error(`Invalid encoded URI: ${uriString}`);
-                return res.status(400).send('Invalid encoded URI');
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded URI');
             }
         }
 
@@ -379,7 +386,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_folders}`, async (req
             uri = new URL(uriString as string);
         } catch (error) {
             console.error(`Invalid URI: ${uriString}`);
-            return res.status(400).send('Invalid URI');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
         }
 
         const { org } = req.params;
@@ -388,7 +395,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_folders}`, async (req
         if (!signedIdentity) {
             console.error(`Missing signed identity - after User Validation passed`);
             return res
-                .status(401)
+                .status(HTTP_FAILURE_UNAUTHORIZED)
                 .send('Unauthorized');
         }
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
@@ -413,7 +420,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_files}`, async (req: 
 
         if (!req.query.uri) {
             console.error(`URI is required`);
-            return res.status(400).send('URI is required');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('URI is required');
         }
 
         let uriString = req.query.uri as string;
@@ -424,7 +431,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_files}`, async (req: 
                 uriString = decodeURIComponent(uriString);
             } catch (error) {
                 console.error(`Invalid encoded URI: ${uriString}`);
-                return res.status(400).send('Invalid encoded URI');
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded URI');
             }
         }
 
@@ -433,7 +440,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_files}`, async (req: 
             uri = new URL(uriString as string);
         } catch (error) {
             console.error(`Invalid URI: ${uriString}`);
-            return res.status(400).send('Invalid URI');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
         }
 
         const { org } = req.params;
@@ -442,7 +449,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_files}`, async (req: 
         if (!signedIdentity) {
             console.error(`Missing signed identity - after User Validation passed`);
             return res
-                .status(401)
+                .status(HTTP_FAILURE_UNAUTHORIZED)
                 .send('Unauthorized');
         }
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
@@ -470,7 +477,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
 
         if (!req.query.uri) {
             console.error(`URI is required`);
-            return res.status(400).send('URI is required');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('URI is required');
         }
 
         let uriString = req.query.uri as string;
@@ -481,7 +488,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
                 uriString = decodeURIComponent(uriString);
             } catch (error) {
                 console.error(`Invalid encoded URI: ${uriString}`);
-                return res.status(400).send('Invalid encoded URI');
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded URI');
             }
         }
 
@@ -490,7 +497,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
             uri = new URL(uriString as string);
         } catch (error) {
             console.error(`Invalid URI: ${uriString}`);
-            return res.status(400).send('Invalid URI');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
         }
 
         const { org } = req.params;
@@ -499,7 +506,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
         if (!signedIdentity) {
             console.error(`Missing signed identity - after User Validation passed`);
             return res
-                .status(401)
+                .status(HTTP_FAILURE_UNAUTHORIZED)
                 .send('Unauthorized');
         }
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
@@ -525,7 +532,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_permission}`,
 
         if (!req.query.uri) {
             console.error(`URI is required`);
-            return res.status(400).send('URI is required');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('URI is required');
         }
 
         let uriString = req.query.uri as string;
@@ -536,7 +543,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_permission}`,
                 uriString = decodeURIComponent(uriString);
             } catch (error) {
                 console.error(`Invalid encoded URI: ${uriString}`);
-                return res.status(400).send('Invalid encoded URI');
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded URI');
             }
         }
 
@@ -545,14 +552,14 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_permission}`,
             uri = new URL(uriString as string);
         } catch (error) {
             console.error(`Invalid URI: ${uriString}`);
-            return res.status(400).send('Invalid URI');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
         }
 
         // check if this user has access to this private repo
         const accessGranted : boolean = await verifyUserAccessToPrivateRepo(email, uri);
 
         res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(accessGranted);
     } catch (error) {
@@ -569,7 +576,7 @@ async function validateProjectRepositories(email: string, org: string, resources
             resourceUri = new URL(resource.uri);
         } catch (error) {
             console.error(`Invalid URI: ${resource.uri}`);
-            return res.status(400).send('Invalid URI');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
         }
 
         // for now, we'll validate that the resource is a valid GitHub resource
@@ -582,14 +589,14 @@ async function validateProjectRepositories(email: string, org: string, resources
         // Validate that the resource is from github.com
         if (!(secondLevelDomain === 'github' && topLevelDomain === 'com')) {
             console.error(`Invalid URI: ${resource.uri}`);
-            return res.status(400).send('Invalid Resource - must be Github');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid Resource - must be Github');
         }
         // get the account status
         const signedIdentity = getSignedIdentityFromHeader(req);
         if (!signedIdentity) {
             console.error(`Missing signed identity - after User Validation passed`);
             return res
-                .status(401)
+                .status(HTTP_FAILURE_UNAUTHORIZED)
                 .send('Unauthorized');
         }
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
@@ -602,7 +609,7 @@ async function validateProjectRepositories(email: string, org: string, resources
             return repoDetails.errorResponse;
         } else if (!repoDetails.data) {
             console.error(`Unable to get Repo Details and no Error found: ${resource.uri}`);
-            return res.status(500).send('Internal Server Error');
+            return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
         }
     }
     return undefined;
@@ -627,7 +634,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
             } else if (!project) {
                 console.error(`Project is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         let body = req.body;
@@ -647,7 +654,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
     
         const projectData : UserProjectData = await loadProjectData(email, org, project) as UserProjectData;
         if (!projectData) {
-            return res.status(404).send('Project not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
         Object.assign(projectData, updates);
 
@@ -666,7 +673,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
         }
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
         return handleErrorResponse(error, req, res);
@@ -691,7 +698,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             } else if (!project) {
                 console.error(`Project is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         // if req body is not a string, then we need to convert back into a normal string
@@ -714,7 +721,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
 
         if (body === '') {
             console.error(`${user_profile}: empty body`);
-            return res.status(400).send('Missing body');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
 
 
@@ -724,7 +731,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             updatedProject = JSON.parse(body);
         } catch (error) {
             console.error('Error parsing JSON:', error);
-            return res.status(400).send('Invalid JSON');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
         }
 
         const storedProject : UserProjectData = {
@@ -742,13 +749,13 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             // check if the current data is equivalent to the existing data, and if it is, then just return success and skip validation
             if (JSON.stringify(currentProjectData) === JSON.stringify(storedProject)) {
                 return res
-                    .status(200)
+                    .status(HTTP_SUCCESS)
                     .contentType('application/json')
                     .send(storedProject);
             }
         } catch (error: any) {
-            // check for 404 and ignore it - everything else, log and error and then continue
-            if (!error.message.includes('failed with status 404')) {
+            // check for HTTP_FAILURE_NOT_FOUND and ignore it - everything else, log and error and then continue
+            if (!error.message.includes('failed with status HTTP_FAILURE_NOT_FOUND')) {
                 console.error(`Unable to retrieve current project data for ${projectPath} - just post the new data - due to ${error}`);
             }
         }
@@ -789,7 +796,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
                 console.log(`TIMECHECK: TIMEOUT: ${org}:${project}:discovery timed out after ${maximumDiscoveryTimeoutOnProjectCreationInSeconds} seconds`);
             } else {
-                // This block is for handling errors, including 404 and 500 status codes
+                // This block is for handling errors, including HTTP_FAILURE_NOT_FOUND and HTTP_FAILURE_INTERNAL_SERVER_ERROR status codes
                 if (axios.isAxiosError(error) && error.response) {
                     console.log(`TIMECHECK: ${org}:${project}:discovery failed ${error.response.status}:${error.response.data} - due to error: ${error}`);
                 } else {
@@ -800,7 +807,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         });
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(storedProject);
     } catch (error) {
@@ -830,12 +837,12 @@ app.get(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request,
             } else if (!project) {
                 console.error(`Project is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const projectData = await loadProjectData(email, org, project) as UserProjectData;
         if (!projectData) {
-            return res.status(404).send('Project not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
 
         // for now, we're going to report the owner of the project as the email asking
@@ -843,7 +850,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request,
         projectData.owner = email;
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(projectData);
 
@@ -871,13 +878,13 @@ app.delete(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reque
             } else if (!project) {
                 console.error(`Project is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         await deleteProjectData(email, SourceType.General, org, project, '', 'project');
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
         return handleErrorResponse(error, req, res);
@@ -908,13 +915,13 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
         const { org, project, user } = req.query;
         if (org && typeof org !== 'string') {
             console.error(`Org must be a string`);
-            return res.status(400).send('Invalid org');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid org');
         } else if (project && typeof project !== 'string') {
             console.error(`Project must be a string`);
-            return res.status(400).send('Invalid project');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid project');
         } else if (user && typeof user !== 'string') {
             console.error(`User must be a string`);
-            return res.status(400).send('Invalid user');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid user');
         }
 
         const projectDataList : UserProjectData[] = [];
@@ -924,7 +931,7 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
         if (!projectDataRaw) {
             console.error(`No projects found due to query failure`);
             return res
-                .status(500)
+                .status(HTTP_FAILURE_INTERNAL_SERVER_ERROR)
                 .send('Internal Server Error');
         }
 
@@ -951,7 +958,7 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
         }
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(projectDataList);
 
@@ -974,7 +981,7 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
         const originalIdentityHeader = getSignedIdentityFromHeader(req);
         if (!originalIdentityHeader) {
             console.error(`Unauthorized: Signed Header missing`);
-            return res.status(401).send('Unauthorized');
+            return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
         }
 
         // get all the projects
@@ -1005,7 +1012,7 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
         }
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(projectsGroomed);
 
@@ -1113,7 +1120,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
 
         console.log(`Existing Data References: ${JSON.stringify(existingDataReferences)}`);
 
-        return res.status(200).send(existingDataReferences);
+        return res.status(HTTP_SUCCESS).send(existingDataReferences);
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }    
@@ -1159,7 +1166,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req:
         let body = req.body;
         if (!body) {
             console.error(`No body found`);
-            return res.status(400).send('Invalid body');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid body');
         }
         if (typeof body !== 'string') {
             // Check if body is a Buffer
@@ -1174,7 +1181,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req:
 
         if (body === '') {
             console.error(`${req.originalUrl}: empty body`);
-            return res.status(400).send('Missing body');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
 
         // Parse the body string to an object
@@ -1183,12 +1190,12 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req:
             updatedStatus = JSON.parse(body);
             if (updatedStatus.status !== ProjectStatus.Unknown) {
                 return res
-                    .status(400)
+                    .status(HTTP_FAILURE_BAD_REQUEST_INPUT)
                     .send('Invalid status - only Unknown status can be set');
             }
         } catch (error) {
             console.error('Error parsing JSON:', error);
-            return res.status(400).send('Invalid JSON');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
         }
 
         const { org, project } = req.params;
@@ -1203,12 +1210,12 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req:
             await storeProjectData(email, SourceType.General, org, project, '', 'status', JSON.stringify(projectStatus));
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(projectStatus);
         } else {
             return res
-                .status(404)
+                .status(HTTP_FAILURE_NOT_FOUND)
                 .send('Project Status not found');
         }
     } catch (error) {
@@ -1240,9 +1247,9 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
         if (!projectStatus) {
             // if we have no status, let's see if there's a real project here...
             const projectData = await loadProjectData(email, org, project) as UserProjectData;
-            // if no project, then just 404 so user knows not to ask again
+            // if no project, then just HTTP_FAILURE_NOT_FOUND so user knows not to ask again
             if (!projectData) {
-                return res.status(404).send('Project not found');
+                return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
             }
             // if we have a real project, and we have no status, then let's try and generate it now
             console.error(`Project Status not found; Project exists so let's refresh status`);
@@ -1265,7 +1272,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
         }
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(projectStatus);
     } catch (error) {
@@ -1326,16 +1333,16 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         try {
             projectData = await localSelfDispatch<UserProjectData>(email, getSignedIdentityFromHeader(req)!, req, projectDataUri, 'GET');
         } catch (error: any) {
-            if (error.response && error.response.status === 404) {
+            if (error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) {
                 console.error(`Project not found: ${projectDataUri}`);
-                return res.status(404).send('Project not found');
-            } else if (error.response && error.response.status === 401) {
+                return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
+            } else if (error.response && error.response.status === HTTP_FAILURE_UNAUTHORIZED) {
                 console.error(`Unauthorized: ${projectDataUri}`);
-                return res.status(401).send('Unauthorized');
+                return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             }
 
             console.error(`Unable to get project data: ${projectDataUri}`, error);
-            return res.status(500).send('Internal Server Error');
+            return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
         }
 
         const saveProjectStatusUpdate = async () => {
@@ -1360,7 +1367,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             await saveProjectStatusUpdate();
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(projectStatus);
         }
@@ -1447,7 +1454,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             await saveProjectStatusUpdate();
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(projectStatus);
         }
@@ -1466,7 +1473,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             await saveProjectStatusUpdate();
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(projectStatus);
         }        
@@ -1481,7 +1488,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             await saveProjectStatusUpdate();
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(projectStatus);
         }
@@ -1494,7 +1501,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             await saveProjectStatusUpdate();
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(projectStatus);
         }
@@ -1507,7 +1514,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             await saveProjectStatusUpdate();
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(projectStatus);
         }
@@ -1522,7 +1529,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             await saveProjectStatusUpdate();
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(projectStatus);
         }
@@ -1540,7 +1547,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             await saveProjectStatusUpdate();
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(projectStatus);
         }
@@ -1558,7 +1565,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             await saveProjectStatusUpdate();
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(projectStatus);
         }
@@ -1573,7 +1580,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         await saveProjectStatusUpdate();
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .send(projectStatus);
     } catch (error) {
         return handleErrorResponse(error, req, res);
@@ -1612,13 +1619,13 @@ app.get(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Re
         const groomStatusRaw = await getProjectData(email, SourceType.General, org, project, '', 'groom');
         if (!groomStatusRaw) {
             return res
-                .status(404)
+                .status(HTTP_FAILURE_NOT_FOUND)
                 .send('Project Groom Status not found');
         }
         const groomStatus: ProjectGroomState = JSON.parse(groomStatusRaw);
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(groomStatus);
     } catch (error) {
@@ -1726,9 +1733,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         try {
             projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, `${projectPath}/status`, 'GET');
         } catch (error: any) {
-            if (error.response && error.response.status === 404) {
+            if (error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) {
                 console.error(`Project Status not found; Project may not exist or hasn't been discovered yet`);
-                return res.status(404).send('Project not found');
+                return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
             }
             return handleErrorResponse(error, req, res, `Unable to query Project Status`);
         }
@@ -1746,7 +1753,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             await storeGroomingState(groomingState);
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(groomingState);
         }
@@ -1762,7 +1769,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 lastUpdated: Math.floor(Date.now() / 1000)
             };
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(groomingState);
         }
@@ -1781,7 +1788,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             await storeGroomingState(groomingState);
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(groomingState);
         }
@@ -1813,7 +1820,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 await storeGroomingState(groomingState);
 
                 return res
-                    .status(200)
+                    .status(HTTP_SUCCESS)
                     .contentType('application/json')
                     .send(groomingState);
             }
@@ -1859,7 +1866,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             await storeGroomingState(launchedGroomingState);
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(launchedGroomingState);
         } catch (error) {
@@ -1872,7 +1879,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             await storeGroomingState(launchedGroomingState);
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(launchedGroomingState);
         }
@@ -1901,13 +1908,13 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req:
             } else if (!project) {
                 console.error(`Project is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         await deleteProjectData(email, SourceType.General, org, project, '', 'goals');
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
         return handleErrorResponse(error, req, res);
@@ -1932,7 +1939,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
             } else if (!project) {
                 console.error(`Project is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         // if req body is not a string, then we need to convert back into a normal string
@@ -1950,7 +1957,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
 
         if (body === '') {
             console.error(`${user_profile}: empty body`);
-            return res.status(400).send('Missing body');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
 
         // Parse the body string to an object
@@ -1959,13 +1966,13 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
             updatedGoals = JSON.parse(body);
         } catch (error) {
             console.error('Error parsing JSON:', error);
-            return res.status(400).send('Invalid JSON');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
         }
 
         await storeProjectData(email, SourceType.General, org, project, '', 'goals', JSON.stringify(updatedGoals));
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(updatedGoals);
     } catch (error) {
@@ -1992,7 +1999,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Re
             } else if (!project) {
                 console.error(`Project is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const projectGoalsRaw = await getProjectData(email, SourceType.General, org, project, '', 'goals');
@@ -2003,7 +2010,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Re
         }
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(projectGoals);
     } catch (error) {
@@ -2036,7 +2043,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_config_boostignore}`, a
         const ignoreFileSpecs : string[] = Array.from(combinedIgnorePatterns);
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(ignoreFileSpecs);
     } catch (error) {
@@ -2062,12 +2069,12 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async 
             } else if (!project) {
                 console.error(`Project is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const projectData = await loadProjectData(email, org, project) as UserProjectData;
         if (!projectData) {
-            return res.status(404).send('Project not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
 
         const uri = new URL(projectData.resources[0].uri);
@@ -2086,11 +2093,11 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async 
         const resourceData = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, '', resource);
         if (!resourceData) {
             console.error(`${user_project_org_project_data_resource}: not found: ${ownerName}/${repoName}/data/${resource}`);
-            return res.status(404).send('Resource not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Resource not found');
         }
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(resourceData);
     } catch (error) {
@@ -2120,12 +2127,12 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
             } else if (!project) {
                 console.error(`Project is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const projectData = await loadProjectData(email, org, project) as UserProjectData;
         if (!projectData) {
-            return res.status(404).send('Project not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
 
         const uri = new URL(projectData.resources[0].uri);
@@ -2149,7 +2156,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
             // resource doesn't exist, so just report missing/Not Found
             if (!resourceData) {
                 console.error(`${user_project_org_project_data_resource_status}: not found: ${ownerName}/${repoName}/data/${resource}`);
-                return res.status(404).send('Resource not found');
+                return res.status(HTTP_FAILURE_NOT_FOUND).send('Resource not found');
             }
             // resource exists, so we'll generate the status
             const resourceStatusWithTimestamp : ResourceStatusState = {
@@ -2163,7 +2170,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
         const resourceStatus : ResourceStatusState = JSON.parse(resourceStatusRaw);
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(resourceStatus);
     } catch (error) {
@@ -2188,12 +2195,12 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource}`, asy
             } else if (!project) {
                 console.error(`Project is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const projectData = await loadProjectData(email, org, project) as UserProjectData;
         if (!projectData) {
-            return res.status(404).send('Project not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
 
         const uri = new URL(projectData.resources[0].uri);
@@ -2213,7 +2220,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource}`, asy
         await deleteProjectData(email, SourceType.GitHub, ownerName, repoName, '', resource);
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
         return handleErrorResponse(error, req, res);
@@ -2245,12 +2252,12 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource_genera
             } else if (!project) {
                 console.error(`Project is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const projectData = await loadProjectData(email, org, project) as UserProjectData;
         if (!projectData) {
-            return res.status(404).send('Project not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
 
         const uri = new URL(projectData.resources[0].uri);
@@ -2269,7 +2276,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource_genera
         await deleteProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`);
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
         return handleErrorResponse(error, req, res);
@@ -2293,12 +2300,12 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
             } else if (!project) {
                 console.error(`Project is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const projectData = await loadProjectData(email, org, project) as UserProjectData;
         if (!projectData) {
-            return res.status(404).send('Project not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
 
         const uri = new URL(projectData.resources[0].uri);
@@ -2318,7 +2325,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
             console.log(`${user_project_org_project_data_resource_generator}: simulated idle data`);
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send({
                     status: TaskStatus.Idle,
@@ -2328,7 +2335,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
             const generatorData = JSON.parse(currentInput) as GeneratorState;
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(generatorData);
         }
@@ -2356,12 +2363,12 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
                 console.error(`Project is required`);
             }
 
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
         if (!loadedProjectData) {
-            return res.status(404).send('Project not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
         const projectData = loadedProjectData as UserProjectData;
 
@@ -2378,7 +2385,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
             await getProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`);
         if (!currentGeneratorState) {
             return res
-                .status(404)
+                .status(HTTP_FAILURE_NOT_FOUND)
                 .send('Generator not found');
         } else if (typeof currentGeneratorState === 'string') {
             currentGeneratorState = JSON.parse(currentGeneratorState) as GeneratorState;
@@ -2394,7 +2401,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         }
         if (body === '') {
             console.error(`PATCH ${user_project_org_project_data_resource_generator}: empty body`);
-            return res.status(400).send('Missing body');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
 
         let input : GeneratorState;
@@ -2402,11 +2409,11 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
             input = JSON.parse(body);
         } catch (error) {
             console.error('Error parsing JSON:', error);
-            return res.status(400).send('Invalid JSON Body');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
         }
         if (input.status !== currentGeneratorState.status) {
             console.error(`Invalid PATCH status: ${input.status}`);
-            return res.status(400).send(`Invalid PATCH status: ${input.status}`)
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid PATCH status: ${input.status}`)
         }
         if (input.lastUpdated) {
             currentGeneratorState.lastUpdated = input.lastUpdated;
@@ -2438,13 +2445,13 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
             await updateGeneratorState(currentGeneratorState);
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(currentGeneratorState);
         } else {
             // patch is only supported for processing tasks
             console.error(`Invalid PATCH status: ${currentGeneratorState.status}`);
-            return res.status(400).send(`Invalid PATCH status: ${currentGeneratorState.status}`)
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid PATCH status: ${currentGeneratorState.status}`)
         }
     } catch (error) {
         return handleErrorResponse(error, req, res);
@@ -2469,19 +2476,19 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 console.error(`Project is required`);
             }
 
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
         if (!loadedProjectData) {
-            return res.status(404).send('Project not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
         const projectData = loadedProjectData as UserProjectData;
 
         // if we have no resources to generate data from, then we're done
         if (!projectData.resources?.length) {
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send({
                     status: TaskStatus.Idle,
@@ -2520,7 +2527,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
         }
         if (body === '') {
             console.error(`PUT ${user_project_org_project_data_resource_generator}: empty body`);
-            return res.status(400).send('Missing body');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
 
         let input : GeneratorState;
@@ -2528,7 +2535,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             input = JSON.parse(body);
         } catch (error) {
             console.error('Error parsing JSON:', error);
-            return res.status(400).send('Invalid JSON Body');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
         }
         let userGeneratorRequest : GeneratorState = {
             status: input.status
@@ -2566,7 +2573,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     email, getSignedIdentityFromHeader(req)!, req,
                     `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs, false);
             } catch (error: any) {
-                if (!error.response || error.response.status !== 404) {
+                if (!error.response || error.response.status !== HTTP_FAILURE_NOT_FOUND) {
                     throw error;
                 }
             }
@@ -2650,7 +2657,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     await updateGeneratorState(currentGeneratorState);
 
                     // we errored out, so we'll return an error HTTP status code for operation failed, may need to retry
-                    return res.status(500).send();
+                    return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send();
                 }
 
                 // if we're processing and not yet completed the full stages, then we need to process the next stage
@@ -2703,7 +2710,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                                     console.log(`TIMECHECK: TIMEOUT: ${org}:${project}:${resource}:${currentGeneratorState.stage} async processing timed out after 1 seconds`);
                                 }
                             } else {
-                                // This block is for handling errors, including 404 and 500 status codes
+                                // This block is for handling errors, including HTTP_FAILURE_NOT_FOUND and HTTP_FAILURE_INTERNAL_SERVER_ERROR status codes
                                 if (axios.isAxiosError(error) && error.response) {
                                     console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} async processing failed due to error: ${error.response.status}:${error.response.statusText} due to error:${error}`);
                                 } else {
@@ -2718,7 +2725,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
                     // Return a response immediately without waiting for the async process
                     return res
-                        .status(202)
+                        .status(HTTP_SUCCESS_ACCEPTED)
                         .contentType('application/json')
                         .send(currentGeneratorState);
                 }
@@ -2736,7 +2743,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         // if caller wants us to be idle, and we're busy processing, we'll return busy HTTP
                         //      status code
                         return res
-                            .status(409)
+                            .status(HTTP_FAILURE_BUSY)
                             .contentType('application/json')
                             .send(currentGeneratorState);
                     } else {
@@ -2749,18 +2756,18 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             } else if (userGeneratorRequest.status === TaskStatus.Error) {
                 // external caller can't set the status to error, so we'll return bad input HTTP status code
                 console.error(`Invalid input status: ${userGeneratorRequest.status}`);
-                return res.status(400).send();
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send();
             } else {
                 // external caller can't set the status to unknown, so we'll return bad input HTTP status code
                 console.error(`Invalid input status: ${userGeneratorRequest.status}`);
-                return res.status(400).send();
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send();
             }
         } catch (error) {
             return handleErrorResponse(error, req, res, `Unable to handle task request`);
         }
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(currentGeneratorState);
     } catch (error) {
@@ -2817,12 +2824,12 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
                 console.error(`Project is required`);
             }
 
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
         const { _, __, resource } = req.params;
         if (!resource) {
             console.error(`Resource is required`);
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         let body = req.body;
@@ -2841,7 +2848,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
                     input = JSON.parse(body);
                 } catch (error) {
                     console.error('Error parsing JSON:', error);
-                    return res.status(400).send('Invalid JSON Body');
+                    return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
                 }
 
                 resourceGeneratorProcessState = {
@@ -2852,7 +2859,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
 
         const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
         if (!loadedProjectData) {
-            return res.status(404).send('Project not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
         const projectData = loadedProjectData as UserProjectData;
 
@@ -2870,7 +2877,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
             };
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(nextGeneratorState);
         } catch (error) {
@@ -2890,7 +2897,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
                     };
         
                     return res
-                        .status(200)
+                        .status(HTTP_SUCCESS)
                         .contentType('application/json')
                         .send(nextGeneratorState);
                 }
@@ -2924,12 +2931,12 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                 console.error(`Project is required`);
             }
 
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const userProjectData = await loadProjectData(email, org, project) as UserProjectData;
         if (!userProjectData) {
-            return res.status(404).send('Project not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
 
         if (!userProjectData.resources || userProjectData.resources.length === 0) {
@@ -2942,7 +2949,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
             // if we have no resources, we won't generate any data files
             // in the future, we should support generating blank or minimal data files so user can chat without Repository data
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(emptyProjectDataFileIds);
         }
@@ -2956,7 +2963,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
         const ownerName = pathSegments.pop();
         if (!repoName || !ownerName) {
             console.error(`Invalid URI: ${uri}`);
-            return res.status(400).send('Invalid URI');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
         }
 
         const projectDataNames = [];
@@ -3054,7 +3061,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
             if (missingDataTypes.length < projectDataTypes.length) {
                 console.warn(`${req.originalUrl}: Missing data for ${missingDataTypes.join(", ")}`);
             } else {
-                return res.status(204).send(`No data found for ${missingDataTypes.join(", ")}`);
+                return res.status(HTTP_SUCCESS_NO_CONTENT).send(`No data found for ${missingDataTypes.join(", ")}`);
             }
         }
 
@@ -3077,7 +3084,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
             await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', JSON.stringify(projectDataFileIds));
         }
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(projectDataFileIds);
     } catch (error) {
@@ -3107,29 +3114,29 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_references}`, asyn
                 console.error(`Project is required`);
             }
 
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const projectData = await loadProjectData(email, org, project) as UserProjectData;
         if (!projectData) {
-            return res.status(404).send('Project not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
 
         if (!projectData.resources || projectData.resources.length === 0) {
             console.error(`No resources found in project: ${projectData.org}/${projectData.name}`);
-            return res.status(400).send('No resources found in project');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('No resources found in project');
         }
         const uri = new URL(projectData.resources[0].uri);
 
         const dataReferencesRaw : any = await getProjectData(email, SourceType.General, projectData.org, projectData.name, '', 'data_references');
         if (!dataReferencesRaw) {
             console.error(`No resources found in project: ${projectData.org}/${projectData.name}`);
-            return res.status(400).send('No data references found for project');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('No data references found for project');
         }
         const dataReferences = JSON.parse(dataReferencesRaw) as ProjectDataReference[];
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(dataReferences);
     } catch (error) {
@@ -3155,7 +3162,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, a
             } else if (!project) {
                 console.error(`Project is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const dataReferencesRaw = await getProjectData(email, SourceType.General, org, project, '', 'data_references');
@@ -3181,7 +3188,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, a
         }
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
         return handleErrorResponse(error, req, res);
@@ -3215,7 +3222,7 @@ app.delete(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}
             else if (!analysisType) {
                 console.error(`Analysis type is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         let decodedPath;
@@ -3223,13 +3230,13 @@ app.delete(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}
             decodedPath = Buffer.from(pathBase64, 'base64').toString('utf8');
         } catch (error) {
             console.error(`Error decoding path: ${pathBase64}`, error);
-            return res.status(400).send(`Invalid resource path`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid resource path`);
         }
 
         await deleteProjectData(email, convertToSourceType(source), owner, project, decodedPath, analysisType);
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .send();
 
     } catch (error) {
@@ -3263,7 +3270,7 @@ app.get(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, 
             else if (!analysisType) {
                 console.error(`Analysis type is required`);
             }
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         let decodedPath;
@@ -3271,16 +3278,16 @@ app.get(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, 
             decodedPath = Buffer.from(pathBase64, 'base64').toString('utf8');
         } catch (error) {
             console.error(`Error decoding path: ${pathBase64}`, error);
-            return res.status(400).send(`Invalid resource path`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid resource path`);
         }
 
         const data = await getProjectData(email, convertToSourceType(source), owner, project, decodedPath, analysisType);
         if (!data) {
             console.error(`Resource not found: ${source}, ${owner}, ${project}, ${decodedPath}, ${analysisType}`);
-            return res.status(404).send('Resource not found');
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Resource not found');
         }
 
-        return res.status(200).contentType('text/plain').send(data);
+        return res.status(HTTP_SUCCESS).contentType('text/plain').send(data);
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }
@@ -3293,14 +3300,14 @@ app.post(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`,
     try {
         const email = await validateUser(req, res);
         if (!email) {
-            return res.status(401).send('Unauthorized');
+            return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
         }
 
         const { source, owner, project, pathBase64, analysisType } = req.params;
 
         if (!source || !owner || !project || !pathBase64 || !analysisType) {
             console.error('Missing required parameters in request:', req.params);
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         let decodedPath;
@@ -3308,16 +3315,16 @@ app.post(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`,
             decodedPath = Buffer.from(pathBase64, 'base64').toString('utf8');
         } catch (error) {
             console.error(`Error decoding path: ${pathBase64}`, error);
-            return res.status(400).send('Invalid resource path');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const data = req.body; // Assuming data is sent directly in the body
         if (!data) {
-            return res.status(400).send('No data provided');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('No data provided');
         }
 
         await storeProjectData(email, convertToSourceType(source), owner, project, decodedPath, analysisType, data);
-        res.sendStatus(200);
+        res.sendStatus(HTTP_SUCCESS);
 
     } catch (error) {
         return handleErrorResponse(error, req, res);
@@ -3334,7 +3341,7 @@ const handleProxyRequest = async (req: Request, res: Response) => {
 
         const email = await validateUser(req, res);
         if (!email) {
-            return res.status(401).send('Unauthorized');
+            return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
         }
 
         const signedIdentity = await signedAuthHeader(email, org);
@@ -3387,7 +3394,7 @@ const handleProxyRequest = async (req: Request, res: Response) => {
             } else {
                 console.error(`Unknown error during proxy request for ${externalEndpoint} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
             }
-            return res.status(500).send('Internal Server Error');
+            return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
         }
     } catch (error) {
         return handleErrorResponse(error, req, res);
@@ -3419,20 +3426,20 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
 
         const email = await validateUser(req, res);
         if (!email) {
-            return res.status(401).send('Unauthorized');
+            return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
         }
 
         const signedIdentity = getSignedIdentityFromHeader(req);
         if (!signedIdentity) {
             console.error(`Missing signed identity - after User Validation passed`);
             return res
-                .status(401)
+                .status(HTTP_FAILURE_UNAUTHORIZED)
                 .send('Unauthorized');
         }
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(accountStatus);
     } catch (error) {
@@ -3456,7 +3463,7 @@ app.delete(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Res
         console.log(`${user_profile}: deleted data`);
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
         return handleErrorResponse(error, req, res);
@@ -3494,7 +3501,7 @@ app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
         }
         if (body === '') {
             console.error(`${user_profile}: empty body`);
-            return res.status(400).send('Missing body');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
 
         let newProfileData : UserProfile;
@@ -3502,7 +3509,7 @@ app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
             newProfileData = JSON.parse(body) as UserProfile;
         } catch (error) {
             console.error(`Error parsing JSON: ${body}`, error);
-            return res.status(400).send('Invalid JSON Body');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
         }
 
         const profileData: UserProfile = {};
@@ -3512,7 +3519,7 @@ app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
         await storeProjectData(email, SourceType.General, 'user', '', '', 'profile', JSON.stringify(profileData));
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(profileData);
     } catch (error) {
@@ -3538,7 +3545,7 @@ app.get(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
         }
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(profileData);
     } catch (error) {
@@ -3562,12 +3569,12 @@ app.get(`${api_root_endpoint}/${api_status}`, async (req: Request, res: Response
         const version = process.env.APP_VERSION;
         if (!version) {
             console.error(`Missing APP_VERSION environment variable`);
-            return res.status(500).send('Internal Server Error');
+            return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
         }
         const type = process.env.DEPLOYMENT_STAGE;
         if (!type) {
             console.error(`Missing DEPLOYMENT_STAGE environment variable`);
-            return res.status(500).send('Internal Server Error');
+            return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
         }
 
         const status : ServiceStatusState = {
@@ -3577,7 +3584,7 @@ app.get(`${api_root_endpoint}/${api_status}`, async (req: Request, res: Response
         };
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(status);
     } catch (error) {
@@ -3591,7 +3598,7 @@ app.get("/test", (req: Request, res: Response, next) => {
         logRequest(req);
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType("text/plain")
             .send("Test HTTP GET Ack");
     } catch (error) {
@@ -3636,7 +3643,7 @@ app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: R
                 groomingInterval = parseInt(body);
             } catch (error) {
                 console.error(`Error parsing numeric: ${body}`, error);
-                return res.status(400).send('Invalid Numberic Body');
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid Numberic Body');
             }
         }
 
@@ -3652,9 +3659,9 @@ app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: R
         };
 
         if (!process.env.IS_OFFLINE) {
-            // if we're in AWS - and not running offline - then fail this call with a 400
+            // if we're in AWS - and not running offline - then fail this call with a HTTP_FAILURE_BAD_REQUEST_INPUT
             console.error(`Timer API is not available in AWS`);
-            return res.status(400).send('Bad Request');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Bad Request');
         }
 
         if (groomingInterval === -1) {
@@ -3663,7 +3670,7 @@ app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: R
             await callTimerAPI();
 
             return res
-                .status(200)
+                .status(HTTP_SUCCESS)
                 .contentType("application/json")
                 .send(groomingInterval.toString());
         }
@@ -3683,7 +3690,7 @@ app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: R
         
         // return the new timer interval
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType("application/json")
             .send(groomingInterval.toString());
     } catch (error) {
@@ -3708,7 +3715,7 @@ app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res:
         if (!originalIdentity) {
             console.error(`Missing signed identity - after User Validation passed`);
             return res
-                .status(401)
+                .status(HTTP_FAILURE_UNAUTHORIZED)
                 .send('Unauthorized');
         }
 
@@ -3720,7 +3727,7 @@ app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res:
         }
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType("text/plain")
             .send(`Timer HTTP POST Ack: ${currentTimeinSeconds}`);
     } catch (error) {
@@ -3736,7 +3743,7 @@ app.post("/test", (req: Request, res: Response, next) => {
         const data = req.body;
 
         return res
-            .status(200)
+            .status(HTTP_SUCCESS)
             .contentType("text/plain")
             .send(`Test HTTP POST Ack: ${data}`);
     } catch (error) {
