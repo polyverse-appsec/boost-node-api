@@ -2556,6 +2556,8 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 // if we're still processing, then we'll skip a full project refresh and resource upload
                 //  and wait for a terminal state - complete/idle or error
                 return;
+            } else if (generatorState.status === TaskStatus.Idle && generatorState.stage !== Stages.Complete) {
+                // if we're idle, but not complete, then we'll skip a full project refresh and resource upload
             }
 
             // we have completed all stages or reached a terminal point (e.g. error or non-active updating)
