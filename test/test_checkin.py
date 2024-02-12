@@ -136,6 +136,10 @@ class BoostBackendCheckinSuite(unittest.TestCase):
 
         print("Project is Fully Synchronized - Test success!")
 
+        # refresh the data_references (and associated openai files)
+        response = requests.put(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data_references", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
     def test_user_project_resource_creation_public_project(self):
         self.helper_test_user_project_resource_creation_project(private=False)
 

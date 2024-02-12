@@ -58,22 +58,13 @@ import {
     HTTP_SUCCESS_NO_CONTENT
 } from './utility/dispatch';
 
+import { usFormatter } from './utility/log';
+
 export const app = express();
 
 // set limits to 1mb for text and 10mb for json
 app.use(express.json({ limit: '10mb' })); // Make sure to use express.json middleware to parse json request body
 app.use(express.text({ limit: '5mb' })); // Make sure to use express.text middleware to parse text request body
-
-// for pretty printing dates in error messages and logs
-const usFormatter = new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-  });
 
 /*
 // Error handling middleware

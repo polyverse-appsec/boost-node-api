@@ -1,6 +1,8 @@
 import { getSecretsAsObject as getSecretsAsObject } from './secrets';
 import { ProjectDataReference } from './types/ProjectDataReference';
 
+import { usFormatter } from './utility/log';
+
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 
@@ -101,7 +103,6 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
     const createFileRest = 'https://api.openai.com/v1/files';
 
     const dataSize = Buffer.byteLength(data, 'utf8');
-    console.log(`createAssistantFile for (${dataSize} bytes): ${dataFilename}`);
 
     const formData = new FormData();
     formData.append('purpose', 'assistants');
@@ -123,6 +124,9 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
         return simulatedFileData
     }
 
+    // get the current date time as a us formatted string
+    const currentTime = usFormatter.format(new Date());
+
     const response = await fetch(createFileRest, {
         method: 'POST',
         headers: {
@@ -132,32 +136,37 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
         body: formData
     });
 
-    if (!response.ok) {
-        const errorText = await response.text();
-        try {
-            const errorObj = errorText ? JSON.parse(errorText) : null;
+    if (response.ok) {
+        console.log(`${currentTime} createAssistantFile:UPLOAD:SUCEEDED: ${dataFilename} (${dataSize} bytes)`);
 
-            // Check if the error is due to rate limiting
-            if (response.status === 429 && errorObj && errorObj.error && errorObj.error.code === "rate_limit_exceeded") {
-                throw new Error(`Rate limit exceeded: ${errorObj.error.message}`);
-            } else {
-                // For other errors, include the original error message
-                throw new Error(`OpenAI Upload failure for ${dataFilename} status: ${response.status}, error: ${errorText}`);
-            }
-        } catch (error: any) {
-            // check if JSON.parse failed
-            if (error instanceof SyntaxError) {
-                // Handle JSON parsing error
-                throw new Error(`Error parsing response from OpenAI for ${dataFilename}: ${error.message}`);
-            } else {
-                // Rethrow the original error if it's not a parsing error
-                throw new Error(`OpenAI Upload failure for ${dataFilename} status: ${response.status}, error: ${errorText} - cascading error: ${error}`);
-            }
-        }
+        const responseData: OpenAIFileUploadResponse = await response.json() as OpenAIFileUploadResponse;
+        return responseData; // Return only the id from the response
     }
 
-    const responseData: OpenAIFileUploadResponse = await response.json() as OpenAIFileUploadResponse;
-    return responseData; // Return only the id from the response
+    const errorText = await response.text();
+    console.log(`${currentTime} createAssistantFile:UPLOAD:FAILED(${response.status}): ${dataFilename} (${dataSize} bytes) due to error ${errorText}; Headers:${JSON.stringify(response.headers)}`);
+
+    let errorObj = undefined;
+    try {
+        errorObj = errorText ? JSON.parse(errorText) : null;
+
+        // Check if the error is due to rate limiting
+        if (response.status === 429 && errorObj && errorObj.error && errorObj.error.code === "rate_limit_exceeded") {
+            throw new Error(`Rate limit exceeded: ${errorObj.error.message}`);
+        } else {
+            // For other errors, include the original error message
+            throw new Error(`OpenAI Upload failure for ${dataFilename} status: ${response.status}, error: ${errorText}`);
+        }
+    } catch (error: any) {
+        // check if JSON.parse failed
+        if (error instanceof SyntaxError) {
+            // Handle JSON parsing error
+            throw new Error(`Error parsing response from OpenAI for ${dataFilename}: ${error.message}`);
+        } else {
+            // Rethrow the original error if it's not a parsing error
+            throw new Error(`OpenAI Upload failure for ${dataFilename} status: ${response.status}, error: ${errorObj?JSON.stringify(errorObj):errorText} - cascading error: ${error}`);
+        }
+    }
 };
 
 export const deleteAssistantFile = async (fileId: string): Promise<void> => {
