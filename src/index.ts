@@ -76,6 +76,12 @@ app.use((err : any, req : Request, res : Response) => {
 });
 */
 
+// for debugging only
+if (process.env.IS_OFFLINE) {
+    process.env.SIMULATE_OPENAI_UPLOAD = 'true';
+    process.env.ONE_AI_SPEC = 'true';
+}
+
 async function splitAndStoreData(
     email: string,
     sourceType: SourceType,
@@ -2998,9 +3004,17 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                     //      the newer version will not be uploaded. This would be fixed by storing a hash or timestamp of the resource
                     //      uploaded and storing that in the project data reference as well - but for now, we'll ignore it, since
                     //      this is a small window, and ANY future upload of the resource will resolve the issue.
-                    if (lastUploaded && lastUploaded > resourceStatus.lastUpdated) {
-                        console.debug(`${req.originalUrl}: Skipping upload of ${projectDataTypes[i]} - likely uploaded at ${lastUploaded} and resource updated at ${resourceStatus.lastUpdated}`);
-                        continue;
+                    if (lastUploaded) {
+                        const lastUploadedDate = new Date(lastUploaded * 1000);
+                        const resourceStatusDate = new Date(resourceStatus.lastUpdated * 1000);
+                        const timeDifference = resourceStatusDate.getTime() - lastUploadedDate.getTime();
+                        const timeDifferenceInSeconds = timeDifference / 1000;
+                        if (lastUploaded > resourceStatus.lastUpdated) {
+                            console.debug(`${req.originalUrl}: Skipping upload of ${projectDataTypes[i]} - likely uploaded at ${usFormatter.format(lastUploadedDate)} and resource updated at ${usFormatter.format(resourceStatusDate)}`);
+                            continue;
+                        } else {
+                            console.debug(`${req.originalUrl}: Uploading ${projectDataTypes[i]} from ${usFormatter.format(resourceStatusDate)}: ${timeDifferenceInSeconds} seconds out of sync; last uploaded at ${usFormatter.format(new Date(resourceStatus.lastUpdated * 1000))}`);
+                        }
                     }
                 } catch (error) {
                     console.error(`${req.originalUrl} Refreshing upload for ${projectDataTypes[i]} due to error checking last upload time: `, error);

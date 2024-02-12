@@ -13,8 +13,6 @@
             "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/serverless",
             "env": {
                 "NODE_ENV": "development",
-                "SIMULATE_OPENAI_UPLOAD": "true",
-                "ONE_AI_SPEC": "true",
             },
             "console": "integratedTerminal",
             "sourceMaps": true,
