@@ -3019,9 +3019,13 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                         continue;
                     } 
 
-                    console.debug(`${req.originalUrl}: Uploading ${projectDataTypes[i]} from ${usFormatter.format(resourceStatusDate)}: ${timeDifferenceInSeconds} seconds out of sync; last uploaded at ${lastUploadedDate?usFormatter.format(lastUploadedDate):"never"}`);
+                    if (lastUploaded) {
+                        console.debug(`${req.originalUrl}: Uploading ${projectDataTypes[i]} (${projectData.length} bytes) from ${usFormatter.format(resourceStatusDate)}: ${timeDifferenceInSeconds} seconds out of sync; last uploaded at ${usFormatter.format(lastUploadedDate)}`);
+                    } else {
+                        console.debug(`${req.originalUrl}: Uploading ${projectDataTypes[i]} (${projectData.length} bytes) from ${usFormatter.format(resourceStatusDate)}: never uploaded"}`);
+                    }
                 } catch (error) {
-                    console.error(`${req.originalUrl} Uploading ${projectDataTypes[i]} due to error checking last upload time: `, error);
+                    console.error(`${req.originalUrl} Uploading ${projectDataTypes[i]} (${projectData.length} bytes) due to error checking last upload time: `, error);
                 }
                 
                 if (process.env.TRACE_LEVEL) {
