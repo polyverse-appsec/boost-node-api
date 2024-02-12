@@ -755,7 +755,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             }
         } catch (error: any) {
             // check for HTTP_FAILURE_NOT_FOUND and ignore it - everything else, log and error and then continue
-            if (!error.message.includes('failed with status HTTP_FAILURE_NOT_FOUND')) {
+            if (!error.message.includes('failed with status 404')) {
                 console.error(`Unable to retrieve current project data for ${projectPath} - just post the new data - due to ${error}`);
             }
         }
@@ -3175,7 +3175,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, a
         } else {
             const dataReferences = JSON.parse(dataReferencesRaw) as ProjectDataReference[];
             for (let i = 0; i < dataReferences.length; i++) {
-                if (dataReferences[i].name.includes('simulate')) {
+                if (dataReferences[i].id.includes('simulate')) {
                     console.warn(`${req.originalUrl} Skipping deletion of simulate data: ${dataReferences[i].name}`);
                     continue;
                 }
