@@ -3152,10 +3152,14 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, a
         } else {
             const dataReferences = JSON.parse(dataReferencesRaw) as ProjectDataReference[];
             for (let i = 0; i < dataReferences.length; i++) {
+                if (dataReferences[i].name.includes('simulate')) {
+                    console.warn(`${req.originalUrl} Skipping deletion of simulate data: ${dataReferences[i].name}`);
+                    continue;
+                }
                 try {
                     await deleteAssistantFile(dataReferences[i].id);
                 } catch (error) {
-                    console.error(`Error deleting file ${dataReferences[i].id}:`, error);
+                    console.warn(`Error deleting file ${dataReferences[i].id}:`, error);
                 }
             }
 

@@ -109,16 +109,16 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
 
     if (process.env.SIMULATE_OPENAI_UPLOAD) {
         // create a random filename that looks like file-UiXGn8C8EspnjK6mkezQMhhh
-        const simulatedFileId = `file-${Math.random().toString(36).substring(7)}`;
+        const simulatedFileId = `file-simulate-${Math.random().toString(36).substring(24)}`;
         const simulatedFileData : OpenAIFileUploadResponse = {
             id: simulatedFileId,
             object: 'file',
             bytes: dataSize,
-            created_at: Date.now(),
+            created_at: Date.now() / 1000,
             filename: dataFilename,
             purpose: 'assistants',
         };
-        console.error(`Simulated file upload: ${simulatedFileData.id} ${simulatedFileData.filename} at ${simulatedFileData.created_at} bytes: ${simulatedFileData.bytes}`);
+        console.warn(`SIMULATED: OpenAI file upload: ${simulatedFileData.id} ${simulatedFileData.filename} at ${simulatedFileData.created_at} bytes: ${simulatedFileData.bytes}`);
 
         return simulatedFileData
     }

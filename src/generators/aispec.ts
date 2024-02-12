@@ -192,10 +192,12 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                     if (filteredFileContents.length === 0) {
                         nextStage = Stages.Complete;
                     } else {
-                        console.error(`Processing ONE AI Spec for testing only`);
-                        nextStage = Stages.Complete; // short-circuit after one spec for testing
-
-//                        nextStage = ArchitecturalSpecificationStage.FileSummarization;
+                        if (process.env.ONE_AI_SPEC) {
+                            console.warn(`Processing ONE AI Spec for testing only`);
+                            nextStage = Stages.Complete; // short-circuit after one spec for testing
+                        } else {
+                            nextStage = ArchitecturalSpecificationStage.FileSummarization;
+                        }
                     }
                 }
             }
