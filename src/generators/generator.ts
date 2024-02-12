@@ -75,7 +75,7 @@ export class Generator {
         } else {
             console.debug(`${this.projectData.org}:${this.projectData.name} ${this.dataType} No Data Generated - Skipping Save`);
         }
-        await this.updateProgress('Finished Stage ' + stage);
+        await this.updateProgress('Finished Stage ' + this.currentStage);
 
         return nextStage;
     }
@@ -246,7 +246,7 @@ export class Generator {
             throw new Error('Current Stage not defined');
         }
 
-        console.log(`Progress Update on Stage ${this.currentStage}: ${JSON.stringify(state)}`);
+        console.log(`${this.projectData.org}:${this.projectData.name} Progress Update on Stage ${this.currentStage}: ${JSON.stringify(state)}`);
 
         const authHeader = await signedAuthHeader(this.email);
         const response = await fetch(this.resourceUri + `/generator`, {
