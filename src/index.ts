@@ -2561,6 +2561,11 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             }
 
             // we have completed all stages or reached a terminal point (e.g. error or non-active updating)
+            if (generatorState.status === TaskStatus.Idle && generatorState.stage === Stages.Complete) {
+                console.debug(`${req.originalUrl}: Completed all stages`);
+            } else if (generatorState.status === TaskStatus.Error) {
+                console.debug(`${req.originalUrl}: Generator errored out: ${generatorState.status_details}`);
+            }
 
             const projectStatusRefreshDelayInMs = 250;
 
