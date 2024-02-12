@@ -26,6 +26,7 @@ Polyverse Boost ReST API (Backend)
 - Ensure all Resources uploaded to OpenAI include the account email (along with project owner and project name) - for account data isolation
 - Add support for simulating OpenAI file uploads (e.g. for testing) - by setting the environment variable SIMULATE_OPENAI_UPLOAD
 - Reset the Project data_references to empty if the project is reset with no repos (e.g. PATCH /api/user_project/{org}/{project} to no repos)
+- Enable Serverless-Offline caching of Secrets from AWS Secret Manager (e.g. for JWT Public Key) - to reduce AWS Secret Manager calls
 
 ### Bug Fixes
 - Fix error handling for missing repo param when retrieving a file from GitHub
