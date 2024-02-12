@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.10.0: February 9th, 2024
+## Version 0.10.0: February 12th, 2024
 
 ### New Features
 - Add GitHub Project/Repo check service API - allowing a user to check if they can access a GitHub Project/Repo
