@@ -445,10 +445,14 @@ export const deleteOpenAIFiles = async (email?: string, org?: string, project?: 
         throw new Error('OpenAI API key not found');
     }
 
+    const searchParameters = `email:${email?email:"ANY"}, org:${org?org:"ANY"}, project:${project?project:"ANY"}, repoUri:${repoUri?repoUri:"ANY"}, dataType:${dataType?dataType:"ANY"}`;
+
     const getFilesRestEndpoint = 'https://api.openai.com/v1/files';
 
     const startTime = Date.now() / 1000;
     const currentTime = usFormatter.format(new Date(startTime));
+
+    console.info(`${currentTime} deleteOpenAIFiles:STARTED: ${searchParameters}`);
 
     const response = await fetch(getFilesRestEndpoint, {
         method: 'GET',
@@ -457,16 +461,17 @@ export const deleteOpenAIFiles = async (email?: string, org?: string, project?: 
         },
     });
 
+    const deleteCompletedTime = usFormatter.format(new Date());
+
     const deletionTime = Date.now() / 1000;
     const callTimeInSeconds = deletionTime - startTime;
-    const searchParameters = `email:${email?email:"ANY"}, org:${org?org:"ANY"}, project:${project?project:"ANY"}, repoUri:${repoUri?repoUri:"ANY"}, dataType:${dataType?dataType:"ANY"}`;
 
     if (response.ok) {
 
         const searchResult = await response.json() as FileSearchResult;
         const retrievedFiles: OpenAIFile[] = searchResult.data;
 
-        console.log(`${currentTime} deleteOpenAIFiles:SUCCEEDED (${callTimeInSeconds} seconds): ${retrievedFiles.length} files : ${searchParameters}`);
+        console.log(`${deleteCompletedTime} deleteOpenAIFiles:SUCCEEDED (${callTimeInSeconds} seconds): ${retrievedFiles.length} files`);
 
         // Split the pathname by '/' and filter out empty strings
         const pathSegments = !repoUri?undefined:repoUri.pathname!.split('/').filter(segment => segment);
@@ -547,7 +552,7 @@ export const deleteOpenAIFiles = async (email?: string, org?: string, project?: 
 
     const errorText = await response.text();
 
-    console.log(`${currentTime} deleteOpenAIFiles:FAILED (${callTimeInSeconds}): ${errorText} : ${searchParameters}`);
+    console.log(`${deleteCompletedTime} deleteOpenAIFiles:FAILED (${callTimeInSeconds}): ${errorText}`);
 
     let errorObj = undefined;
     try {

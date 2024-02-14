@@ -3948,7 +3948,9 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
                     return false;
                 }
 
-                console.warn(`Identified file ${file.filename}:${file.id} for grooming`);
+                if (process.env.TRACE_LEVEL) {
+                    console.warn(`Identified file ${file.filename}:${file.id} for grooming`);
+                }
                 return true;
             }
 

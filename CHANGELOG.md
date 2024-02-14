@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.11.0: February 13th, 2024
+## Version 0.11.0: February 14th, 2024
 
 ### New Features
 - Added OpenAI File Search API to retrieve list of files per user /api/user/{org}/connectors/openai/files (GET)
