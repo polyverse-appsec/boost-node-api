@@ -2151,7 +2151,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
         let resourceStatus : ResourceStatusState | undefined = undefined;
         let resourceStatusRaw = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status");
         resourceStatus = resourceStatusRaw?JSON.parse(resourceStatusRaw):undefined;
-        if (!resourceStatusRaw || resourceStatus?.lastUpdated) {
+        if (!resourceStatusRaw || !resourceStatus?.lastUpdated) {
             // if the resource status was not found, check if the resource exists... we may just be missing the status
             // so we'll regenerate the status
             const resourceData = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, '', resource);
@@ -2919,6 +2919,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
     }
 });
 
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 const user_project_org_project_data_references = `user_project/:org/:project/data_references`;
 const userProjectDataReferences = async (req: Request, res: Response) => {
 
@@ -3050,6 +3052,15 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                     refreshedProjectData = true;
 
                     // update the existing resources with the newly uploaded info
+                    const previousProjectFileId = existingProjectFileIds.get(projectDataTypes[i])?.id;
+                    if (previousProjectFileId) {
+                        await delay(1000); // one second delay to avoid getting throttled by OpenAI for above upload (60 calls / min)
+                        try {
+                            await deleteAssistantFile(previousProjectFileId);
+                        } catch (error) { // we're going to ignore failure to delete and keep going... auto groomer will cleanup later
+                            console.error(`${req.originalUrl} Unable to delete previous Project File Resource ${projectDataTypes[i]} ${previousProjectFileId}:`, error);
+                        }
+                    }
                     existingProjectFileIds.set(projectDataTypes[i], storedProjectDataId);
 
                 } catch (error: any) {
@@ -3061,6 +3072,10 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                     // continue trying to upload all resources we can - and record the failures
                     uploadFailures.set(projectDataTypes[i], error);
                     continue;
+                }
+                // if we have at least one more cycle, then we'll wait 2 seconds before continuing
+                if (i < projectDataTypes.length - 1) {
+                    await delay(2000);
                 }
             }
         } catch (error) {
@@ -3890,25 +3905,24 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
         }
 
         // create a synchronous handler that will receive an OpenAIFile and check if it exists in liveReferenceDataFiles
-        const groomerHandler = async (file: OpenAIFile) => {
+        const shouldDeleteHandler = async (file: OpenAIFile) : Promise<boolean> => {
             if (!liveReferencedDataFiles.has(file.id)) {
 
                 if (activeFileIdsInAssistants.includes(file.id)) {
                     console.warn(`Identified file ${file.filename}:${file.id} for grooming, but it is still in use`);
-                    return true;
+                    return false;
                 }
 
                 console.warn(`Identified file ${file.filename}:${file.id} for grooming`);
-                return false;
+                return true;
             }
 
             if (!activeFileIdsInAssistants.includes(file.id)) {
                 console.warn(`File ${file.filename}:${file.id} is reported to to be active, but not linked to any assistant`);
-                return false;
             }
 
             console.debug(`File ${file.filename}:${file.id} is still in use`);
-            return true;
+            return false;
         }
         if (shouldGroomInactiveFiles) {
 
@@ -3938,7 +3952,7 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
             }
         }
 
-        const aiFiles : OpenAIFile[] = await deleteOpenAIFiles(email, org, project, repoUri, dataType, shouldGroomInactiveFiles?groomerHandler:undefined);
+        const aiFiles : OpenAIFile[] = await deleteOpenAIFiles(email, org, project, repoUri, dataType, shouldGroomInactiveFiles?shouldDeleteHandler:undefined);
 
         return res
             .status(HTTP_SUCCESS)

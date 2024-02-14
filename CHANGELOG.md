@@ -13,7 +13,8 @@ Polyverse Boost ReST API (Backend)
     - query parameters to filter to email/user, org, project, data type, etc.
 
 ### Enhancements
-- N/A
+- Add delays (2-3 seconds) to OpenAI file uploads to avoid API throttling (60 calls/minute)
+- Delete OpenAI files when new resource data is uploaded - from /api/user_project/{org}/{project}/data_references (POST)
 
 ### Bug Fixes
 - Handle rename of last_updated -> lastUpdated in /user_project/{org}/{project}/data/{resource}/status (GET)
