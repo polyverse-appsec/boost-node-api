@@ -84,9 +84,15 @@ const createAssistantFileWithRetry = async (dataFilename: string, data: string, 
         try {
             return await createAssistantFile(dataFilename, data);
         } catch (error: any) {
-            // if we exceeded rate limit, don't retry
+            // if we exceeded rate limit, wait 3 seconds, retry once and give up if it fails again
             if (error.message.includes(`exceeded`)) {
-                throw error;
+                if (attempts > 1) {
+                    // we're going to wait 2 seconds to self-throttle so a future AI call has a better chance
+                    await delay(2000);
+                    throw error;
+                }
+                console.log(`Rate limit exceeded, retrying in 3 seconds...`);
+                await delay(3000); // we are allowed 1 call / second over a minute ; so this wait should be enough
             }
             lastError = error;
             if (attempts < maxRetries) {
@@ -423,7 +429,15 @@ export const searchOpenAIAssistants = async (email?: string, org?: string, proje
     return filteredAssistants;
 };
 
-export const deleteOpenAIFiles = async (email?: string, org?: string, project?: string, repoUri?: URL, dataType?: string, groomHandler?: any): Promise<OpenAIFile[]> => {
+interface FileSearchResult {
+    data: OpenAIFile[];
+    object: string;
+    has_more: boolean;
+    last_id: string;
+    first_id: string;
+}
+
+export const deleteOpenAIFiles = async (email?: string, org?: string, project?: string, repoUri?: URL, dataType?: string, shouldDeleteHandler?: any): Promise<OpenAIFile[]> => {
     const secretData : any = await getSecretsAsObject('exetokendev');
     let openAiKey = secretData['openai-personal'];
 
@@ -449,7 +463,8 @@ export const deleteOpenAIFiles = async (email?: string, org?: string, project?: 
 
     if (response.ok) {
 
-        const retrievedFiles: OpenAIFile[] = (await response.json()).data as OpenAIFile[];
+        const searchResult = await response.json() as FileSearchResult;
+        const retrievedFiles: OpenAIFile[] = searchResult.data;
 
         console.log(`${currentTime} deleteOpenAIFiles:SUCCEEDED (${callTimeInSeconds} seconds): ${retrievedFiles.length} files : ${searchParameters}`);
 
@@ -461,29 +476,29 @@ export const deleteOpenAIFiles = async (email?: string, org?: string, project?: 
         const ownerName = pathSegments?pathSegments.pop():undefined;
         
         const filesToDelete = retrievedFiles.filter((file) => {
-            let isMatch = true;
+            let shouldDeleteThisFile = true;
             if (email) {
-                isMatch && file.filename.includes(`${email.replace(/[^a-zA-Z0-9]/g, '_')}`);
+                shouldDeleteThisFile && file.filename.includes(`${email.replace(/[^a-zA-Z0-9]/g, '_')}`);
             }
-            if (org && isMatch) {
-                isMatch && file.filename.includes(`_${org.replace(/[^a-zA-Z0-9]/g, '_')}`);
+            if (org && shouldDeleteThisFile) {
+                shouldDeleteThisFile && file.filename.includes(`_${org.replace(/[^a-zA-Z0-9]/g, '_')}`);
             }
-            if (project && isMatch) {
-                isMatch && file.filename.includes(`_${project.replace(/[^a-zA-Z0-9]/g, '_')}`);
+            if (project && shouldDeleteThisFile) {
+                shouldDeleteThisFile && file.filename.includes(`_${project.replace(/[^a-zA-Z0-9]/g, '_')}`);
             }
-            if (repoName && isMatch) {
-                isMatch && file.filename.includes(`${repoName.toString().replace(/[^a-zA-Z0-9]/g, '_')}`);
+            if (repoName && shouldDeleteThisFile) {
+                shouldDeleteThisFile && file.filename.includes(`${repoName.toString().replace(/[^a-zA-Z0-9]/g, '_')}`);
             }
-            if (ownerName && isMatch) {
-                isMatch && file.filename.includes(`${ownerName.toString().replace(/[^a-zA-Z0-9]/g, '_')}`);
+            if (ownerName && shouldDeleteThisFile) {
+                shouldDeleteThisFile && file.filename.includes(`${ownerName.toString().replace(/[^a-zA-Z0-9]/g, '_')}`);
             }
-            if (dataType && isMatch) {
-                isMatch && file.filename.includes(`${dataType}`);
+            if (dataType && shouldDeleteThisFile) {
+                shouldDeleteThisFile && file.filename.includes(`${dataType}`);
             }
-            if (groomHandler && isMatch) {
-                isMatch && groomHandler(file);
+            if (shouldDeleteHandler && shouldDeleteThisFile) {
+                shouldDeleteThisFile && shouldDeleteHandler(file);
             }
-            return isMatch;
+            return shouldDeleteThisFile;
         });
 
         const filesDeleted : OpenAIFile[] = [];
@@ -507,8 +522,8 @@ export const deleteOpenAIFiles = async (email?: string, org?: string, project?: 
                 await Promise.all(deletePromises);
             } else {
                 for (const file of filesToProcess) {
-                    // wait 1.5 seconds to throttle AI calls - so we don't get blocked by OpenAI server
-                    await delay(1500);
+                    // wait 1 seconds to throttle AI calls - so we don't get blocked by OpenAI server
+                    await delay(1000);
 
                     try {
                         await deleteAssistantFile(file.id);
