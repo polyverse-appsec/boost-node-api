@@ -34,6 +34,53 @@
             ],
             "console": "integratedTerminal",
             "justMyCode": true
+        },
+        {
+            "name": "Groom OpenAI Files",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/sara_rest_cli.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--email",
+                "stephen@polyverse.com",
+                "--method",
+                "aifiles_groom"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "List OpenAI Assistants",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/sara_rest_cli.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--email",
+                "stephen@polyverse.com",
+                "--method",
+                "assistants"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Delete OpenAI File",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/sara_rest_cli.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--email",
+                "stephen@polyverse.com",
+                "--method",
+                "aifile_delete",
+                "--data",
+                "file-1EsNqAytHJC0ARgad9i3jEVX"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }

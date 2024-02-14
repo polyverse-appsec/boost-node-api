@@ -20,7 +20,15 @@ import {
     RepoDetails,
     verifyUserAccessToPrivateRepo
 } from './github';
-import { deleteAssistantFile, uploadProjectDataForAIAssistant } from './openai';
+import {
+    OpenAIFile,
+    deleteAssistantFile,
+    searchOpenAIFiles,
+    uploadProjectDataForAIAssistant,
+    deleteOpenAIFiles,
+    searchOpenAIAssistants,
+    OpenAIAssistant
+} from './openai';
 import { UserProjectData } from './types/UserProjectData';
 import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
 import { ProjectResource } from './types/ProjectResource';
@@ -630,7 +638,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
 
         let body = req.body;
 
-        // Puts resources and/or guidline values to be updated into new object    
+        // Puts resources and/or guideline values to be updated into new object    
         let updates: { resources?: ProjectResource[], guidelines?: string } = {};
         if (body.resources !== undefined) {
             updates.resources = body.resources;
@@ -2139,8 +2147,11 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
         }
 
         const { _, __, resource } = req.params;
+
+        let resourceStatus : ResourceStatusState | undefined = undefined;
         let resourceStatusRaw = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status");
-        if (!resourceStatusRaw) {
+        resourceStatus = resourceStatusRaw?JSON.parse(resourceStatusRaw):undefined;
+        if (!resourceStatusRaw || resourceStatus?.lastUpdated) {
             // if the resource status was not found, check if the resource exists... we may just be missing the status
             // so we'll regenerate the status
             const resourceData = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, '', resource);
@@ -2157,8 +2168,6 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
             await storeProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status", resourceStatusRaw);
             console.warn(`Missing status for resource ${req.originalUrl}: generating with current timestamp`);
         }
-
-        const resourceStatus : ResourceStatusState = JSON.parse(resourceStatusRaw);
 
         return res
             .status(HTTP_SUCCESS)
@@ -2951,16 +2960,16 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                 .contentType('application/json')
                 .send(emptyProjectDataFileIds);
         }
-        const uri = new URL(userProjectData.resources[0].uri);
+        const repoUri = new URL(userProjectData.resources[0].uri);
 
         // Split the pathname by '/' and filter out empty strings
-        const pathSegments = uri.pathname.split('/').filter(segment => segment);
+        const pathSegments = repoUri.pathname.split('/').filter(segment => segment);
 
         // The relevant part is the last segment of the path
         const repoName = pathSegments.pop();
         const ownerName = pathSegments.pop();
         if (!repoName || !ownerName) {
-            console.error(`Invalid URI: ${uri}`);
+            console.error(`Invalid URI: ${repoUri}`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
         }
 
@@ -3017,7 +3026,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                     if (lastUploaded && lastUploaded > resourceStatus.lastUpdated) {
                         console.debug(`${req.originalUrl}: Skipping upload of ${projectDataTypes[i]} - likely uploaded at ${usFormatter.format(lastUploadedDate)} and resource updated at ${usFormatter.format(resourceStatusDate)}`);
                         continue;
-                    } 
+                    }
 
                     if (lastUploaded) {
                         console.debug(`${req.originalUrl}: Uploading ${projectDataTypes[i]} (${projectData.length} bytes) from ${usFormatter.format(resourceStatusDate)}: ${timeDifferenceInSeconds} seconds out of sync; last uploaded at ${usFormatter.format(lastUploadedDate)}`);
@@ -3034,7 +3043,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
 
                 try {
 
-                    const storedProjectDataId = await uploadProjectDataForAIAssistant(email, `${userProjectData.org}_${userProjectData.name}`, uri, projectDataTypes[i], projectDataNames[i], projectData);
+                    const storedProjectDataId = await uploadProjectDataForAIAssistant(email, userProjectData.org, userProjectData.name, repoUri, projectDataTypes[i], projectDataNames[i], projectData);
                     if (process.env.TRACE_LEVEL) {
                         console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${JSON.stringify(storedProjectDataId)}`);
                     }
@@ -3608,6 +3617,7 @@ app.get("/test", (req: Request, res: Response, next) => {
 });
 
 import { AuthType } from './auth';
+import { log } from 'console';
 
 const DefaultGroomingIntervalInMinutes = 5;
 
@@ -3731,6 +3741,210 @@ app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res:
             .status(HTTP_SUCCESS)
             .contentType("text/plain")
             .send(`Timer HTTP POST Ack: ${currentTimeinSeconds}`);
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
+const user_org_connectors_openai_files = `user/:org/connectors/openai/files`;
+app.get(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (req: Request, res: Response, next) => {
+    logRequest(req);
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const org = req.params.org;
+        if (!org) {
+            console.error(`Org is required`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+        }
+
+        const project = typeof req.query.project === 'string' ? req.query.project : undefined;
+        const dataType = typeof req.query.dataType === 'string' ? req.query.dataType : undefined;
+        let repoUri = undefined;
+        if (project) {
+            const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
+            if (!loadedProjectData) {
+                console.warn(`${req.originalUrl} Project not found: ${org}/${project} - cannot filter on repos`);
+            } else if ((loadedProjectData as UserProjectData)?.resources &&
+                (loadedProjectData as UserProjectData).resources.length > 0) {
+                repoUri = new URL((loadedProjectData as UserProjectData).resources[0].uri);
+            }
+        }
+
+        const aiFiles : OpenAIFile[] = await searchOpenAIFiles(email, org, project, repoUri, dataType);
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType('application/json')
+            .send(aiFiles);
+            
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
+const user_org_connectors_openai_assistants = `user/:org/connectors/openai/assistants`;
+app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, async (req: Request, res: Response, next) => {
+    logRequest(req);
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const org = req.params.org;
+        if (!org) {
+            console.error(`Org is required`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+        }
+
+        const project = typeof req.query.project === 'string' ? req.query.project : undefined;
+
+        const aiAssistants : OpenAIAssistant[] = await searchOpenAIAssistants(email, org, project);
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType('application/json')
+            .send(aiAssistants);
+            
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
+const user_org_connectors_openai_files_id = `user/:org/connectors/openai/files/:id`;
+app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files_id}`, async (req: Request, res: Response, next) => {
+    logRequest(req);
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const org = req.params.org;
+        if (!org) {
+            console.error(`Org is required`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+        }
+
+        const fileId = req.params.id;
+        if (!fileId) {
+            console.error(`File Id is required`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+        }
+        
+        await deleteAssistantFile(fileId);
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType('application/json')
+            .send(fileId);
+            
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
+app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (req: Request, res: Response, next) => {
+    logRequest(req);
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const org = req.params.org;
+        if (!org) {
+            console.error(`Org is required`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+        }
+
+        const project : string | undefined = typeof req.query.project === 'string' ? req.query.project : undefined;
+        const dataType : string | undefined = typeof req.query.dataType === 'string' ? req.query.dataType : undefined;
+        let repoUri = undefined;
+        if (project) {
+            const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
+            if (!loadedProjectData) {
+                console.warn(`${req.originalUrl} Project not found: ${org}/${project} - cannot filter on repos`);
+            } else if ((loadedProjectData as UserProjectData)?.resources &&
+                (loadedProjectData as UserProjectData).resources.length > 0) {
+                repoUri = new URL((loadedProjectData as UserProjectData).resources[0].uri);
+            }
+        }
+
+        const shouldGroomInactiveFiles : boolean = req.query.groom != undefined;
+        const liveReferencedDataFiles : Map<string, OpenAIFile> = new Map();
+
+        const activeFileIdsInAssistants : string[] = [];
+        const assistantFileSearchHandler = async (fileIds: string[]) => {
+            for (const fileId of fileIds) {
+                activeFileIdsInAssistants.push(fileId);
+            }
+        }
+
+        // create a synchronous handler that will receive an OpenAIFile and check if it exists in liveReferenceDataFiles
+        const groomerHandler = async (file: OpenAIFile) => {
+            if (!liveReferencedDataFiles.has(file.id)) {
+
+                if (activeFileIdsInAssistants.includes(file.id)) {
+                    console.warn(`Identified file ${file.filename}:${file.id} for grooming, but it is still in use`);
+                    return true;
+                }
+
+                console.warn(`Identified file ${file.filename}:${file.id} for grooming`);
+                return false;
+            }
+
+            if (!activeFileIdsInAssistants.includes(file.id)) {
+                console.warn(`File ${file.filename}:${file.id} is reported to to be active, but not linked to any assistant`);
+                return false;
+            }
+
+            console.debug(`File ${file.filename}:${file.id} is still in use`);
+            return true;
+        }
+        if (shouldGroomInactiveFiles) {
+
+            await searchOpenAIAssistants(email, org, project, assistantFileSearchHandler);
+
+            // Split the pathname by '/' and filter out empty strings
+            const pathSegments = !repoUri?undefined:repoUri.pathname!.split('/').filter(segment => segment);
+
+            // The relevant part is the last segment of the path
+            const repoName = pathSegments?pathSegments.pop():undefined;
+            const ownerName = pathSegments?pathSegments.pop():undefined;
+            
+            const rawDataReferences : any[] = await searchProjectData(email, SourceType.General, ownerName?ownerName:"*", project?project:"*", "", "data_references");
+            if (rawDataReferences) {
+                for (const rawReference in rawDataReferences) {
+                    const dataReference = JSON.parse(rawReference) as ProjectDataReference;
+                    liveReferencedDataFiles.set(dataReference.id,
+                    {
+                        id: dataReference.id,
+                        object: "",
+                        bytes: 0,
+                        created_at: 0,
+                        filename: dataReference.name,
+                        purpose: ""
+                    } as OpenAIFile);
+                }
+            }
+        }
+
+        const aiFiles : OpenAIFile[] = await deleteOpenAIFiles(email, org, project, repoUri, dataType, shouldGroomInactiveFiles?groomerHandler:undefined);
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType('application/json')
+            .send(aiFiles);
+            
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }

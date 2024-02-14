@@ -6,12 +6,17 @@ Polyverse Boost ReST API (Backend)
 ## Version 0.10.1: February 12th, 2024
 
 ### New Features
-- N/A
+- Added OpenAI File Search API to retrieve list of files per user /api/user/{org}/connectors/openai/files (GET)
+- Added OpenAI Assistant Search API to retrieve list of assistants per user /api/user/{org}/connectors/openai/assistants (GET)
+- Added OpenAI File Deletion/Grooming API to delete a file from OpenAI /api/user/{org}/connectors/openai/files/{file} (DELETE)
+- Added OpenAI Multi-File Deletion/Grooming API to delete multiple files from OpenAI /api/user/{org}/connectors/openai/files (DELETE)
+    - query parameters to filter to email/user, org, project, data type, etc.
+
 ### Enhancements
 - N/A
 
 ### Bug Fixes
-- N/A
+- Handle rename of last_updated -> lastUpdated in /user_project/{org}/{project}/data/{resource}/status (GET)
 
 ## Version 0.10.0: February 12th, 2024
 
