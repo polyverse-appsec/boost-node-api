@@ -65,6 +65,8 @@ def main(email, org, project, method, stage, data):
         "aifile_delete": f"{URL}/api/user/{org}/connectors/openai/files/{data}",
 
         "assistants": f"{URL}/api/user/{org}/connectors/openai/assistants",
+
+        "github_access": f"{URL}/api/user/{org}/connectors/github/access?uri={data}",
     }
 
     if method not in endpoints:
@@ -82,10 +84,17 @@ def main(email, org, project, method, stage, data):
     else:
         print(f"Success({response.status_code})\n")
 
+        if len(response.text) == 0:
+            return
+
         if response.headers.get('content-type') == 'application/json':
             print(response.json() if 'body' not in response.json() else json.loads(response.json()['body']))
         else:
-            print(response.text if 'body' not in response.json() else response.json()['body'])
+            # check if response.text starts with a JSON character
+            if response.text[0] in ['{', '[']:
+                print(response.text if 'body' not in response.json() else response.json()['body'])
+            else:
+                print(response.text)
 
 
 if __name__ == "__main__":
@@ -117,14 +126,16 @@ if __name__ == "__main__":
                                  'aifiles_groom',
                                  'aifile_delete',
 
-                                 'assistants'
+                                 'assistants',
+
+                                 'github_access'
                                  ], help="The method to run")
     parser.add_argument("--stage", default="local", choices=['local', 'dev', 'test', 'prod'], help="The Service to target (default: local)")
     parser.add_argument("--data", default=None, help="Data to pass to the method")
 
     args = parser.parse_args()
 
-    if (args.project is None and args.method not in ["status", "data_references", "aifiles", "aifiles_groom", "aifile_delete", "assistants"]):
+    if (args.project is None and args.method not in ["status", "data_references", "aifiles", "aifiles_groom", "aifile_delete", "assistants", "github_access"]):
         parser.error("The --project argument is required for the method"
                      f" {args.method}.")
 
