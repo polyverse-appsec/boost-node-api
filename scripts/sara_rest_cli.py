@@ -37,7 +37,10 @@ def main(email, org, project, method, stage, data):
     URL = stage_url[stage]
     endpoints = {
         "status": f"{URL}/api/user_project/{org}/{project}/status",
+        'status_refresh': f"{URL}/api/user_project/{org}/{project}/status",
+
         "data_references": f"{URL}/api/user_project/{org}/{project}/data_references",
+        "data_references_refresh": f"{URL}/api/user_project/{org}/{project}/data_references",
 
         "discovery": f"{URL}/api/user_project/{org}/{project}/discovery",
 
@@ -70,7 +73,7 @@ def main(email, org, project, method, stage, data):
 
     url = endpoints[method]
     # if method starts with "create_" or is "discovery", then it's a POST request
-    verb = "POST" if method.startswith("create_") or method == "discovery" else "DELETE" if (method == "aifiles_groom" or method == "aifile_delete") else "GET"
+    verb = "POST" if method.startswith("create_") or method == "discovery" or method == "data_references_refresh" or method == "status_refresh" else "DELETE" if (method == "aifiles_groom" or method == "aifile_delete") else "GET"
     print(f"Requesting {verb} {url}")
     response = make_request(verb, url, email)
 
@@ -92,9 +95,11 @@ if __name__ == "__main__":
     parser.add_argument("--project", required=False, help="The project name")
     parser.add_argument("--method", default="status",
                         choices=['status',
+                                 "status_refresh",
 
                                  'discovery',
                                  'data_references',
+                                 "data_references_refresh",
 
                                  'projectsource',
                                  'aispec',
