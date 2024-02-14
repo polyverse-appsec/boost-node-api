@@ -1372,6 +1372,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         }
 
         const missingResources : string[] = [];
+
+        const lastResourceUpdatedTimeStamp : Map<string, number> = new Map<string, number>();
         for (const resource of [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification]) {
             // check if this resource exists, and get its timestamp
             let resourceStatus : ResourceStatusState;
@@ -1379,6 +1381,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 resourceStatus = await localSelfDispatch<ResourceStatusState>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data/${resource}/status`, 'GET');
                 if (process.env.TRACE_LEVEL) {
                     console.debug(`Resource ${resource} Status: ${JSON.stringify(resourceStatus)}`);
+                }
+                if (resourceStatus.lastUpdated && resourceStatus.lastUpdated > 0) {
+                    lastResourceUpdatedTimeStamp.set(resource, resourceStatus.lastUpdated);
                 }
             } catch (error) {
                 missingResources.push(resource);
@@ -1533,7 +1538,22 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 .send(projectStatus);
         }
 
-        const lastResourceCompletedDate = new Date(lastResourceCompletedGenerationTime * 1000);
+        // now we have completed resources and previously synchronized data, so now we'll check if the resource data is newer than the
+        //      last synchronized time for the AI server upload
+        const outOfDateResources : ProjectDataType[] = [];
+        let lastResourceUpdated : number = 0;
+        for (const resource of [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification]) {
+            const thisDataReference : ProjectDataReference | undefined = dataReferences.find(dataReference => dataReference.type === resource);
+
+            if (lastResourceUpdatedTimeStamp.get(resource) && lastResourceUpdated < lastResourceUpdatedTimeStamp.get(resource)!) {
+                lastResourceUpdated = lastResourceUpdatedTimeStamp.get(resource)!;
+            }
+            if (!thisDataReference || thisDataReference.lastUpdated < lastResourceUpdatedTimeStamp.get(resource)!) {
+                outOfDateResources.push(resource);
+            }
+        }
+
+        const lastResourceCompletedDate = new Date(lastResourceUpdated * 1000);
 
         // now that our resources have completed generation, we want to make sure the data_references timestamp is AFTER the generators completed
         //      otherwise, we'll report that the resources are not synchronized
@@ -1551,9 +1571,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 .send(projectStatus);
         }
 
-        // now we have completed resources and previously synchronized data, so now we'll check if the resource data is newer than the
-        //      last synchronized time for the AI server upload
-        if (projectStatus.lastSynchronized < lastResourceCompletedGenerationTime) {
+        if (outOfDateResources.length > 0) {
             // if the last resource completed generation time is newer than the last synchronized time, then we're out of date
             projectStatus.status = ProjectStatus.AIResourcesOutOfDate;
             const lastSynchronizedDate = new Date(projectStatus.lastSynchronized * 1000);
@@ -3107,7 +3125,24 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
 
         if (refreshedProjectData) {
             await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', JSON.stringify(projectDataFileIds));
+
+            // now refresh project status since we've completed uploads
+            const projectStatusRefreshDelayInMs = 250;
+            const projectStatusRefreshRequest : ProjectStatusState = {
+                status: ProjectStatus.Unknown,
+                lastUpdated: Date.now() / 1000
+            };
+            try {
+                await localSelfDispatch<ProjectStatusState>(
+                    email, getSignedIdentityFromHeader(req)!, req,
+                    `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs, false);
+            } catch (error: any) {
+                if (!error.response || error.response.status !== HTTP_FAILURE_NOT_FOUND) {
+                    throw error;
+                }
+            }
         }
+
         return res
             .status(HTTP_SUCCESS)
             .contentType('application/json')
