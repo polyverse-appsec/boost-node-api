@@ -1053,8 +1053,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
                     body = JSON.stringify(body);
                 }
             }
-            const discoverState : DiscoverState = JSON.parse(body);
-            initializeResourcesToStart = discoverState.resetResources? discoverState.resetResources : false;
+            if (body === '') {
+                const discoverState : DiscoverState = JSON.parse(body);
+                initializeResourcesToStart = discoverState.resetResources? discoverState.resetResources : false;
+            }
         }
 
         // take the original request uri and remove the trailing /discover to get the project data

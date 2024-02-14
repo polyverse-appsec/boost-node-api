@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.11.1: February 14th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- N/A
+
+### Bug Fixes
+- Handle empty body for manual user-initiated discover endpoint /api/user_project/{org}/{project}/discover (POST)
+
 ## Version 0.11.0: February 14th, 2024
 
 ### New Features
