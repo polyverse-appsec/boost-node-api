@@ -450,7 +450,7 @@ export const deleteOpenAIFiles = async (email?: string, org?: string, project?: 
     const getFilesRestEndpoint = 'https://api.openai.com/v1/files';
 
     const startTime = Date.now() / 1000;
-    const currentTime = usFormatter.format(new Date(startTime));
+    const currentTime = usFormatter.format(new Date(startTime * 1000));
 
     console.info(`${currentTime} deleteOpenAIFiles:STARTED: ${searchParameters}`);
 
@@ -533,7 +533,17 @@ export const deleteOpenAIFiles = async (email?: string, org?: string, project?: 
                     try {
                         await deleteAssistantFile(file.id);
                         filesDeleted.push(file);
-                        console.debug(`deleteOpenAIFiles:SUCCESS: Groom/Deleted ${file.filename} : id: ${file.id}`);
+
+                        const currentTime = Date.now(); // Current time in milliseconds
+                        const timeElapsedInSeconds = (currentTime / 1000) - deleteStartTime;
+
+                        const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((filesDeleted.length / retrievedFiles.length) * 100).toFixed(2));
+                        const remainingTimeInSeconds = (1 / (percentageOfFilesDeletedTo2DecimalPlaces / 100)) * timeElapsedInSeconds;
+
+                        const estimatedDateTime = usFormatter.format(new Date(currentTime + (remainingTimeInSeconds * 1000)));
+
+                        console.debug(`deleteOpenAIFiles:SUCCESS:${filesDeleted.length}/${retrievedFiles.length} ${percentageOfFilesDeletedTo2DecimalPlaces}% : Groom/Deleted:${file.filename} : id:${file.id} : ETA:${estimatedDateTime}`);
+
                     } catch (error: any) {
                         const currentTime = usFormatter.format(new Date());
                         console.warn(`${currentTime} deleteOpenAIFiles:FAILED: deleting ${file.filename} : id: ${file.id} : ${error.message}`);
