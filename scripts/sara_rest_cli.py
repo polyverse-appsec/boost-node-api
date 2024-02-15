@@ -46,7 +46,7 @@ def main(email, org, project, method, stage, data):
 
         "project": f"{URL}/api/user_project/{org}/{project}",
 
-        "discovery": f"{URL}/api/user_project/{org}/{project}/discovery",
+        "discovery": f"{URL}/api/user_project/{org}/{project}/discover",
 
         "projectsource": f"{URL}/api/user_project/{org}/{project}/data/projectsource",
         "aispec": f"{URL}/api/user_project/{org}/{project}/data/aispec",
@@ -79,7 +79,7 @@ def main(email, org, project, method, stage, data):
 
     url = endpoints[method]
     # if method starts with "create_" or is "discovery", then it's a POST request
-    verb = "POST" if method.startswith("create_") or method == "discovery" or method == "data_references_refresh" or method == "status_refresh" else "DELETE" if (method == "aifiles_groom" or method == "aifile_delete") else "GET"
+    verb = "POST" if method.startswith("create_") or method.endswith("_gen") or method == "discovery" or method == "data_references_refresh" or method == "status_refresh" else "DELETE" if (method == "aifiles_groom" or method == "aifile_delete") else "GET"
     print(f"Requesting {verb} {url}")
     try:
         response = make_request(verb, url, email)

@@ -3,7 +3,7 @@
   "summary": {
     "projectName": "boost-node-api",
     "summaryUrl": ".boost/boost-node-api.summary.boost-notebook",
-    "filesToAnalyze": 36,
+    "filesToAnalyze": 40,
     "filesAnalyzed": 0,
     "issues": [
       "No summary file found at .boost/boost-node-api.summary.boost-notebook"
@@ -336,9 +336,45 @@
       "issueCells": 0,
       "sections": {}
     },
-    "test\\test_proj_status.py": {
-      "sourceRelFile": "test\\test_proj_status.py",
-      "notebookRelFile": ".boost/test/test_proj_status.py.boost-notebook",
+    "test\\__init__.py": {
+      "sourceRelFile": "test\\__init__.py",
+      "notebookRelFile": ".boost/test/__init__.py.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "scripts\\sara_rest_cli.py": {
+      "sourceRelFile": "scripts\\sara_rest_cli.py",
+      "notebookRelFile": ".boost/scripts/sara_rest_cli.py.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "scripts\\discovery_tool.py": {
+      "sourceRelFile": "scripts\\discovery_tool.py",
+      "notebookRelFile": ".boost/scripts/discovery_tool.py.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\utility\\dispatch.ts": {
+      "sourceRelFile": "src\\utility\\dispatch.ts",
+      "notebookRelFile": ".boost/src/utility/dispatch.ts.boost-notebook",
+      "totalCells": 0,
+      "completedCells": 0,
+      "errorCells": 0,
+      "issueCells": 0,
+      "sections": {}
+    },
+    "src\\utility\\log.ts": {
+      "sourceRelFile": "src\\utility\\log.ts",
+      "notebookRelFile": ".boost/src/utility/log.ts.boost-notebook",
       "totalCells": 0,
       "completedCells": 0,
       "errorCells": 0,

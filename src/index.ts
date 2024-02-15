@@ -1169,7 +1169,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
                     body = JSON.stringify(body);
                 }
             }
-            if (body === '') {
+            if (body !== '') {
                 const discoverState : DiscoverState = JSON.parse(body);
                 initializeResourcesToStart = discoverState.resetResources? discoverState.resetResources : false;
             }
