@@ -962,14 +962,14 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
         const projectDataRaw : any[] = await searchProjectData(user?user as string:searchWildcard, SourceType.General, org?org as string:searchWildcard, project?project as string:searchWildcard, "", 'project');
 
         if (!projectDataRaw) {
-            console.error(`No projects found due to query failure`);
+            console.error(`${req.originalUrl} No projects found due to query failure`);
             return res
                 .status(HTTP_FAILURE_INTERNAL_SERVER_ERROR)
                 .send('Internal Server Error');
         }
 
         if (process.env.TRACE_LEVEL) {
-            console.log(`${search_projects}: retrieved data for ${projectDataRaw.length} raw project data`);
+            console.log(`${req.originalUrl}: retrieved data for ${projectDataRaw.length} raw project data`);
         }
 
         for (const projectData of projectDataRaw) {
@@ -987,13 +987,95 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
         }
 
         if (process.env.TRACE_LEVEL) {
-            console.log(`${search_projects}: retrieved data for ${projectDataList.length} projects`);
+            console.log(`${req.originalUrl} retrieved data for ${projectDataList.length} projects`);
         }
 
         return res
             .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(projectDataList);
+
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
+interface ProjectSearchData {
+    org: string;
+    project: string;
+    user: string;
+    data: any;
+}
+
+// Services to search the entire system for any grooming of projects
+const search_projects_groom = `search/projects/groom`;
+app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+        // since project search is system wide by default, we're going to require admin access to
+        //      run a search
+        const email = await validateUser(req, res, AuthType.Admin);
+        if (!email) {
+            return;
+        }
+
+        // query params support:
+        //  - org?: string - specific org, or all if not specified
+        //  - project?: string - specific project, or all if not specified
+        //  - user?: string - a specific user, or all if not specified
+        //  - status?: string - a specific Grooming status, or all if not specified
+
+        const { org, project, user } = req.query;
+        if (org && typeof org !== 'string') {
+            console.error(`Org must be a string`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid org');
+        } else if (project && typeof project !== 'string') {
+            console.error(`Project must be a string`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid project');
+        } else if (user && typeof user !== 'string') {
+            console.error(`User must be a string`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid user');
+        } else if (status && typeof status !== 'string') {
+            console.error(`Status must be a string`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid status');
+        }
+
+        const groomingDataList : GroomingStatus[] = [];
+
+        const groomingDataRaw : any[] = await searchProjectData(user?user as string:searchWildcard, SourceType.General, org?org as string:searchWildcard, project?project as string:searchWildcard, "", 'groom');
+
+        if (!groomingDataRaw) {
+            console.error(`${req.originalUrl} No grooming status found due to query failure`);
+            return res
+                .status(HTTP_FAILURE_INTERNAL_SERVER_ERROR)
+                .send('Internal Server Error');
+        }
+
+        if (process.env.TRACE_LEVEL) {
+            console.log(`${req.originalUrl}: retrieved data for ${groomingDataRaw.length} raw groom data`);
+        }
+
+        for (const projectData of groomingDataRaw) {
+            const projectDataString = projectData.data as string;
+            try {
+                const groomingDataObject = JSON.parse(projectDataString) as GroomingStatus;
+
+                groomingDataList.push(groomingDataObject);
+            } catch (error) {
+                console.error(`Unable to parse groom data: ${projectDataString}`, error);
+            }
+        }
+
+        if (process.env.TRACE_LEVEL) {
+            console.log(`${req.originalUrl} retrieved data for ${groomingDataList.length} grooming objects`);
+        }
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType('application/json')
+            .send(groomingDataList);
 
     } catch (error) {
         return handleErrorResponse(error, req, res);
