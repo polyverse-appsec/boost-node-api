@@ -26,9 +26,11 @@ export const logRequest = (req: Request) => {
     }
 }
 
-export const handleErrorResponse = (error: any, req: Request, res: Response, supplementalErrorMessage: string = 'Error') : Response => {
+export const handleErrorResponse = (error: any, req: Request, res: Response, supplementalErrorMessage: string = 'Error', status_code: number = HTTP_FAILURE_INTERNAL_SERVER_ERROR) : Response => {
     // Base error message with the request details
     const errorMessage = `UNHANDLED_ERROR(Response): ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
+
+    const errorCodeText = status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'Internal Server Error' : 'Error';
 
     // Check if we're in the development environment
     if (process.env.DEPLOYMENT_STAGE === 'dev' || process.env.DEPLOYMENT_STAGE === 'test' || process.env.DEPLOYMENT_STAGE === 'local'
@@ -37,15 +39,15 @@ export const handleErrorResponse = (error: any, req: Request, res: Response, sup
         console.error(`${supplementalErrorMessage} - ${errorMessage}`, error.stack || error);
         // Respond with the detailed error message for debugging purposes
         return res
-            .status(HTTP_FAILURE_INTERNAL_SERVER_ERROR)
-            .send(`Internal Server Error: ${supplementalErrorMessage} - ` + (error.stack || error));
+            .status(status_code)
+            .send(`${errorCodeText}: ${supplementalErrorMessage} - ` + (error.stack || error));
     } else { // we'll use this for 'prod' and 'test' Stages in the future
         // In non-development environments, log the error message for privacy/security reasons
         console.error(`${supplementalErrorMessage} - ${errorMessage}`, error.message || error);
         // Respond with a generic error message to avoid exposing sensitive error details
         return res
-            .status(HTTP_FAILURE_INTERNAL_SERVER_ERROR)
-            .send(`Internal Server Error: ${supplementalErrorMessage} - ${errorMessage}` + (error.message || error));
+            .status(status_code)
+            .send(`${errorCodeText}: ${supplementalErrorMessage} - ${errorMessage}` + (error.message || error));
     }
 }
 

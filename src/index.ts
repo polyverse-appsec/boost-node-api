@@ -614,6 +614,40 @@ async function validateProjectRepositories(email: string, org: string, resources
     return undefined;
 }
 
+const user_project_org_projects = `user_project/:org/projects`;
+app.get(`${api_root_endpoint}/${user_project_org_projects}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const { org } = req.params;
+
+        if (!org) {
+            console.error(`Org is required`);
+            return handleErrorResponse(new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
+        }
+
+        // we're going to make a call to the ${search_projects} endpoint to get the list of projects
+        //      passing the email and org as query params to the endpoint
+        // But since this is a system wide search, we need to elevate to admin to get the list of projects
+        const encodedEmail = encodeURIComponent(email);
+        const localAdminAuthHeader = await signedAuthHeader(local_sys_admin_email);
+        const projectsFound = await localSelfDispatch<UserProjectData[]>(
+            email, localAdminAuthHeader[header_X_Signed_Identity], req, `${search_projects}?user=${encodedEmail}&org=${org}`, 'GET');
+
+        return res
+            .status(HTTP_SUCCESS)
+            .send(projectsFound);
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
 const user_project_org_project = `user_project/:org/:project`;
 app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request, res: Response) => {
 

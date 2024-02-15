@@ -42,6 +42,10 @@ def main(email, org, project, method, stage, data):
         "data_references": f"{URL}/api/user_project/{org}/{project}/data_references",
         "data_references_refresh": f"{URL}/api/user_project/{org}/{project}/data_references",
 
+        "projects": f"{URL}/api/user_project/{org}/projects",
+
+        "project": f"{URL}/api/user_project/{org}/{project}",
+
         "discovery": f"{URL}/api/user_project/{org}/{project}/discovery",
 
         "projectsource": f"{URL}/api/user_project/{org}/{project}/data/projectsource",
@@ -104,7 +108,10 @@ if __name__ == "__main__":
     parser.add_argument("--project", required=False, help="The project name")
     parser.add_argument("--method", default="status",
                         choices=['status',
-                                 "status_refresh",
+                                 'status_refresh',
+
+                                 'projects',
+                                 'project',
 
                                  'discovery',
                                  'data_references',
@@ -135,7 +142,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if (args.project is None and args.method not in ["status", "data_references", "aifiles", "aifiles_groom", "aifile_delete", "assistants", "github_access"]):
+    if (args.project is None and args.method not in ["status", "data_references", "aifiles", "aifiles_groom", "aifile_delete", "assistants", "github_access", "projects"]):
         parser.error("The --project argument is required for the method"
                      f" {args.method}.")
 

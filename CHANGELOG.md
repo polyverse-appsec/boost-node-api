@@ -1,7 +1,20 @@
 Polyverse Boost ReST API (Backend)
 ======================
+======================
 
 # Release Notes
+
+## Version 0.11.2: February 14th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Additional API for a user to list their own projects /api/user/{org}/projects (GET)
+    - Filters existing system admin API to search all projects /api/search/projects (GET)
+
+### Bug Fixes
+- N/A
 
 ## Version 0.11.1: February 14th, 2024
 
