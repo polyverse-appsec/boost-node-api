@@ -81,7 +81,11 @@ def main(email, org, project, method, stage, data):
     # if method starts with "create_" or is "discovery", then it's a POST request
     verb = "POST" if method.startswith("create_") or method == "discovery" or method == "data_references_refresh" or method == "status_refresh" else "DELETE" if (method == "aifiles_groom" or method == "aifile_delete") else "GET"
     print(f"Requesting {verb} {url}")
-    response = make_request(verb, url, email)
+    try:
+        response = make_request(verb, url, email)
+    except requests.exceptions.RequestException as e:
+        print(f"Failed: {e}")
+        return
 
     if (response.status_code != 200):
         print(f"Failed({response.status_code}): {response.text}")
