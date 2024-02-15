@@ -9,7 +9,12 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Append the parent directory to sys.path.
 sys.path.append(parent_dir)
 
-from test.utils import get_signed_headers  # noqa
+try:
+    from test.utils import get_signed_headers
+except ImportError:
+    sys.path.append(parent_dir + "/test")
+    from utils import get_signed_headers  # noqa
+
 
 # Constants for URL options
 stage_url = {
