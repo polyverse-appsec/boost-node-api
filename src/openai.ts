@@ -534,15 +534,10 @@ export const deleteOpenAIFiles = async (email?: string, org?: string, project?: 
                         await deleteAssistantFile(file.id);
                         filesDeleted.push(file);
 
-                        const currentTime = Date.now(); // Current time in milliseconds
-                        const timeElapsedInSeconds = (currentTime / 1000) - deleteStartTime;
-
                         const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((filesDeleted.length / retrievedFiles.length) * 100).toFixed(2));
-                        const remainingTimeInSeconds = (1 / (percentageOfFilesDeletedTo2DecimalPlaces / 100)) * timeElapsedInSeconds;
 
-                        const estimatedDateTime = usFormatter.format(new Date(currentTime + (remainingTimeInSeconds * 1000)));
-
-                        console.debug(`deleteOpenAIFiles:SUCCESS:${filesDeleted.length}/${retrievedFiles.length} ${percentageOfFilesDeletedTo2DecimalPlaces}% : Groom/Deleted:${file.filename} : id:${file.id} : ETA:${estimatedDateTime}`);
+                        const createdTime = usFormatter.format(new Date(file.created_at * 1000));
+                        console.debug(`deleteOpenAIFiles:SUCCESS:${filesDeleted.length}/${retrievedFiles.length} ${percentageOfFilesDeletedTo2DecimalPlaces}% : Groom/Deleted:${file.filename} : id:${file.id} : created at:${createdTime} : bytes:${file.bytes} : purpose:${file.purpose}`);
 
                     } catch (error: any) {
                         const currentTime = usFormatter.format(new Date());
@@ -551,6 +546,16 @@ export const deleteOpenAIFiles = async (email?: string, org?: string, project?: 
                 }
             
             }
+
+            const currentTime = Date.now(); // Current time in milliseconds
+            const timeElapsedInSeconds = (currentTime / 1000) - deleteStartTime;
+
+            const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((filesDeleted.length / retrievedFiles.length) * 100).toFixed(2));
+            const remainingTimeInSeconds = (1 / (percentageOfFilesDeletedTo2DecimalPlaces / 100)) * timeElapsedInSeconds;
+
+            const estimatedDateTime = usFormatter.format(new Date(currentTime + (remainingTimeInSeconds * 1000)));
+
+            console.debug(`deleteOpenAIFiles:PROCESSING: Updated ETA:${estimatedDateTime}`);
         }
         const deleteEndTime = Date.now() / 1000;
         const deletionLogTime = usFormatter.format(new Date(deleteEndTime));
