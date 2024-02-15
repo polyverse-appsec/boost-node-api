@@ -1,6 +1,5 @@
 Polyverse Boost ReST API (Backend)
-======================
-======================
+==================================
 
 # Release Notes
 
@@ -10,7 +9,7 @@ Polyverse Boost ReST API (Backend)
 - N/A
 
 ### Enhancements
-- Additional API for a user to list their own projects /api/user/{org}/projects (GET)
+- Additional API for a user to list their own projects /api/user_project/{org}/projects (GET)
     - Filters existing system admin API to search all projects /api/search/projects (GET)
 
 ### Bug Fixes
