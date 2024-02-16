@@ -44,6 +44,8 @@ def main(email, org, project, method, stage, data):
         "status": f"{URL}/api/user_project/{org}/{project}/status",
         'status_refresh': f"{URL}/api/user_project/{org}/{project}/status",
 
+        'account': f"{URL}/api/user/{org}/account",
+
         "data_references": f"{URL}/api/user_project/{org}/{project}/data_references",
         "data_references_refresh": f"{URL}/api/user_project/{org}/{project}/data_references",
 
@@ -60,6 +62,10 @@ def main(email, org, project, method, stage, data):
         "projectsource_gen": f"{URL}/api/user_project/{org}/{project}/data/projectsource/generator",
         "aispec_gen": f"{URL}/api/user_project/{org}/{project}/data/aispec/generator",
         "blueprint_gen": f"{URL}/api/user_project/{org}/{project}/data/blueprint/generator",
+
+        "projectsource_gen_status": f"{URL}/api/user_project/{org}/{project}/data/projectsource/generator",
+        "aispec_gen_status": f"{URL}/api/user_project/{org}/{project}/data/aispec/generator",
+        "blueprint_gen_status": f"{URL}/api/user_project/{org}/{project}/data/blueprint/generator",
 
         "projectsource_status": f"{URL}/api/user_project/{org}/{project}/data/projectsource/status",
         "aispec_status": f"{URL}/api/user_project/{org}/{project}/data/aispec/status",
@@ -122,6 +128,8 @@ if __name__ == "__main__":
                                  'projects',
                                  'project',
 
+                                 'account',
+
                                  'discovery',
                                  'data_references',
                                  "data_references_refresh",
@@ -133,6 +141,10 @@ if __name__ == "__main__":
                                  'blueprint_gen',
                                  'projectsource_gen',
                                  'aispec_gen',
+
+                                 'blueprint_gen_status',
+                                 'projectsource_gen_status',
+                                 'aispec_gen_status',
 
                                  'blueprint_status',
                                  'projectsource_status',
@@ -151,7 +163,17 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if (args.project is None and args.method not in ["status", "data_references", "aifiles", "aifiles_groom", "aifile_delete", "assistants", "github_access", "projects"]):
+    if (args.project is None and args.method not in [
+        "account",
+        "status",
+        "data_references",
+        "aifiles",
+        "aifiles_groom",
+        "aifile_delete",
+        "assistants",
+        "github_access",
+        "projects"
+    ]):
         parser.error("The --project argument is required for the method"
                      f" {args.method}.")
 

@@ -3591,6 +3591,7 @@ interface UserAccountState {
     saas_client: boolean,
     email: string,
     portal_url: string,
+    github_username: string,
 };
 
 const user_org_account = `user/:org/account`;
@@ -3615,6 +3616,9 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
                 .send('Unauthorized');
         }
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
+
+        const user = await getUser(email);
+        accountStatus.github_username = user !== undefined?user.username:'';
 
         return res
             .status(HTTP_SUCCESS)
@@ -3786,6 +3790,7 @@ app.get("/test", (req: Request, res: Response, next) => {
 
 import { AuthType } from './auth';
 import { log } from 'console';
+import { getUser } from './users';
 
 const DefaultGroomingIntervalInMinutes = 5;
 

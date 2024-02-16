@@ -3,6 +3,18 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.11.3: February 16th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- User Account service now includes the GitHub Username /api/user/{org}/account (GET)
+    - if the GitHub App has not been installed (or failed to install for an account, or has no associated email) - the field will be blank
+
+### Bug Fixes
+- N/A
+
 ## Version 0.11.2: February 14th, 2024
 
 ### New Features
