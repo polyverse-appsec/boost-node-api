@@ -9,8 +9,12 @@ Polyverse Boost ReST API (Backend)
 - N/A
 
 ### Enhancements
+- OpenAI Filenames are now prefixed with "sara_rest_v(version)_project_data_" followed by unique project data path
+    - e.g. sara_rest_v0.11.3_project_data_polyverse-appsec_sara_polyverse_appsec_sara_allfiles_combined.md
 - User Account service now includes the GitHub Username /api/user/{org}/account (GET)
     - if the GitHub App has not been installed (or failed to install for an account, or has no associated email) - the field will be blank
+- OpenAI File Search Service /user/{org}/connectors/openai/files (GET) now includes full pagination to search all files
+    - also includes support for ascending and descending sort order, and filter by creation date
 
 ### Bug Fixes
 - N/A

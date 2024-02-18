@@ -3948,7 +3948,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (req: 
             }
         }
 
-        const aiFiles : OpenAIFile[] = await searchOpenAIFiles(email, org, project, repoUri, dataType);
+        const aiFiles : OpenAIFile[] = await searchOpenAIFiles({ email, org, project, repoUri, dataType});
 
         return res
             .status(HTTP_SUCCESS)
@@ -3978,7 +3978,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, async (
 
         const project = typeof req.query.project === 'string' ? req.query.project : undefined;
 
-        const aiAssistants : OpenAIAssistant[] = await searchOpenAIAssistants(email, org, project);
+        const aiAssistants : OpenAIAssistant[] = await searchOpenAIAssistants({ email, org, project });
 
         return res
             .status(HTTP_SUCCESS)
@@ -4053,6 +4053,9 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
         }
 
         const shouldGroomInactiveFiles : boolean = req.query.groom != undefined;
+        // create a date that is 1/3/2024 in string format
+        const userDeletionTime : string = req.query.afterDate as string;
+        const deletionStartingDate : number = new Date(userDeletionTime).getTime() / 1000;
         const liveReferencedDataFiles : Map<string, OpenAIFile> = new Map();
 
         const activeFileIdsInAssistants : string[] = [];
@@ -4086,7 +4089,7 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
         }
         if (shouldGroomInactiveFiles) {
 
-            await searchOpenAIAssistants(email, org, project, assistantFileSearchHandler);
+            await searchOpenAIAssistants({email, org, project}, assistantFileSearchHandler);
 
             // Split the pathname by '/' and filter out empty strings
             const pathSegments = !repoUri?undefined:repoUri.pathname!.split('/').filter(segment => segment);
@@ -4112,7 +4115,9 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
             }
         }
 
-        const aiFiles : OpenAIFile[] = await deleteOpenAIFiles(email, org, project, repoUri, dataType, shouldGroomInactiveFiles?shouldDeleteHandler:undefined);
+        const aiFiles : OpenAIFile[] = await deleteOpenAIFiles(
+            {email, org, project, repoUri, dataType, creationStart: deletionStartingDate},
+            shouldGroomInactiveFiles?shouldDeleteHandler:undefined);
 
         return res
             .status(HTTP_SUCCESS)

@@ -76,7 +76,7 @@ def main(email, org, project, method, stage, data):
         "create_projectsource": f"{URL}/api/user_project/{org}/{project}/data/projectsource/generator/start",
 
         "aifiles": f"{URL}/api/user/{org}/connectors/openai/files",
-        "aifiles_groom": f"{URL}/api/user/{org}/connectors/openai/files/?groom",
+        "aifiles_groom": f"{URL}/api/user/{org}/connectors/openai/files?groom&afterDate={data}",
         "aifile_delete": f"{URL}/api/user/{org}/connectors/openai/files/{data}",
 
         "assistants": f"{URL}/api/user/{org}/connectors/openai/assistants",

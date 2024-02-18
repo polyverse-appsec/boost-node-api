@@ -8,6 +8,7 @@ import FormData from 'form-data';
 import { error } from 'console';
 import { Url } from 'url';
 import { start } from 'repl';
+import { skip } from 'node:test';
 
 export async function uploadProjectDataForAIAssistant(email: string, org: string, project: string, repoUri: URL, dataTypeId: string, simpleFilename: string, projectData: string) : Promise<ProjectDataReference> {
 
@@ -57,8 +58,13 @@ function generateFilenameFromGitHubProject(email: string, org: string, project: 
     const safeRepoName = repoName.replace(/[^a-zA-Z0-9]/g, '_');
     const safeSimpleFilename = simpleFilename.replace(/[^a-zA-Z0-9]/g, '_');
 
+    const serviceVersion = process.env.APP_VERSION;
+    if (!serviceVersion) {
+        throw new Error('Service version not found');
+    }
+
     // Combine the parts with an underscore
-    return `${safeEmail}_${safeOrg}__${safeProject}__${safeOwnerName}_${safeRepoName}__${safeSimpleFilename}`;
+    return `sara_rest_v${serviceVersion}_project_data_${safeEmail}_${safeOrg}__${safeProject}__${safeOwnerName}_${safeRepoName}__${safeSimpleFilename}`;
 }
 
 export interface OpenAIFile {
@@ -228,39 +234,43 @@ export const deleteAssistantFile = async (fileId: string): Promise<void> => {
 
 };
 
-export const searchOpenAIFiles = async (email?: string, org?: string, project?: string, repoUri?: URL, dataType?: string): Promise<OpenAIFile[]> => {
-    const secretData : any = await getSecretsAsObject('exetokendev');
+export interface DataSearchCriteria {
+    email?: string;
+    org?: string;
+    project?: string;
+    repoUri?: URL;
+    dataType?: string;
+    limit?: number;
+    creationStart?: number;
+    filePrefixFilter?: string;
+}
+
+export const searchOpenAIFiles = async (criteria: DataSearchCriteria): Promise<OpenAIFile[]> => {
+    const secretData: any = await getSecretsAsObject('exetokendev');
     let openAiKey = secretData['openai-personal'];
 
     if (!openAiKey) {
         throw new Error('OpenAI API key not found');
     }
 
-    const getFilesRestEndpoint = 'https://api.openai.com/v1/files';
+    const { email, org, project, repoUri, dataType, limit, creationStart, filePrefixFilter } = criteria;
 
-    const currentTime = usFormatter.format(new Date());
-    const response = await fetch(getFilesRestEndpoint, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${openAiKey}`,
-        },
-    });
+    let files: OpenAIFile[] = [];
+    let lastFileId: string | undefined = undefined;
+    const limitPerPage = 1000; // Max limit per page
+    const actualLimit = limit || Infinity; // Use specified limit or no limit
+    let totalFetched = 0;
 
-    const searchParameters = `email:${email?email:"ANY"}, org:${org?org:"ANY"}, project:${project?project:"ANY"}, repoUri:${repoUri?repoUri:"ANY"}, dataType:${dataType?dataType:"ANY"}`;
+    const ascending = true;
 
-    if (response.ok) {
-
-        const retrievedFiles: OpenAIFile[] = (await response.json()).data as OpenAIFile[];
-
-        console.log(`${currentTime} searchOpenAIFiles:SUCCEEDED: ${retrievedFiles.length} files : ${searchParameters}`);
-
+    const filterFiles = (retrievedFiles: OpenAIFile[]) : OpenAIFile[] => {
         // Split the pathname by '/' and filter out empty strings
         const pathSegments = !repoUri?undefined:repoUri.pathname!.split('/').filter(segment => segment);
 
         // The relevant part is the last segment of the path
         const repoName = pathSegments?pathSegments.pop():undefined;
         const ownerName = pathSegments?pathSegments.pop():undefined;
-        
+
         const filteredFiles = retrievedFiles.filter((file) => {
             let isMatch = true;
             if (email) {
@@ -283,35 +293,84 @@ export const searchOpenAIFiles = async (email?: string, org?: string, project?: 
             }
             return isMatch;
         });
-
         return filteredFiles;
     }
 
-    const errorText = await response.text();
+    let page = 0;
 
-    console.log(`${currentTime} searchOpenAIFiles:FAILED: ${errorText} : ${searchParameters}`);
+    do {
+        const getFilesRestEndpoint = `https://api.openai.com/v1/internal/files?${lastFileId ? `after=${lastFileId}&` : ''}limit=${limitPerPage}&order=${ascending?"asc":"desc"}&order_by=created_at`;
 
-    let errorObj = undefined;
-    try {
-        errorObj = errorText ? JSON.parse(errorText) : null;
-
-        // Check if the error is due to rate limiting
-        if (response.status === 429 && errorObj && errorObj.error && errorObj.error.code === "rate_limit_exceeded") {
-            throw new Error(`Rate limit exceeded: ${errorObj.error.message}`);
-        } else {
-            // For other errors, include the original error message
-            throw new Error(`OpenAI Search failure for ${searchParameters} status: ${response.status}, error: ${errorText}`);
+        let response = undefined;
+        for (const iteration of [1, 2, 3]) {
+            try {
+                response = await fetch(getFilesRestEndpoint, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${openAiKey}`,
+                    },
+                });
+            } catch (error: any) {
+                if (iteration < 3) {
+                    console.warn(`searchOpenAIFiles:RETRY: ${error.message}`);
+                    await delay(1000);
+                    continue;
+                }
+                throw error;
+            }
+            break;
         }
-    } catch (error: any) {
-        // check if JSON.parse failed
-        if (error instanceof SyntaxError) {
-            // Handle JSON parsing error
-            throw new Error(`Error parsing response from OpenAI for ${searchParameters}: ${error.message}`);
-        } else {
-            // Rethrow the original error if it's not a parsing error
-            throw new Error(`OpenAI Search failure for ${searchParameters} status: ${response.status}, error: ${errorObj?JSON.stringify(errorObj):errorText} - cascading error: ${error}`);
+        if (!response) {
+            throw new Error('Failed to fetch files');
         }
-    }
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`searchOpenAIFiles:FAILED: ${errorText}`);
+            throw new Error(`Failed to fetch files: ${response.statusText}`);
+        }
+
+        const data = (await response.json()).data as OpenAIFile[];
+        page++;
+
+        // log out the currenttime, the size of the current slice, the starting id and created_at
+        //      (in pretty local time format) of the first and last files
+        const currentTime = usFormatter.format(new Date());
+        const filesPerSecond = data.length / (ascending?(data[data.length - 1].created_at - data[0].created_at):(data[0].created_at - data[data.length - 1].created_at));
+        console.log(`${currentTime} searchOpenAIFiles:SUCCESS: Fetched Page ${page} - ${data.length} files : ${filesPerSecond}` +
+                    ` files/sec : starts: ${data[0].id} (${new Date(data[0].created_at * 1000).toLocaleString()}) : ends: ` +
+                    `${data[data.length - 1].id} (${new Date(data[data.length - 1].created_at * 1000).toLocaleString()})`);
+
+        let skipped = 0;
+        for (const file of data) {
+            // Stop fetching and filtering if a file earlier than creationStart is found
+            if (creationStart && file.created_at < creationStart) {
+                skipped++;
+                if (ascending) {
+                    continue; // Skip this file
+                }
+                console.warn(`searchOpenAIFiles:SKIPPED: ${file.filename} created at: ${file.created_at} before ${new Date(creationStart * 1000).toLocaleString()}`);
+                return filterFiles(files); // Return current files without adding more
+            }
+            // Apply filePrefixFilter if present
+            if (filePrefixFilter && !file.filename.startsWith(filePrefixFilter)) {
+                continue; // Skip this file
+            }
+            files.push(file);
+            if (files.length >= actualLimit) {
+                break; // Respect the limit if specified
+            }
+        }
+
+        totalFetched += data.length;
+        lastFileId = data[data.length - 1]?.id;
+
+        console.warn(`searchOpenAIFiles:SKIPPED: ${skipped} files before ${new Date(data[0].created_at * 1000).toLocaleString()}`);
+
+        // If a limit is specified and reached, or no more files to fetch, stop the loop
+    } while (files.length < actualLimit && lastFileId && totalFetched < actualLimit);
+
+    return filterFiles(files.slice(0, actualLimit)); // Ensure only the limited number of files are returned
 };
 
 export interface OpenAIAssistant {
@@ -340,13 +399,17 @@ export interface OpenAIAssistantQuery {
     has_more: boolean;
 }
 
-export const searchOpenAIAssistants = async (email?: string, org?: string, project?: string, activeFileHandler?: any): Promise<OpenAIAssistant[]> => {
+
+
+export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria, activeFileHandler?: any): Promise<OpenAIAssistant[]> => {
     const secretData : any = await getSecretsAsObject('exetokendev');
     let openAiKey = secretData['openai-personal'];
 
     if (!openAiKey) {
         throw new Error('OpenAI API key not found');
     }
+
+    const { email, org, project } = searchCriteria;
 
     const searchParameters = `email:${email?email:"ANY"}, org:${org?org:"ANY"}, project:${project?project:"ANY"}}`;
 
@@ -437,157 +500,123 @@ interface FileSearchResult {
     first_id: string;
 }
 
-export const deleteOpenAIFiles = async (email?: string, org?: string, project?: string, repoUri?: URL, dataType?: string, shouldDeleteHandler?: any): Promise<OpenAIFile[]> => {
-    const secretData : any = await getSecretsAsObject('exetokendev');
-    let openAiKey = secretData['openai-personal'];
+export const deleteOpenAIFiles = async (searchCriteria: DataSearchCriteria, shouldDeleteHandler?: any): Promise<OpenAIFile[]> => {
 
-    if (!openAiKey) {
-        throw new Error('OpenAI API key not found');
-    }
+    const { email, org, project, repoUri, dataType } = searchCriteria;
 
     const searchParameters = `email:${email?email:"ANY"}, org:${org?org:"ANY"}, project:${project?project:"ANY"}, repoUri:${repoUri?repoUri:"ANY"}, dataType:${dataType?dataType:"ANY"}`;
-
-    const getFilesRestEndpoint = 'https://api.openai.com/v1/files';
 
     const startTime = Date.now() / 1000;
     const currentTime = usFormatter.format(new Date(startTime * 1000));
 
     console.info(`${currentTime} deleteOpenAIFiles:STARTED: ${searchParameters}`);
 
-    const response = await fetch(getFilesRestEndpoint, {
-        method: 'GET',
-        headers: {
-            'Authorization': `Bearer ${openAiKey}`,
-        },
-    });
+    const retrievedFiles : OpenAIFile[] = await searchOpenAIFiles(searchCriteria);
 
     const deleteCompletedTime = usFormatter.format(new Date());
 
     const deletionTime = Date.now() / 1000;
     const callTimeInSeconds = deletionTime - startTime;
 
-    if (response.ok) {
+    console.log(`${deleteCompletedTime} deleteOpenAIFiles:SUCCEEDED (${callTimeInSeconds} seconds): ${retrievedFiles.length} files`);
 
-        const searchResult = await response.json() as FileSearchResult;
-        const retrievedFiles: OpenAIFile[] = searchResult.data;
+    // Split the pathname by '/' and filter out empty strings
+    const pathSegments = !repoUri?undefined:repoUri.pathname!.split('/').filter(segment => segment);
 
-        console.log(`${deleteCompletedTime} deleteOpenAIFiles:SUCCEEDED (${callTimeInSeconds} seconds): ${retrievedFiles.length} files`);
+    // The relevant part is the last segment of the path
+    const repoName = pathSegments?pathSegments.pop():undefined;
+    const ownerName = pathSegments?pathSegments.pop():undefined;
+    
+    const filesToDelete = retrievedFiles.filter((file) => {
+        let shouldDeleteThisFile = true;
+        if (email) {
+            shouldDeleteThisFile && file.filename.includes(`${email.replace(/[^a-zA-Z0-9]/g, '_')}`);
+        }
+        if (org && shouldDeleteThisFile) {
+            shouldDeleteThisFile && file.filename.includes(`_${org.replace(/[^a-zA-Z0-9]/g, '_')}`);
+        }
+        if (project && shouldDeleteThisFile) {
+            shouldDeleteThisFile && file.filename.includes(`_${project.replace(/[^a-zA-Z0-9]/g, '_')}`);
+        }
+        if (repoName && shouldDeleteThisFile) {
+            shouldDeleteThisFile && file.filename.includes(`${repoName.toString().replace(/[^a-zA-Z0-9]/g, '_')}`);
+        }
+        if (ownerName && shouldDeleteThisFile) {
+            shouldDeleteThisFile && file.filename.includes(`${ownerName.toString().replace(/[^a-zA-Z0-9]/g, '_')}`);
+        }
+        if (dataType && shouldDeleteThisFile) {
+            shouldDeleteThisFile && file.filename.includes(`${dataType}`);
+        }
+        if (shouldDeleteHandler && shouldDeleteThisFile) {
+            shouldDeleteThisFile && shouldDeleteHandler(file);
+        }
+        return shouldDeleteThisFile;
+    });
 
-        // Split the pathname by '/' and filter out empty strings
-        const pathSegments = !repoUri?undefined:repoUri.pathname!.split('/').filter(segment => segment);
+    const filesDeleted : OpenAIFile[] = [];
+    const deleteStartTime = Date.now() / 1000;
+    while (filesToDelete.length > 0) {
+        // get the next 20 files out of the list
+        const filesToProcess = filesToDelete.splice(0, 20);
 
-        // The relevant part is the last segment of the path
-        const repoName = pathSegments?pathSegments.pop():undefined;
-        const ownerName = pathSegments?pathSegments.pop():undefined;
-        
-        const filesToDelete = retrievedFiles.filter((file) => {
-            let shouldDeleteThisFile = true;
-            if (email) {
-                shouldDeleteThisFile && file.filename.includes(`${email.replace(/[^a-zA-Z0-9]/g, '_')}`);
-            }
-            if (org && shouldDeleteThisFile) {
-                shouldDeleteThisFile && file.filename.includes(`_${org.replace(/[^a-zA-Z0-9]/g, '_')}`);
-            }
-            if (project && shouldDeleteThisFile) {
-                shouldDeleteThisFile && file.filename.includes(`_${project.replace(/[^a-zA-Z0-9]/g, '_')}`);
-            }
-            if (repoName && shouldDeleteThisFile) {
-                shouldDeleteThisFile && file.filename.includes(`${repoName.toString().replace(/[^a-zA-Z0-9]/g, '_')}`);
-            }
-            if (ownerName && shouldDeleteThisFile) {
-                shouldDeleteThisFile && file.filename.includes(`${ownerName.toString().replace(/[^a-zA-Z0-9]/g, '_')}`);
-            }
-            if (dataType && shouldDeleteThisFile) {
-                shouldDeleteThisFile && file.filename.includes(`${dataType}`);
-            }
-            if (shouldDeleteHandler && shouldDeleteThisFile) {
-                shouldDeleteThisFile && shouldDeleteHandler(file);
-            }
-            return shouldDeleteThisFile;
-        });
+        if (process.env.PARALLEL_DELETE) {
+            // Start the deletion of all 20 files, then we'll wait for them to complete
+            const deletePromises = filesToProcess.map(file => deleteAssistantFile(file.id)
+                .then(() => {
+                    filesDeleted.push(file); // Only push if deletion was successful
+                })
+                .catch(error => {
+                    const currentTime = usFormatter.format(new Date());
+                    // Log error without interrupting the batch process
+                    console.warn(`${currentTime} deleteOpenAIFiles:FAILED: deleting ${file.filename} : id: ${file.id} : ${error.message}`);
+                })
+            );
+            await Promise.all(deletePromises);
+        } else {
+            for (const file of filesToProcess) {
+                const beforeDeleteTimeInMs = Date.now();
 
-        const filesDeleted : OpenAIFile[] = [];
-        const deleteStartTime = Date.now() / 1000;
-        while (filesToDelete.length > 0) {
-            // get the next 20 files out of the list
-            const filesToProcess = filesToDelete.splice(0, 20);
+                try {
+                    await deleteAssistantFile(file.id);
+                    filesDeleted.push(file);
 
-            if (process.env.PARALLEL_DELETE) {
-                // Start the deletion of all 20 files, then we'll wait for them to complete
-                const deletePromises = filesToProcess.map(file => deleteAssistantFile(file.id)
-                    .then(() => {
-                        filesDeleted.push(file); // Only push if deletion was successful
-                    })
-                    .catch(error => {
-                        const currentTime = usFormatter.format(new Date());
-                        // Log error without interrupting the batch process
-                        console.warn(`${currentTime} deleteOpenAIFiles:FAILED: deleting ${file.filename} : id: ${file.id} : ${error.message}`);
-                    })
-                );
-                await Promise.all(deletePromises);
-            } else {
-                for (const file of filesToProcess) {
-                    // wait 1 seconds to throttle AI calls - so we don't get blocked by OpenAI server
-                    await delay(1000);
+                    const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((filesDeleted.length / retrievedFiles.length) * 100).toFixed(2));
 
-                    try {
-                        await deleteAssistantFile(file.id);
-                        filesDeleted.push(file);
+                    const createdTime = usFormatter.format(new Date(file.created_at * 1000));
+                    console.debug(`deleteOpenAIFiles:SUCCESS:${filesDeleted.length}/${retrievedFiles.length} ${percentageOfFilesDeletedTo2DecimalPlaces}% : Groom/Deleted:${file.filename} : id:${file.id} : created at:${createdTime} : bytes:${file.bytes} : purpose:${file.purpose}`);
 
-                        const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((filesDeleted.length / retrievedFiles.length) * 100).toFixed(2));
+                    const afterDeleteTimeInMs = Date.now();
 
-                        const createdTime = usFormatter.format(new Date(file.created_at * 1000));
-                        console.debug(`deleteOpenAIFiles:SUCCESS:${filesDeleted.length}/${retrievedFiles.length} ${percentageOfFilesDeletedTo2DecimalPlaces}% : Groom/Deleted:${file.filename} : id:${file.id} : created at:${createdTime} : bytes:${file.bytes} : purpose:${file.purpose}`);
-
-                    } catch (error: any) {
-                        const currentTime = usFormatter.format(new Date());
-                        console.warn(`${currentTime} deleteOpenAIFiles:FAILED: deleting ${file.filename} : id: ${file.id} : ${error.message}`);
+                    // we need to wait one second between calls, so calculate the remaining time out of one second
+                    //      since beforeDeleteTimeInMs is in milliseconds, we need to divide by 1000 to get seconds
+                    //      and then subtract the time it took to delete the file
+                    const remainingTimeInSeconds = 1000 - (afterDeleteTimeInMs - beforeDeleteTimeInMs);
+                    if (remainingTimeInSeconds >= 0) {
+                        await delay(remainingTimeInSeconds);
                     }
+                } catch (error: any) {
+                    const currentTime = usFormatter.format(new Date());
+                    console.warn(`${currentTime} deleteOpenAIFiles:FAILED: deleting ${file.filename} : id: ${file.id} : ${error.message}`);
                 }
-            
             }
-
-            const currentTime = Date.now(); // Current time in milliseconds
-            const timeElapsedInSeconds = (currentTime / 1000) - deleteStartTime;
-
-            const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((filesDeleted.length / retrievedFiles.length) * 100).toFixed(2));
-            const remainingTimeInSeconds = (1 / (percentageOfFilesDeletedTo2DecimalPlaces / 100)) * timeElapsedInSeconds;
-
-            const estimatedDateTime = usFormatter.format(new Date(currentTime + (remainingTimeInSeconds * 1000)));
-
-            console.debug(`deleteOpenAIFiles:PROCESSING: Updated ETA:${estimatedDateTime}`);
+        
         }
-        const deleteEndTime = Date.now() / 1000;
-        const deletionLogTime = usFormatter.format(new Date(deleteEndTime));
 
-        console.log(`${deletionLogTime} deleteOpenAIFiles:SUCCESS (${deleteEndTime - deleteStartTime} seconds): ${filesDeleted.length}`);
+        const currentTime = Date.now(); // Current time in milliseconds
+        const timeElapsedInSeconds = (currentTime / 1000) - deleteStartTime;
 
-        return filesDeleted;
+        const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((filesDeleted.length / retrievedFiles.length) * 100).toFixed(2));
+        const remainingTimeInSeconds = (1 / (percentageOfFilesDeletedTo2DecimalPlaces / 100)) * timeElapsedInSeconds;
+
+        const estimatedDateTime = usFormatter.format(new Date(currentTime + (remainingTimeInSeconds * 1000)));
+
+        console.debug(`deleteOpenAIFiles:PROCESSING: Updated ETA:${estimatedDateTime}`);
     }
+    const deleteEndTime = Date.now() / 1000;
+    const deletionLogTime = usFormatter.format(new Date(deleteEndTime));
 
-    const errorText = await response.text();
+    console.log(`${deletionLogTime} deleteOpenAIFiles:SUCCESS (${deleteEndTime - deleteStartTime} seconds): ${filesDeleted.length}`);
 
-    console.log(`${deleteCompletedTime} deleteOpenAIFiles:FAILED (${callTimeInSeconds}): ${errorText}`);
+    return filesDeleted;
 
-    let errorObj = undefined;
-    try {
-        errorObj = errorText ? JSON.parse(errorText) : null;
-
-        // Check if the error is due to rate limiting
-        if (response.status === 429 && errorObj && errorObj.error && errorObj.error.code === "rate_limit_exceeded") {
-            throw new Error(`Rate limit exceeded: ${errorObj.error.message}`);
-        } else {
-            // For other errors, include the original error message
-            throw new Error(`OpenAI Delete Files failure for ${searchParameters} status: ${response.status}, error: ${errorText}`);
-        }
-    } catch (error: any) {
-        // check if JSON.parse failed
-        if (error instanceof SyntaxError) {
-            // Handle JSON parsing error
-            throw new Error(`Error parsing response from OpenAI for ${searchParameters}: ${error.message}`);
-        } else {
-            // Rethrow the original error if it's not a parsing error
-            throw new Error(`OpenAI Delete Files failure for ${searchParameters} status: ${response.status}, error: ${errorObj?JSON.stringify(errorObj):errorText} - cascading error: ${error}`);
-        }
-    }
 };
