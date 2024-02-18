@@ -15,6 +15,8 @@ Polyverse Boost ReST API (Backend)
     - if the GitHub App has not been installed (or failed to install for an account, or has no associated email) - the field will be blank
 - OpenAI File Search Service /user/{org}/connectors/openai/files (GET) now includes full pagination to search all files
     - also includes support for ascending and descending sort order, and filter by creation date
+- OpenAI Delete Files Service /user/{org}/connectors/openai/files (DELETE) can start at any file in history
+    - Also the files are deleted in batches of 1000 to maximize throughput and restart without a refetch
 
 ### Bug Fixes
 - N/A

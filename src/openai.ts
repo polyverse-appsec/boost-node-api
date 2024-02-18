@@ -226,7 +226,7 @@ export const deleteAssistantFile = async (fileId: string): Promise<void> => {
         // check if JSON.parse failed
         if (error instanceof SyntaxError) {
             // Handle JSON parsing error
-            throw new Error(`Error parsing response from OpenAI Delete File for ${fileId}: ${error.message}`);
+            throw new Error(`Error OpenAI Delete File for ${fileId}: ${errorText}`);
         } else {
             // Rethrow the original error if it's not a parsing error
             throw new Error(`OpenAI Delete File failure for ${fileId} status: ${response.status}, error: ${errorText} - cascading error: ${error}`);
@@ -505,7 +505,7 @@ interface FileSearchResult {
 
 export const deleteOpenAIFiles = async (searchCriteria: DataSearchCriteria, shouldDeleteHandler?: any): Promise<OpenAIFile[]> => {
 
-    const { email, org, project, repoUri, dataType } = searchCriteria;
+    const { email, org, project, repoUri, dataType, limit, creationStart, startAtFileId, filePrefixFilter } = searchCriteria;
 
     const searchParameters = `email:${email?email:"ANY"}, org:${org?org:"ANY"}, project:${project?project:"ANY"}, repoUri:${repoUri?repoUri:"ANY"}, dataType:${dataType?dataType:"ANY"}`;
 
@@ -514,39 +514,18 @@ export const deleteOpenAIFiles = async (searchCriteria: DataSearchCriteria, shou
 
     console.info(`${currentTime} deleteOpenAIFiles:STARTED: ${searchParameters}`);
 
-    const retrievedFiles : OpenAIFile[] = await searchOpenAIFiles(searchCriteria);
-
-    const deleteCompletedTime = usFormatter.format(new Date());
-
-    const deletionTime = Date.now() / 1000;
-    const callTimeInSeconds = deletionTime - startTime;
-
-    console.log(`${deleteCompletedTime} deleteOpenAIFiles:SUCCEEDED (${callTimeInSeconds} seconds): ${retrievedFiles.length} files`);
-
-    const filesToDelete = retrievedFiles.filter((file) => {
-        return shouldDeleteHandler(file);
-    });
-
     const filesDeleted : OpenAIFile[] = [];
-    const deleteStartTime = Date.now() / 1000;
-    while (filesToDelete.length > 0) {
-        // get the next 20 files out of the list
-        const filesToProcess = filesToDelete.splice(0, 20);
 
-        if (process.env.PARALLEL_DELETE) {
-            // Start the deletion of all 20 files, then we'll wait for them to complete
-            const deletePromises = filesToProcess.map(file => deleteAssistantFile(file.id)
-                .then(() => {
-                    filesDeleted.push(file); // Only push if deletion was successful
-                })
-                .catch(error => {
-                    const currentTime = usFormatter.format(new Date());
-                    // Log error without interrupting the batch process
-                    console.warn(`${currentTime} deleteOpenAIFiles:FAILED: deleting ${file.filename} : id: ${file.id} : ${error.message}`);
-                })
-            );
-            await Promise.all(deletePromises);
-        } else {
+    let page = 1;
+
+    const deleteFilesHandler = async (deleteTheseFiles: OpenAIFile[]) => {
+
+        const deleteStartTime = Date.now() / 1000;
+        while (deleteTheseFiles.length > 0) {
+
+            // get the next 20 files out of the list
+            const filesToProcess = deleteTheseFiles.splice(0, 20);
+
             for (const file of filesToProcess) {
                 const beforeDeleteTimeInMs = Date.now();
 
@@ -554,10 +533,10 @@ export const deleteOpenAIFiles = async (searchCriteria: DataSearchCriteria, shou
                     await deleteAssistantFile(file.id);
                     filesDeleted.push(file);
 
-                    const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((filesDeleted.length / retrievedFiles.length) * 100).toFixed(2));
+                    const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((filesDeleted.length / deleteTheseFiles.length) * 100).toFixed(2));
 
                     const createdTime = usFormatter.format(new Date(file.created_at * 1000));
-                    console.debug(`deleteOpenAIFiles:SUCCESS:${filesDeleted.length}/${retrievedFiles.length} ${percentageOfFilesDeletedTo2DecimalPlaces}% : Groom/Deleted:${file.filename} : id:${file.id} : created at:${createdTime} : bytes:${file.bytes} : purpose:${file.purpose}`);
+                    console.debug(`deleteOpenAIFiles:deleteFile: SUCCESS:${filesDeleted.length}/${deleteTheseFiles.length} ${percentageOfFilesDeletedTo2DecimalPlaces}% : Groom/Deleted:${file.filename} : id:${file.id} : created at:${createdTime} : bytes:${file.bytes} : purpose:${file.purpose}`);
 
                     const afterDeleteTimeInMs = Date.now();
 
@@ -570,26 +549,75 @@ export const deleteOpenAIFiles = async (searchCriteria: DataSearchCriteria, shou
                     }
                 } catch (error: any) {
                     const currentTime = usFormatter.format(new Date());
-                    console.warn(`${currentTime} deleteOpenAIFiles:FAILED: deleting ${file.filename} : id: ${file.id} : ${error.message}`);
+                    console.warn(`${currentTime} deleteOpenAIFiles:deleteFile: FAILED: deleting ${file.filename} : id: ${file.id} : ${error.message}`);
                 }
             }
-        
+
+            const currentTime = Date.now(); // Current time in milliseconds
+            const timeElapsedInSeconds = (currentTime / 1000) - deleteStartTime;
+    
+            const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((filesDeleted.length / deleteTheseFiles.length) * 100).toFixed(2));
+            const remainingTimeInSeconds = (1 / (percentageOfFilesDeletedTo2DecimalPlaces / 100)) * timeElapsedInSeconds;
+    
+            const estimatedDateTime = usFormatter.format(new Date(currentTime + (remainingTimeInSeconds * 1000)));
+    
+            if (startAtFileId) {
+                console.debug(`deleteOpenAIFiles:PROCESSING: Updated ETA:${estimatedDateTime}`);
+            } else {
+                console.debug(`deleteOpenAIFiles:PROCESSING: Page:${page} : Updated Page ETA:${estimatedDateTime}`);
+            }
         }
-
-        const currentTime = Date.now(); // Current time in milliseconds
-        const timeElapsedInSeconds = (currentTime / 1000) - deleteStartTime;
-
-        const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((filesDeleted.length / retrievedFiles.length) * 100).toFixed(2));
-        const remainingTimeInSeconds = (1 / (percentageOfFilesDeletedTo2DecimalPlaces / 100)) * timeElapsedInSeconds;
-
-        const estimatedDateTime = usFormatter.format(new Date(currentTime + (remainingTimeInSeconds * 1000)));
-
-        console.debug(`deleteOpenAIFiles:PROCESSING: Updated ETA:${estimatedDateTime}`);
     }
+
+    // if process everything in one big search and sweep
+    if (!startAtFileId) {
+
+        const searchStartTime = Date.now() / 1000;
+        const retrievedFiles : OpenAIFile[] = await searchOpenAIFiles(searchCriteria);
+
+        const searchDate = usFormatter.format(new Date());
+
+        const deletionTime = Date.now() / 1000;
+        const callTimeInSeconds = deletionTime - searchStartTime;
+
+        const filesToDelete = retrievedFiles.filter((file) => {
+            return shouldDeleteHandler(file);
+        });
+
+        console.log(`${searchDate} deleteOpenAIFiles:SearchFiles: SUCCEEDED (${callTimeInSeconds} seconds): ${retrievedFiles.length} files: filtered to ${filesToDelete.length}`);
+
+        await deleteFilesHandler(filesToDelete);
+    } else {
+        while (true) {
+            const searchStartTime = Date.now() / 1000;
+            searchCriteria.limit = 1000;
+            const retrievedFiles : OpenAIFile[] = await searchOpenAIFiles(searchCriteria);
+
+            const searchDate = usFormatter.format(new Date());
+
+            const deletionTime = Date.now() / 1000;
+            const callTimeInSeconds = deletionTime - searchStartTime;
+
+            const filesToDelete = retrievedFiles.filter((file) => {
+                return shouldDeleteHandler(file);
+            });
+
+            console.log(`${searchDate} deleteOpenAIFiles:SearchFiles: SUCCEEDED (${callTimeInSeconds} seconds): ${retrievedFiles.length} files: filtered to ${filesToDelete.length}`);
+
+            await deleteFilesHandler(filesToDelete);
+
+            if (retrievedFiles.length < 1000) {
+                break;
+            }
+            page++;
+        }
+    }
+
+
     const deleteEndTime = Date.now() / 1000;
     const deletionLogTime = usFormatter.format(new Date(deleteEndTime));
 
-    console.log(`${deletionLogTime} deleteOpenAIFiles:SUCCESS (${deleteEndTime - deleteStartTime} seconds): ${filesDeleted.length}`);
+    console.log(`${deletionLogTime} deleteOpenAIFiles:SUCCESS (${deleteEndTime - startTime} seconds): ${filesDeleted.length}`);
 
     return filesDeleted;
 

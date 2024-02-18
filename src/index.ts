@@ -4056,7 +4056,7 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
         const userDeletionTime : string | undefined = req.query.afterDate as string | undefined;
         const deletionStartingDate : number = (userDeletionTime != undefined)?new Date(userDeletionTime).getTime() / 1000:0;
 
-        const startAtFileId : string | undefined = req.query.startAt as string | undefined;
+        const startAtFileId : string | undefined = req.query.startAtFile as string | undefined;
 
         const liveReferencedDataFiles : Map<string, OpenAIFile> = new Map();
 
