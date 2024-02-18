@@ -523,13 +523,6 @@ export const deleteOpenAIFiles = async (searchCriteria: DataSearchCriteria, shou
 
     console.log(`${deleteCompletedTime} deleteOpenAIFiles:SUCCEEDED (${callTimeInSeconds} seconds): ${retrievedFiles.length} files`);
 
-    // Split the pathname by '/' and filter out empty strings
-    const pathSegments = !repoUri?undefined:repoUri.pathname!.split('/').filter(segment => segment);
-
-    // The relevant part is the last segment of the path
-    const repoName = pathSegments?pathSegments.pop():undefined;
-    const ownerName = pathSegments?pathSegments.pop():undefined;
-    
     const filesToDelete = retrievedFiles.filter((file) => {
         return shouldDeleteHandler(file);
     });
