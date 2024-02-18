@@ -45,9 +45,9 @@
                 "--email",
                 "stephen@polyverse.com",
                 "--method",
-                "aifiles_groom",
+                "aifiles_groom_at",
                 "--data",
-                "2024-01-03",
+                "file-uHApzzvJAowzJJPxf24FrcR1",
             ],
             "console": "integratedTerminal",
             "justMyCode": true

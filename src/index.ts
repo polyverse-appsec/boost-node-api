@@ -4053,9 +4053,11 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
         }
 
         const shouldGroomInactiveFiles : boolean = req.query.groom != undefined;
-        // create a date that is 1/3/2024 in string format
-        const userDeletionTime : string = req.query.afterDate as string;
-        const deletionStartingDate : number = new Date(userDeletionTime).getTime() / 1000;
+        const userDeletionTime : string | undefined = req.query.afterDate as string | undefined;
+        const deletionStartingDate : number = (userDeletionTime != undefined)?new Date(userDeletionTime).getTime() / 1000:0;
+
+        const startAtFileId : string | undefined = req.query.startAt as string | undefined;
+
         const liveReferencedDataFiles : Map<string, OpenAIFile> = new Map();
 
         const activeFileIdsInAssistants : string[] = [];
@@ -4116,7 +4118,7 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
         }
 
         const aiFiles : OpenAIFile[] = await deleteOpenAIFiles(
-            {email, org, project, repoUri, dataType, creationStart: deletionStartingDate},
+            {email, org, project, repoUri, dataType, creationStart: deletionStartingDate, startAtFileId: startAtFileId},
             shouldGroomInactiveFiles?shouldDeleteHandler:undefined);
 
         return res

@@ -243,6 +243,7 @@ export interface DataSearchCriteria {
     dataType?: string;
     limit?: number;
     creationStart?: number;
+    startAtFileId?: string;
     filePrefixFilter?: string;
 }
 
@@ -254,10 +255,10 @@ export const searchOpenAIFiles = async (criteria: DataSearchCriteria): Promise<O
         throw new Error('OpenAI API key not found');
     }
 
-    const { email, org, project, repoUri, dataType, limit, creationStart, filePrefixFilter } = criteria;
+    const { email, org, project, repoUri, dataType, limit, creationStart, startAtFileId, filePrefixFilter } = criteria;
 
     let files: OpenAIFile[] = [];
-    let lastFileId: string | undefined = undefined;
+    let lastFileId: string | undefined = startAtFileId;
     const limitPerPage = 1000; // Max limit per page
     const actualLimit = limit || Infinity; // Use specified limit or no limit
     let totalFetched = 0;
@@ -300,6 +301,7 @@ export const searchOpenAIFiles = async (criteria: DataSearchCriteria): Promise<O
     let page = 0;
 
     do {
+        // we're going to use an internal undocumented OpenAI API to search files - as the public API only supports 10,000 files, no pagination, no sorting
         const getFilesRestEndpoint = `https://api.openai.com/v1/internal/files?${lastFileId ? `after=${lastFileId}&` : ''}limit=${limitPerPage}&order=${ascending?"asc":"desc"}&order_by=created_at`;
 
         let response = undefined;
@@ -529,29 +531,7 @@ export const deleteOpenAIFiles = async (searchCriteria: DataSearchCriteria, shou
     const ownerName = pathSegments?pathSegments.pop():undefined;
     
     const filesToDelete = retrievedFiles.filter((file) => {
-        let shouldDeleteThisFile = true;
-        if (email) {
-            shouldDeleteThisFile && file.filename.includes(`${email.replace(/[^a-zA-Z0-9]/g, '_')}`);
-        }
-        if (org && shouldDeleteThisFile) {
-            shouldDeleteThisFile && file.filename.includes(`_${org.replace(/[^a-zA-Z0-9]/g, '_')}`);
-        }
-        if (project && shouldDeleteThisFile) {
-            shouldDeleteThisFile && file.filename.includes(`_${project.replace(/[^a-zA-Z0-9]/g, '_')}`);
-        }
-        if (repoName && shouldDeleteThisFile) {
-            shouldDeleteThisFile && file.filename.includes(`${repoName.toString().replace(/[^a-zA-Z0-9]/g, '_')}`);
-        }
-        if (ownerName && shouldDeleteThisFile) {
-            shouldDeleteThisFile && file.filename.includes(`${ownerName.toString().replace(/[^a-zA-Z0-9]/g, '_')}`);
-        }
-        if (dataType && shouldDeleteThisFile) {
-            shouldDeleteThisFile && file.filename.includes(`${dataType}`);
-        }
-        if (shouldDeleteHandler && shouldDeleteThisFile) {
-            shouldDeleteThisFile && shouldDeleteHandler(file);
-        }
-        return shouldDeleteThisFile;
+        return shouldDeleteHandler(file);
     });
 
     const filesDeleted : OpenAIFile[] = [];

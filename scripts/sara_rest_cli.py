@@ -77,6 +77,7 @@ def main(email, org, project, method, stage, data):
 
         "aifiles": f"{URL}/api/user/{org}/connectors/openai/files",
         "aifiles_groom": f"{URL}/api/user/{org}/connectors/openai/files?groom&afterDate={data}",
+        "aifiles_groom_at": f"{URL}/api/user/{org}/connectors/openai/files?groom&startAtFile={data}",
         "aifile_delete": f"{URL}/api/user/{org}/connectors/openai/files/{data}",
 
         "assistants": f"{URL}/api/user/{org}/connectors/openai/assistants",
@@ -90,7 +91,7 @@ def main(email, org, project, method, stage, data):
 
     url = endpoints[method]
     # if method starts with "create_" or is "discovery", then it's a POST request
-    verb = "POST" if method.startswith("create_") or method.endswith("_gen") or method == "discovery" or method == "data_references_refresh" or method == "status_refresh" else "DELETE" if (method == "aifiles_groom" or method == "aifile_delete") else "GET"
+    verb = "POST" if method.startswith("create_") or method.endswith("_gen") or method == "discovery" or method == "data_references_refresh" or method == "status_refresh" else "DELETE" if (method in ["aifiles_groom", "aifiles_groom_at", "aifile_delete"]) else "GET"
     print(f"Requesting {verb} {url}")
     try:
         response = make_request(verb, url, email)
@@ -152,6 +153,7 @@ if __name__ == "__main__":
 
                                  'aifiles',
                                  'aifiles_groom',
+                                 'aifiles_groom_at',
                                  'aifile_delete',
 
                                  'assistants',
@@ -169,6 +171,7 @@ if __name__ == "__main__":
         "data_references",
         "aifiles",
         "aifiles_groom",
+        "aifiles_groom_at",
         "aifile_delete",
         "assistants",
         "github_access",
