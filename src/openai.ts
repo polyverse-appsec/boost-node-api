@@ -62,9 +62,10 @@ function generateFilenameFromGitHubProject(email: string, org: string, project: 
     if (!serviceVersion) {
         throw new Error('Service version not found');
     }
+    const safeVersion = serviceVersion.replace(".", '_');
 
     // Combine the parts with an underscore
-    return `sara_rest_v${serviceVersion}_project_data_${safeEmail}_${safeOrg}__${safeProject}__${safeOwnerName}_${safeRepoName}__${safeSimpleFilename}`;
+    return `sara_rest_v${safeVersion}_project_data_${safeEmail}_${safeOrg}__${safeProject}__${safeOwnerName}_${safeRepoName}__${safeSimpleFilename}`;
 }
 
 export interface OpenAIFile {
