@@ -5,10 +5,7 @@ import { usFormatter } from './utility/log';
 
 import fetch from 'node-fetch';
 import FormData from 'form-data';
-import { error } from 'console';
-import { Url } from 'url';
-import { start } from 'repl';
-import { skip } from 'node:test';
+import axios from 'axios';
 
 export async function uploadProjectDataForAIAssistant(email: string, org: string, project: string, repoUri: URL, dataTypeId: string, simpleFilename: string, projectData: string) : Promise<ProjectDataReference> {
 
@@ -191,7 +188,7 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
 };
 
 export const deleteAssistantFile = async (fileId: string): Promise<void> => {
-    const secretData : any = await getSecretsAsObject('exetokendev');
+    const secretData: any = await getSecretsAsObject('exetokendev');
     let openAiKey = secretData['openai-personal'];
 
     if (!openAiKey) {
@@ -200,40 +197,55 @@ export const deleteAssistantFile = async (fileId: string): Promise<void> => {
 
     const deleteFileIdRest = `https://api.openai.com/v1/files/${fileId}`;
 
-    const response = await fetch(deleteFileIdRest, {
-        method: 'DELETE',
+    const axiosConfig = {
         headers: {
             'Authorization': `Bearer ${openAiKey}`,
         },
-    });
+        timeout: 2000, // 2 second timeout
+    };
 
-    if (response.ok) {
-        return;
-    }
+    // Retry logic
+    const maxRetries = 2;
+    let attempt = 0;
 
-    const errorText = await response.text();
-    try {
-        const errorObj = errorText ? JSON.parse(errorText) : null;
+    while (attempt <= maxRetries) {
+        try {
+            await axios.delete(deleteFileIdRest, axiosConfig);
 
-        // Check if the error is due to rate limiting
-        if (response.status === 429 && errorObj && errorObj.error && errorObj.error.code === "rate_limit_exceeded") {
-            throw new Error(`Rate limit exceeded: ${errorObj.error.message}`);
-        } else {
-            // For other errors, include the original error message
-            throw new Error(`OpenAI Delete file failure for ${fileId} status: ${response.status}, error: ${errorText}`);
+            // If call was successful, break out of the loop
+            return;
+        } catch (error: any) {
+            if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
+                attempt++;
+                if (attempt > maxRetries) {
+                    throw new Error(`Failed to delete ${fileId} after ${maxRetries + 1} attempts due to timeout.`);
+                }
+                console.warn(`deleteAssistantFile:RETRY ${attempt} for ${fileId} after Error: ${error.message}`);
+            } else {
+                console.error(`deleteAssistantFile:FAILED: ${fileId} after Error: ${error.message}`);
+                // Handle non-timeout errors
+                if (error.response) {
+                    // The request was made and the server responded with a status code
+                    // that falls out of the range of 2xx
+                    const errorMessage = error.response.data.error?.message || 'No error message';
+                    const statusCode = error.response.status;
+                    if (statusCode === 429) {
+                        throw new Error(`OpenAI Delete Call Rate limit exceeded for ${fileId}: ${errorMessage}`);
+                    } else {
+                        throw new Error(`OpenAI Delete file failure for ${fileId} status: ${statusCode}, error: ${errorMessage}`);
+                    }
+                } else if (error.request) {
+                    // The request was made but no response was received
+                    throw new Error(`OpenAI Delete file failure for ${fileId}: No response from server`);
+                } else {
+                    // Something happened in setting up the request that triggered an Error
+                    throw new Error(`Error deleting file ${fileId}: ${error.message}`);
+                }
+            }
         }
-    } catch (error: any) {
-        // check if JSON.parse failed
-        if (error instanceof SyntaxError) {
-            // Handle JSON parsing error
-            throw new Error(`Error OpenAI Delete File for ${fileId}: ${errorText}`);
-        } else {
-            // Rethrow the original error if it's not a parsing error
-            throw new Error(`OpenAI Delete File failure for ${fileId} status: ${response.status}, error: ${errorText} - cascading error: ${error}`);
-        }
     }
-
 };
+
 
 export interface DataSearchCriteria {
     email?: string;
@@ -313,24 +325,26 @@ export const searchOpenAIFiles = async (criteria: DataSearchCriteria): Promise<O
                         'Authorization': `Bearer ${openAiKey}`,
                     },
                 });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Failed to fetch files: ${errorText}`);
+                }
             } catch (error: any) {
+                const currentTime = usFormatter.format(new Date());
                 if (iteration < 3) {
-                    console.warn(`searchOpenAIFiles:RETRY: ${error.message}`);
+                    console.warn(`${currentTime} searchOpenAIFiles:RETRY: ${getFilesRestEndpoint} ${error.message}`);
                     await delay(1000);
                     continue;
                 }
+                console.error(`${currentTime} searchOpenAIFiles:FAILED: ${getFilesRestEndpoint} ${error.message}`);
                 throw error;
             }
             break;
         }
         if (!response) {
+            console.error(`searchOpenAIFiles:FAILED`);
             throw new Error('Failed to fetch files');
-        }
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`searchOpenAIFiles:FAILED: ${errorText}`);
-            throw new Error(`Failed to fetch files: ${response.statusText}`);
         }
 
         const data = (await response.json()).data as OpenAIFile[];
@@ -519,8 +533,9 @@ export const deleteOpenAIFiles = async (searchCriteria: DataSearchCriteria, shou
     let page = 1;
 
     const deleteFilesHandler = async (deleteTheseFiles: OpenAIFile[]) => {
-
+        const totalFilesToDelete = deleteTheseFiles.length;
         const deleteStartTime = Date.now() / 1000;
+        let deletedFilesInThisPage : number = 0;
         while (deleteTheseFiles.length > 0) {
 
             // get the next 20 files out of the list
@@ -532,11 +547,12 @@ export const deleteOpenAIFiles = async (searchCriteria: DataSearchCriteria, shou
                 try {
                     await deleteAssistantFile(file.id);
                     filesDeleted.push(file);
+                    deletedFilesInThisPage++;
 
-                    const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((filesDeleted.length / deleteTheseFiles.length) * 100).toFixed(2));
+                    const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((deletedFilesInThisPage / totalFilesToDelete) * 100).toFixed(2));
 
                     const createdTime = usFormatter.format(new Date(file.created_at * 1000));
-                    console.debug(`deleteOpenAIFiles:deleteFile: SUCCESS:${filesDeleted.length}/${deleteTheseFiles.length} ${percentageOfFilesDeletedTo2DecimalPlaces}% : Groom/Deleted:${file.filename} : id:${file.id} : created at:${createdTime} : bytes:${file.bytes} : purpose:${file.purpose}`);
+                    console.debug(`deleteOpenAIFiles:deleteFile: SUCCESS:${deletedFilesInThisPage}/${totalFilesToDelete} ${percentageOfFilesDeletedTo2DecimalPlaces}% : Groom/Deleted:${file.filename} : id:${file.id} : created at:${createdTime} : bytes:${file.bytes} : purpose:${file.purpose}`);
 
                     const afterDeleteTimeInMs = Date.now();
 
@@ -556,15 +572,17 @@ export const deleteOpenAIFiles = async (searchCriteria: DataSearchCriteria, shou
             const currentTime = Date.now(); // Current time in milliseconds
             const timeElapsedInSeconds = (currentTime / 1000) - deleteStartTime;
     
-            const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((filesDeleted.length / deleteTheseFiles.length) * 100).toFixed(2));
-            const remainingTimeInSeconds = (1 / (percentageOfFilesDeletedTo2DecimalPlaces / 100)) * timeElapsedInSeconds;
-    
-            const estimatedDateTime = usFormatter.format(new Date(currentTime + (remainingTimeInSeconds * 1000)));
-    
+            const currentDateTime = usFormatter.format(new Date(currentTime));
             if (startAtFileId) {
-                console.debug(`deleteOpenAIFiles:PROCESSING: Updated ETA:${estimatedDateTime}`);
+                console.debug(`${currentDateTime} deleteOpenAIFiles:PROCESSING: Page:${page} : Deleted ${deletedFilesInThisPage} files in ${timeElapsedInSeconds} seconds at a rate of ${deletedFilesInThisPage / timeElapsedInSeconds} file/sec`);
             } else {
-                console.debug(`deleteOpenAIFiles:PROCESSING: Page:${page} : Updated Page ETA:${estimatedDateTime}`);
+    
+                const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((deletedFilesInThisPage / totalFilesToDelete) * 100).toFixed(2));
+                const remainingTimeInSeconds = (1 / (percentageOfFilesDeletedTo2DecimalPlaces / 100)) * timeElapsedInSeconds;
+        
+                const estimatedDateTime = usFormatter.format(new Date(currentTime + (remainingTimeInSeconds * 1000)));
+
+                console.debug(`${currentDateTime} deleteOpenAIFiles:PROCESSING: Deleted ${deletedFilesInThisPage} files in ${timeElapsedInSeconds} seconds at a rate of ${deletedFilesInThisPage / timeElapsedInSeconds} file/sec : ${percentageOfFilesDeletedTo2DecimalPlaces}% complete : estimated completion at ${estimatedDateTime}`);
             }
         }
     }
