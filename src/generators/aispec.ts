@@ -55,9 +55,11 @@ export class ArchitecturalSpecificationGenerator extends Generator {
         switch (stage) {
         case Stages.StaticDefault:
             await this.updateProgress('Generating Initial Project Info');
+
+            const projectRepos: string = this.projectData.resources.map((resource) => resource.uri).join('\n\n');
             this.data = this.defaultArchitecturalSpecification
                 .replace('{projectName}', this.projectData.name)
-                .replace('{projectRepo}', this.projectData.resources[0].uri);
+                .replace('{projectRepo}', projectRepos);
 
             nextStage = ArchitecturalSpecificationStage.FileFiltering;
 

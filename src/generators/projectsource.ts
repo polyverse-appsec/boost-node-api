@@ -32,9 +32,10 @@ readonly fileSourceEntry =
         switch (stage) {
         case Stages.StaticDefault:
             await this.updateProgress('Generating Initial Project Info');
+            const projectRepos : string = this.projectData.resources.map((resource) => resource.uri).join('\n\n');
             this.data = this.defaultProjectSource
                 .replace('{projectName}', this.projectData.name)
-                .replace('{projectRepo}', this.projectData.resources[0].uri);
+                .replace('{projectRepo}', projectRepos);
 
             nextStage = ProjectSourceStage.FilePathScan;
 

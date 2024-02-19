@@ -53,6 +53,21 @@
             "justMyCode": true
         },
         {
+            "name": "Count OpenAI Files",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/sara_rest_cli.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--email",
+                "stephen@polyverse.com",
+                "--method",
+                "aifiles",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "List OpenAI Assistants",
             "type": "python",
             "request": "launch",
