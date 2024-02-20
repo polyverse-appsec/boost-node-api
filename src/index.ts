@@ -1893,7 +1893,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 .send(groomingState);
         }
 
-        // if project is synchronized, the nothing to do
+        // if project is synchronized, then nothing to do
         if (projectStatus.status === ProjectStatus.Synchronized) {
             const synchronizedDate = new Date(projectStatus.lastSynchronized! * 1000);
             const groomingState = {
@@ -1972,6 +1972,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         };
 
         const discoveryStart = Math.floor(Date.now() / 1000);
+        const discoveryTime = new Date(discoveryStart * 1000);
         const launchedGroomingState : ProjectGroomState = {
             status: GroomingStatus.Grooming,
             lastDiscoveryStart: discoveryStart,
@@ -1980,22 +1981,29 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         };
 
         try {
-            console.log(`Launching Groomed Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
-
-            const discoveryResult = await localSelfDispatch<ProjectDataReference[]>(
-                email, originalIdentityHeader!, req,
-                `${projectPath}/discover`, 'POST',
-                projectStatus.status === ProjectStatus.OutOfDateProjectData?discoveryWithResetState:undefined,
-                timeRemainingToDiscoverInSeconds * 1000);
-
-                // if discovery result is an empty object (i.e. {}), then we launched discovery but don't know if it finished (e.g. timeout waiting)
-            const discoveryTime = new Date(discoveryStart * 1000);
-            if (!discoveryResult || !Object.keys(discoveryResult).length) {
-                launchedGroomingState.status_details = `Launched Async Discovery at ${usFormatter.format(discoveryTime)}, but no result yet`;
+            if (!process.env.DISCOVERY_GROOMER || process.env.DISCOVERY_GROOMER.toLocaleLowerCase() === 'whatif') {
+                launchedGroomingState.status_details = `Launched WhatIf Discovery at ${discoveryTime} for ${projectPath} with status ${JSON.stringify(projectStatus)}`;
             } else {
-                // even though discovery launched, and didn't timeout... we don't know if it finished or not
-                //      only that the async launch didn't timeout/fail
-                launchedGroomingState.status_details = `Launched Discovery at ${usFormatter.format(discoveryTime)} ${JSON.stringify(discoveryResult)}`;
+                if (process.env.DISCOVERY_GROOMER.toLocaleLowerCase() === 'automatic') {
+                    console.log(`Launching Automatic Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
+                } else {
+                    console.log(`Launching ${process.env.DISCOVERY_GROOMER} Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
+                }
+
+                const discoveryResult = await localSelfDispatch<ProjectDataReference[]>(
+                    email, originalIdentityHeader!, req,
+                    `${projectPath}/discover`, 'POST',
+                    projectStatus.status === ProjectStatus.OutOfDateProjectData?discoveryWithResetState:undefined,
+                    timeRemainingToDiscoverInSeconds * 1000);
+
+                    // if discovery result is an empty object (i.e. {}), then we launched discovery but don't know if it finished (e.g. timeout waiting)
+                if (!discoveryResult || !Object.keys(discoveryResult).length) {
+                    launchedGroomingState.status_details = `Launched Async Discovery at ${usFormatter.format(discoveryTime)}, but no result yet`;
+                } else {
+                    // even though discovery launched, and didn't timeout... we don't know if it finished or not
+                    //      only that the async launch didn't timeout/fail
+                    launchedGroomingState.status_details = `Launched Discovery at ${usFormatter.format(discoveryTime)} ${JSON.stringify(discoveryResult)}`;
+                }
             }
 
             await storeGroomingState(launchedGroomingState);

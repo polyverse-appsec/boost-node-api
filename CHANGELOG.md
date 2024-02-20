@@ -3,6 +3,19 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.11.4: February 16th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Enabled WhatIf Grooming Service - where failed Project Discoveries are identified, but not retried by Groomer
+    - Default/WhatIf - To enable explicitly set environment variable DISCOVERY_GROOMER=whatif or leave unset
+    - Automatic - enables automatic rediscovery of failed discovery runs
+
+### Bug Fixes
+- N/A
+
 ## Version 0.11.3: February 16th, 2024
 
 ### New Features
