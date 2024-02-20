@@ -1027,7 +1027,7 @@ app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, re
         //  - user?: string - a specific user, or all if not specified
         //  - status?: string - a specific Grooming status, or all if not specified
 
-        const { org, project, user } = req.query;
+        const { org, project, user, status } = req.query;
         if (org && typeof org !== 'string') {
             console.error(`Org must be a string`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid org');
@@ -1042,9 +1042,12 @@ app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, re
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid status');
         }
 
-        const groomingDataList : GroomingStatus[] = [];
+        const groomingDataList : ProjectGroomState[] = [];
 
-        const groomingDataRaw : any[] = await searchProjectData(user?user as string:searchWildcard, SourceType.General, org?org as string:searchWildcard, project?project as string:searchWildcard, "", 'groom');
+        const groomingDataRaw : any[] = await searchProjectData(
+            user?user as string:searchWildcard, SourceType.General,
+            org?org as string:searchWildcard,
+            project?project as string:searchWildcard, "", 'groom');
 
         if (!groomingDataRaw) {
             console.error(`${req.originalUrl} No grooming status found due to query failure`);
@@ -1060,7 +1063,10 @@ app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, re
         for (const projectData of groomingDataRaw) {
             const projectDataString = projectData.data as string;
             try {
-                const groomingDataObject = JSON.parse(projectDataString) as GroomingStatus;
+                const groomingDataObject = JSON.parse(projectDataString) as ProjectGroomState;
+                if (status && groomingDataObject.status !== status) {
+                    continue;
+                }
 
                 groomingDataList.push(groomingDataObject);
             } catch (error) {
@@ -1724,6 +1730,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
 enum GroomingStatus {
     Idle = 'Idle',
+    LaunchPending = 'Pending',
     Grooming = 'Grooming',
     Skipping = 'Skipping',
     Error = 'Error'
@@ -1836,7 +1843,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                     lastUpdated: Math.floor(Date.now() / 1000)
                 };
                 return res
-                    .status(429)
+                    .status(HTTP_FAILURE_BUSY)
                     .send(groomerBusy);
             }
 
@@ -1857,9 +1864,23 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                         lastUpdated: Math.floor(Date.now() / 1000)
                     };
                     return res
-                        .status(429)
+                        .status(HTTP_FAILURE_BUSY)
                         .send(groomerBusy);
                 }
+            }
+
+            if (currentGroomingState.status === GroomingStatus.LaunchPending) {
+                // if we're in a pending state, then we'll just skip this run
+                const groomingState = {
+                    status: GroomingStatus.Skipping,
+                    status_details: 'Grooming Launch Pending',
+                    consecutiveErrors: currentGroomingState.consecutiveErrors,
+                    lastDiscoveryStart: currentGroomingState.lastDiscoveryStart,
+                    lastUpdated: Math.floor(Date.now() / 1000)
+                };
+                return res
+                    .status(HTTP_FAILURE_BUSY)
+                    .send(groomingState);
             }
         }
 
@@ -1974,7 +1995,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         const discoveryStart = Math.floor(Date.now() / 1000);
         const discoveryTime = new Date(discoveryStart * 1000);
         const launchedGroomingState : ProjectGroomState = {
-            status: GroomingStatus.Grooming,
+            status: GroomingStatus.LaunchPending,
             lastDiscoveryStart: discoveryStart,
             consecutiveErrors: currentGroomingState?currentGroomingState.consecutiveErrors:0,
             lastUpdated: Math.floor(Date.now() / 1000)
@@ -1984,6 +2005,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             if (!process.env.DISCOVERY_GROOMER || process.env.DISCOVERY_GROOMER.toLocaleLowerCase() === 'whatif') {
                 launchedGroomingState.status_details = `Launched WhatIf Discovery at ${discoveryTime} for ${projectPath} with status ${JSON.stringify(projectStatus)}`;
             } else {
+                launchedGroomingState.status = GroomingStatus.Grooming;
                 if (process.env.DISCOVERY_GROOMER.toLocaleLowerCase() === 'automatic') {
                     console.log(`Launching Automatic Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
                 } else {

@@ -12,9 +12,12 @@ Polyverse Boost ReST API (Backend)
 - Enabled WhatIf Grooming Service - where failed Project Discoveries are identified, but not retried by Groomer
     - Default/WhatIf - To enable explicitly set environment variable DISCOVERY_GROOMER=whatif or leave unset
     - Automatic - enables automatic rediscovery of failed discovery runs
+- Ensure Discovery Groomer skips any Projects that have a Grooming in active Pending Rediscovery
 
 ### Bug Fixes
-- N/A
+- Fix Discovery Groomer State Search to return the full Groomer State - not just the Status
+    - api/user/search/projects/groom?status={status} (GET)
+- Fix Status filtering for Project Discovery Grooming State Search
 
 ## Version 0.11.3: February 16th, 2024
 
