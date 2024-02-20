@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.11.4: February 16th, 2024
+## Version 0.11.4: February 20th, 2024
 
 ### New Features
 - N/A
@@ -18,6 +18,8 @@ Polyverse Boost ReST API (Backend)
 - Fix Discovery Groomer State Search to return the full Groomer State - not just the Status
     - api/user/search/projects/groom?status={status} (GET)
 - Fix Status filtering for Project Discovery Grooming State Search
+- Fix for Blueprint Generators stuck in FileScan or BuildingBlueprint stages - will now reset to initial Static stage
+    - Can be overriden by AI_BLUEPRINT env variable to enable AI Blueprint generation
 
 ## Version 0.11.3: February 16th, 2024
 

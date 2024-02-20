@@ -10,7 +10,6 @@ import { localSelfDispatch } from '../utility/dispatch';
 const ignore = require('ignore');
 
 enum ArchitecturalSpecificationStage {
-    ProjectInfo= 'Default',
     FileFiltering = 'Identifying Files for Summarization',
     FileSummarization = 'Summarization of Files using AI',
 }

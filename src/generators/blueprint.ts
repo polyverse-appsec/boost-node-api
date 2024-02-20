@@ -9,7 +9,6 @@ import { AIFunctionResponse } from '../boost-python-api/AIFunctionResponse';
 import path from 'path';
 
 enum BlueprintStage {
-    Default = 'Default',
     FileImport = 'File Import',
     SourceLanguageScan = 'Source Language Scan',
     FileScan = 'File Scan',
@@ -144,6 +143,11 @@ readonly defaultBlueprint =
 
         case BlueprintStage.FileScan:
         {
+            if (!process.env.AI_BLUEPRINT) {
+                await this.updateProgress(`Skipping ${BlueprintStage.FileScan} Stage - Resetting to static default - AI Blueprinting disabled by environment variable`);
+                throw new GeneratorProcessingError('AI Blueprinting disabled by environment variable', Stages.StaticDefault);
+            }
+
             const filteredFileList : string[] | undefined = await this.loadScratchData<string[]>(BlueprintStage.FileImport);
             if (!filteredFileList) {
                 throw new GeneratorProcessingError('Unable to load file list', BlueprintStage.FileImport);
@@ -216,6 +220,10 @@ readonly defaultBlueprint =
         }
         case BlueprintStage.BuildingBlueprint:
         {
+            if (!process.env.AI_BLUEPRINT) {
+                await this.updateProgress(`Skipping ${BlueprintStage.BuildingBlueprint} Stage - Resetting to static default - AI Blueprinting disabled by environment variable`);
+                throw new GeneratorProcessingError('AI Blueprinting disabled by environment variable', Stages.StaticDefault);
+            }
 
             await this.updateProgress('Rebuilding Blueprint from Sampled Project Files');
 

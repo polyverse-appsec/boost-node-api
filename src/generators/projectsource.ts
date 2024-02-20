@@ -6,7 +6,6 @@ import { Generator } from './generator';
 const ignore = require('ignore');
 
 enum ProjectSourceStage {
-    ProjectInfo= 'Default',
     FilePathScan = 'File Paths Scan',
     FullSourceScan = 'Full Source Code Import',
 }
