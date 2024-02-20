@@ -85,7 +85,8 @@ def main(email, org, project, method, stage, data):
 
         "github_access": f"{URL}/api/user/{org}/connectors/github/access?uri={data}",
 
-        "timer_interval": f"{URL}/api/timer/interval"
+        "timer_interval": f"{URL}/api/timer/interval",
+        "list_pending_discoveries": f"{URL}/api/search/projects/groom?status=Pending",
     }
 
     if method not in endpoints:
@@ -163,7 +164,8 @@ if __name__ == "__main__":
 
                                  'github_access',
 
-                                 'timer_interval'
+                                 'timer_interval',
+                                 'list_pending_discoveries'
                                  ], help="The method to run")
     parser.add_argument("--stage", default="local", choices=['local', 'dev', 'test', 'prod'], help="The Service to target (default: local)")
     parser.add_argument("--data", default=None, help="Data to pass to the method")
@@ -181,7 +183,8 @@ if __name__ == "__main__":
         "assistants",
         "github_access",
         "projects",
-        "timer_interval"
+        "timer_interval",
+        "list_pending_discoveries"
     ]):
         parser.error("The --project argument is required for the method"
                      f" {args.method}.")

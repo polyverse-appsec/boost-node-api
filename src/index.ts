@@ -1074,9 +1074,7 @@ app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, re
             }
         }
 
-        if (process.env.TRACE_LEVEL) {
-            console.log(`${req.originalUrl} retrieved data for ${groomingDataList.length} grooming objects`);
-        }
+        console.info(`${req.originalUrl} retrieved ${groomingDataList.length} Projects to Groom with status:${status?status:'all'}`);
 
         return res
             .status(HTTP_SUCCESS)
