@@ -354,7 +354,8 @@ export const searchOpenAIFiles = async (criteria: DataSearchCriteria): Promise<O
         //      (in pretty local time format) of the first and last files
         const currentTime = usFormatter.format(new Date());
         const filesPerSecond = data.length / (ascending?(data[data.length - 1].created_at - data[0].created_at):(data[0].created_at - data[data.length - 1].created_at));
-        console.log(`${currentTime} searchOpenAIFiles:SUCCESS: Fetched Page ${page} - ${data.length} files : ${filesPerSecond}` +
+
+        console.log(`${currentTime} searchOpenAIFiles:SUCCESS: Fetched Page ${page} - ${data.length} files : ${Math.round(filesPerSecond * 100) / 100}` +
                     ` files/sec : starts: ${data[0].id} (${new Date(data[0].created_at * 1000).toLocaleString()}) : ends: ` +
                     `${data[data.length - 1].id} (${new Date(data[data.length - 1].created_at * 1000).toLocaleString()})`);
 
