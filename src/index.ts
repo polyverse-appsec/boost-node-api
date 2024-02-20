@@ -957,33 +957,15 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid user');
         }
 
-        const projectDataList : UserProjectData[] = [];
-
-        const projectDataRaw : any[] = await searchProjectData(user?user as string:searchWildcard, SourceType.General, org?org as string:searchWildcard, project?project as string:searchWildcard, "", 'project');
-
-        if (!projectDataRaw) {
-            console.error(`${req.originalUrl} No projects found due to query failure`);
-            return res
-                .status(HTTP_FAILURE_INTERNAL_SERVER_ERROR)
-                .send('Internal Server Error');
-        }
+        const projectDataList : UserProjectData[] = await searchProjectData<UserProjectData>(user?user as string:searchWildcard, SourceType.General, org?org as string:searchWildcard, project?project as string:searchWildcard, "", 'project');
 
         if (process.env.TRACE_LEVEL) {
-            console.log(`${req.originalUrl}: retrieved data for ${projectDataRaw.length} raw project data`);
+            console.log(`${req.originalUrl}: retrieved data for ${projectDataList.length} raw project data`);
         }
 
-        for (const projectData of projectDataRaw) {
-            const projectDataString = projectData.data as string;
-            try {
-                const projectDataObject = JSON.parse(projectDataString) as UserProjectData;
-
-                // the project owner is the first part of the project data path, up until the first '/'
-                projectDataObject.owner = projectData.projectPath.substring(0, projectData.projectPath.indexOf('/'));
-
-                projectDataList.push(projectDataObject);
-            } catch (error) {
-                console.error(`Unable to parse project data: ${projectDataString}`, error);
-            }
+        for (const projectData of projectDataList) {
+            // the project owner is the first part of the project data path, up until the first '/'
+            projectData.owner = (projectData as any)._userName;
         }
 
         if (process.env.TRACE_LEVEL) {
@@ -1042,44 +1024,26 @@ app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, re
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid status');
         }
 
-        const groomingDataList : ProjectGroomState[] = [];
-
-        const groomingDataRaw : any[] = await searchProjectData(
+        const groomingDataList : ProjectGroomState[] =
+            await searchProjectData<ProjectGroomState>(
             user?user as string:searchWildcard, SourceType.General,
             org?org as string:searchWildcard,
             project?project as string:searchWildcard, "", 'groom');
 
-        if (!groomingDataRaw) {
-            console.error(`${req.originalUrl} No grooming status found due to query failure`);
-            return res
-                .status(HTTP_FAILURE_INTERNAL_SERVER_ERROR)
-                .send('Internal Server Error');
-        }
-
         if (process.env.TRACE_LEVEL) {
-            console.log(`${req.originalUrl}: retrieved data for ${groomingDataRaw.length} raw groom data`);
+            console.log(`${req.originalUrl}: retrieved data for ${groomingDataList.length} raw groom data`);
         }
 
-        for (const projectData of groomingDataRaw) {
-            const projectDataString = projectData.data as string;
-            try {
-                const groomingDataObject = JSON.parse(projectDataString) as ProjectGroomState;
-                if (status && groomingDataObject.status !== status) {
-                    continue;
-                }
+        const groomingDataListFilteredByStatus : ProjectGroomState[] =
+            groomingDataList.filter((groomData) => status?groomData.status === status:true);
 
-                groomingDataList.push(groomingDataObject);
-            } catch (error) {
-                console.error(`Unable to parse groom data: ${projectDataString}`, error);
-            }
-        }
-
-        console.info(`${req.originalUrl} retrieved ${groomingDataList.length} Projects to Groom with status:${status?status:'all'}`);
+        const listOfProjectNames : string = groomingDataList.map((groomData) => `${(groomData as any)._userName} org=${(groomData as any)._ownerName} repo=${(groomData as any)._repoName}`).join('\n');
+        console.info(`${req.originalUrl} retrieved ${groomingDataListFilteredByStatus.length} Projects to Groom with status:${status?status:'all'}: ${listOfProjectNames}`);
 
         return res
             .status(HTTP_SUCCESS)
             .contentType('application/json')
-            .send(groomingDataList);
+            .send(groomingDataListFilteredByStatus);
 
     } catch (error) {
         return handleErrorResponse(error, req, res);
@@ -1123,10 +1087,31 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
             const thisProjectIdentityHeader = (await signedAuthHeader(project.owner!))[header_X_Signed_Identity];
             // we'll fork/async the grooming process for each project (NOTE NO use of 'await' here)
             try {
-                localSelfDispatch<void>(project.owner!, thisProjectIdentityHeader, req, `${projectDataPath}/groom`, 'POST');
-                projectsGroomed.push(project);
-            } catch (error) {
-                console.error(`Unable to launch async grooming for ${projectDataPath}`, error);
+                const groomingState : ProjectGroomState = await localSelfDispatch<ProjectGroomState>(
+                    project.owner!, thisProjectIdentityHeader, req, `${projectDataPath}/groom`, 'POST',
+                    undefined, 50, false);
+                if (groomingState?.status === undefined) {
+                    if (process.env.TRACE_LEVEL) {
+                        console.warn(`Timeout starting Project ${projectDataPath} grooming; unclear result`);
+                    }
+                } else if (groomingState.status === GroomingStatus.Grooming) {
+                    projectsGroomed.push(project);
+                } else {
+                    if (process.env.TRACE_LEVEL) {
+                        console.log(`Project ${projectDataPath} is not grooming - status: ${groomingState.status}`);
+                    }
+                }
+            } catch (error: any) {
+                switch (error?.response?.status) {
+                case HTTP_FAILURE_NOT_FOUND:
+                    if (process.env.TRACE_LEVEL) {
+                        console.log(`Project ${projectDataPath} not found`);
+                    }
+                    break;
+                default:
+                    console.error(`Unable to launch async grooming for ${projectDataPath}`, error);
+                    break;
+                }
             }
         }
 
@@ -1841,7 +1826,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                     lastUpdated: Math.floor(Date.now() / 1000)
                 };
                 return res
-                    .status(HTTP_FAILURE_BUSY)
+                    .status(HTTP_SUCCESS)
+                    .contentType('application/json')
                     .send(groomerBusy);
             }
 
@@ -1862,7 +1848,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                         lastUpdated: Math.floor(Date.now() / 1000)
                     };
                     return res
-                        .status(HTTP_FAILURE_BUSY)
+                        .status(HTTP_SUCCESS)
+                        .contentType('application/json')
                         .send(groomerBusy);
                 }
             }
@@ -1877,7 +1864,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                     lastUpdated: Math.floor(Date.now() / 1000)
                 };
                 return res
-                    .status(HTTP_FAILURE_BUSY)
+                    .status(HTTP_SUCCESS)
+                    .contentType('application/json')
                     .send(groomingState);
             }
         }

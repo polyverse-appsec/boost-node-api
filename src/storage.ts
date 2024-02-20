@@ -61,7 +61,7 @@ export async function getProjectData(email: string | null, sourceType: SourceTyp
 // to search private data for all users, pass null as email
 // to search for any project - use "*" fpr project name
 // to search for any owner - use "*" for owner name
-export async function searchProjectData(email: string | null, sourceType: SourceType, owner: string, project: string, resourcePath: string, analysisType: string): Promise<any[]> {
+export async function searchProjectData<T>(email: string | null, sourceType: SourceType, owner: string, project: string, resourcePath: string, analysisType: string): Promise<any[]> {
     let filterExpression = '';
     const expressionAttributeValues: Record<string, any> = {};
 
@@ -108,7 +108,27 @@ export async function searchProjectData(email: string | null, sourceType: Source
     while (attempt < maxAttempts) {
         try {
             const data = await dynamoDB.send(new ScanCommand(params));
-            return data.Items ? data.Items.map(item => unmarshall(item)) : [];
+            if (!data.Items) {
+                return [];
+            }
+            
+            const items : T[] = [];
+            for (const item of data.Items) {
+                try {
+                    const unmarshalled = unmarshall(item);
+                    const dataObj : T = JSON.parse(unmarshalled.data);
+                    // extract the path into user, owner and repo based on following
+                    // example: "curtis@polyverse.com/blob/polyverse-appsec/boost_wasmer"
+                    const projectPath = unmarshalled.projectPath.split('/');
+                    (dataObj as any)._userName = projectPath[0];
+                    (dataObj as any)._ownerName = projectPath[2];
+                    (dataObj as any)._repoName = projectPath[3];
+                    items.push(dataObj);
+                } catch (error) {
+                    console.error(`Error parsing project data ${item.projectPath}/${item.dataPath}: ${error}`);
+                }
+            }
+            return items;
         } catch (error: any) {
             console.error(`Attempt ${attempt + 1}: Error scanning project data: ${error}`);
             if (error.name === 'ProvisionedThroughputExceededException') {
