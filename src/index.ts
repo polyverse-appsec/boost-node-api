@@ -3934,8 +3934,8 @@ app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res:
         }
 
         try {
-            // async launch of groom projects process (no "await")
-            localSelfDispatch<void>("", originalIdentity, req, `groom/projects`, "POST");
+            // async launch of groom projects process
+            await localSelfDispatch<void>("", originalIdentity, req, `groom/projects`, "POST", undefined, 0, false);
         } catch (error) {
             console.error(`Timer Triggered: Error starting async groom projects process:`, error);
         }
