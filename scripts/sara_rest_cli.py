@@ -51,6 +51,7 @@ def main(email, org, project, method, stage, data):
         "data_references_refresh": f"{URL}/api/user_project/{org}/{project}/data_references",
 
         "projects": f"{URL}/api/user_project/{org}/projects",
+        "projects_all": f"{URL}/api/search/projects",
 
         "project": f"{URL}/api/user_project/{org}/{project}",
 
@@ -123,7 +124,7 @@ def main(email, org, project, method, stage, data):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="CLI utility for managing user projects.")
-    parser.add_argument("--email", required=True, help="The user's email address")
+    parser.add_argument("--email", required=False, help="The user's email address")
     parser.add_argument("--org", default="polyverse-appsec", help="The organization name (default: polyverse-appsec)")
     parser.add_argument("--project", required=False, help="The project name")
     parser.add_argument("--method", default="status",
@@ -132,6 +133,7 @@ if __name__ == "__main__":
 
                                  'projects',
                                  'project',
+                                 'projects_all',
 
                                  'account',
 
@@ -183,10 +185,15 @@ if __name__ == "__main__":
         "assistants",
         "github_access",
         "projects",
+        "projects_all",
         "timer_interval",
         "list_pending_discoveries"
     ]):
         parser.error("The --project argument is required for the method"
+                     f" {args.method}.")
+    if (args.email is None and args.method not in [
+            "projects_all"]):
+        parser.error("The --email argument is required for the method"
                      f" {args.method}.")
 
     main(args.email, args.org, args.project, args.method, args.stage, args.data)
