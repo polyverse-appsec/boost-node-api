@@ -21,6 +21,20 @@
             ]
         },
         {
+            "name": "Show Project Status",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/sara_rest_cli.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--email",
+                "airbear109@gmail.com",
+                "--project",
+                "nextsara"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },        {
             "name": "Upload User Project Data",
             "type": "python",
             "request": "launch",

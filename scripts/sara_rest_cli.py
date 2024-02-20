@@ -3,6 +3,7 @@ import requests
 import os
 import sys
 import json
+import datetime
 
 # Determine the parent directory's path.
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -112,8 +113,29 @@ def main(email, org, project, method, stage, data):
         if len(response.text) == 0:
             return
 
-        if response.headers.get('content-type') == 'application/json':
-            print(response.json() if 'body' not in response.json() else json.loads(response.json()['body']))
+        def print_response(responseObj):
+            def print_json(json_obj):
+                if 'lastUpdated' in json_obj:
+                    # pretty print a unixtime as a human-readable date
+                    pretty_last_updated = datetime.datetime.fromtimestamp(json_obj['lastUpdated'])
+                    print(f"lastUpdated: {pretty_last_updated}")
+                if 'lastSynchronized' in json_obj:
+                    pretty_last_synchronized = datetime.datetime.fromtimestamp(json_obj['lastSynchronized'])
+                    print(f"lastSynchronized: {pretty_last_synchronized}")
+                print(json_obj)
+                print()
+
+            # if the response is a list, print each item on a new line
+            if isinstance(responseObj, list):
+                for item in responseObj:
+                    print_json(item)
+            else:
+                print_json(responseObj)
+
+        if response.headers.get('content-type').startswith('application/json'):
+            responseObj = response.json() if 'body' not in response.json() else json.loads(response.json()['body'])
+
+            print_response(responseObj)
         else:
             # check if response.text starts with a JSON character
             if response.text[0] in ['{', '[']:
