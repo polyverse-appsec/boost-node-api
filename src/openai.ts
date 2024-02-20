@@ -383,7 +383,9 @@ export const searchOpenAIFiles = async (criteria: DataSearchCriteria): Promise<O
         totalFetched += data.length;
         lastFileId = data[data.length - 1]?.id;
 
-        console.warn(`searchOpenAIFiles:SKIPPED: ${skipped} files before ${new Date(data[0].created_at * 1000).toLocaleString()}`);
+        if (skipped > 0) {
+            console.warn(`searchOpenAIFiles:SKIPPED: ${skipped} files before ${new Date(data[0].created_at * 1000).toLocaleString()}`);
+        }
 
         // If a limit is specified and reached, or no more files to fetch, stop the loop
     } while (files.length < actualLimit && lastFileId && totalFetched < actualLimit);
@@ -480,7 +482,7 @@ export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria,
         afterCursor = queryReply.last_id;
     } while (afterCursor);
 
-    console.log(`${currentTime} searchOpenAIAssistants:SUCCEEDED: ${allAssistants.length} files : ${searchParameters}`);
+    console.log(`${currentTime} searchOpenAIAssistants:SUCCEEDED: ${allAssistants.length} Assistants : ${searchParameters}`);
 
     const filteredAssistants = allAssistants.filter((assistant: OpenAIAssistant) => {
         let isMatch = true;
@@ -575,7 +577,7 @@ export const deleteOpenAIFiles = async (searchCriteria: DataSearchCriteria, shou
     
             const currentDateTime = usFormatter.format(new Date(currentTime));
             if (startAtFileId) {
-                console.debug(`${currentDateTime} deleteOpenAIFiles:PROCESSING: Page:${page} : Deleted ${deletedFilesInThisPage} files in ${timeElapsedInSeconds} seconds at a rate of ${deletedFilesInThisPage / timeElapsedInSeconds} file/sec`);
+                console.debug(`${currentDateTime} deleteOpenAIFiles:PROCESSING: Page:${page} : Deleted ${deletedFilesInThisPage} files in ${Math.round(timeElapsedInSeconds * 100) / 100} seconds at a rate of ${Math.round(deletedFilesInThisPage / timeElapsedInSeconds * 10000) / 10000} file/sec`);
             } else {
     
                 const percentageOfFilesDeletedTo2DecimalPlaces = parseFloat(((deletedFilesInThisPage / totalFilesToDelete) * 100).toFixed(2));
@@ -583,7 +585,7 @@ export const deleteOpenAIFiles = async (searchCriteria: DataSearchCriteria, shou
         
                 const estimatedDateTime = usFormatter.format(new Date(currentTime + (remainingTimeInSeconds * 1000)));
 
-                console.debug(`${currentDateTime} deleteOpenAIFiles:PROCESSING: Deleted ${deletedFilesInThisPage} files in ${timeElapsedInSeconds} seconds at a rate of ${deletedFilesInThisPage / timeElapsedInSeconds} file/sec : ${percentageOfFilesDeletedTo2DecimalPlaces}% complete : estimated completion at ${estimatedDateTime}`);
+                console.debug(`${currentDateTime} deleteOpenAIFiles:PROCESSING: Deleted ${deletedFilesInThisPage} files in ${Math.round(timeElapsedInSeconds * 100) / 100} seconds at a rate of ${Math.round(deletedFilesInThisPage / timeElapsedInSeconds * 10000) / 10000} file/sec : ${percentageOfFilesDeletedTo2DecimalPlaces}% complete : estimated completion at ${estimatedDateTime}`);
             }
         }
     }
