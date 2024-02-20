@@ -13,7 +13,8 @@ try:
     from test.utils import get_signed_headers
 except ImportError:
     sys.path.append(parent_dir + "/test")
-    from utils import get_signed_headers  # noqa
+
+    from utils import get_signed_headers  # type: ignore
 
 
 # Constants for URL options
