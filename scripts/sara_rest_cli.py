@@ -83,6 +83,8 @@ def main(email, org, project, method, stage, data):
         "assistants": f"{URL}/api/user/{org}/connectors/openai/assistants",
 
         "github_access": f"{URL}/api/user/{org}/connectors/github/access?uri={data}",
+
+        "timer_interval": f"{URL}/api/timer/interval"
     }
 
     if method not in endpoints:
@@ -91,7 +93,7 @@ def main(email, org, project, method, stage, data):
 
     url = endpoints[method]
     # if method starts with "create_" or is "discovery", then it's a POST request
-    verb = "POST" if method.startswith("create_") or method.endswith("_gen") or method == "discovery" or method == "data_references_refresh" or method == "status_refresh" else "DELETE" if (method in ["aifiles_groom", "aifiles_groom_at", "aifile_delete"]) else "GET"
+    verb = "POST" if method.startswith("create_") or method.endswith("_gen") or method in ["discovery", "data_references_refresh", "status_refresh", "timer_interval"] else "DELETE" if (method in ["aifiles_groom", "aifiles_groom_at", "aifile_delete"]) else "GET"
     print(f"Requesting {verb} {url}")
     try:
         response = make_request(verb, url, email)
@@ -158,7 +160,9 @@ if __name__ == "__main__":
 
                                  'assistants',
 
-                                 'github_access'
+                                 'github_access',
+
+                                 'timer_interval'
                                  ], help="The method to run")
     parser.add_argument("--stage", default="local", choices=['local', 'dev', 'test', 'prod'], help="The Service to target (default: local)")
     parser.add_argument("--data", default=None, help="Data to pass to the method")
@@ -175,7 +179,8 @@ if __name__ == "__main__":
         "aifile_delete",
         "assistants",
         "github_access",
-        "projects"
+        "projects",
+        "timer_interval"
     ]):
         parser.error("The --project argument is required for the method"
                      f" {args.method}.")
