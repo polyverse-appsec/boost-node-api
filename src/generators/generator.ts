@@ -119,7 +119,9 @@ export class Generator {
 
         // if we got HTTP_FAILURE_NOT_FOUND Not Found, that's OK - we'll just start with an empty string
         if (response.status === HTTP_FAILURE_NOT_FOUND) {
-            console.log(`No ${this.dataType} data found via Load`);
+            if (process.env.TRACE_LEVEL) {
+                console.warn(`${this.projectData.org}:${this.projectData.name} No ${this.dataType} data found via Load`);
+            }
             return;
         }
 
@@ -136,7 +138,9 @@ export class Generator {
         //      if the response is not JSON, we'll just use the raw text as the data
         const isJson = dataResponseRaw && (dataResponseRaw[0] === '{' || dataResponseRaw[0] === '[');
         if (isJson) {
-            console.log(`Loaded ${this.dataType} data as JSON to extra body property`);
+            if (process.env.TRACE_LEVEL) {
+                console.log(`${this.projectData.org}:${this.projectData.name} Loaded ${this.dataType} data as JSON to extra body property`);
+            }
             const dataResponse = JSON.parse(dataResponseRaw);
             this.data = dataResponse.body?dataResponse.body:dataResponseRaw;
         } else {
@@ -195,7 +199,9 @@ export class Generator {
             this.email, ownerName, repoName, this.dataType,
             `${this.dataType}/generators/scratch/${stage?stage:this.currentStage}`);
         if (!data) {
-            console.log(`No Scratch ${this.dataType} data found in stage ${stage?stage:this.currentStage} via Loads`);
+            if (process.env.TRACE_LEVEL) {
+                console.warn(`${this.projectData.org}:${this.projectData.name} No Scratch ${this.dataType} data found in stage ${stage?stage:this.currentStage} via Loads`);
+            }
             return undefined;
         }
 
@@ -246,7 +252,7 @@ export class Generator {
             throw new Error('Current Stage not defined');
         }
 
-        console.log(`${this.projectData.org}:${this.projectData.name} Progress Update on Stage ${this.currentStage}: ${JSON.stringify(state)}`);
+        console.info(`${this.projectData.org}:${this.projectData.name} Progress Update on Stage ${this.currentStage}: ${JSON.stringify(state)}`);
 
         const authHeader = await signedAuthHeader(this.email);
         const response = await fetch(this.resourceUri + `/generator`, {
@@ -260,17 +266,17 @@ export class Generator {
         if (!response.ok) {
             if (response.status === HTTP_FAILURE_NOT_FOUND) {
                 if (process.env.TRACE_LEVEL) {
-                    console.warn(`Generator not found - ignoring progress update: ${JSON.stringify(state)}`);
+                    console.warn(`${this.projectData.org}:${this.projectData.name} Generator not found - ignoring progress update: ${JSON.stringify(state)}`);
                 }
                 throw new Error(`Generator not found - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
             } else if (response.status === HTTP_LOCKED) {
                 if (process.env.TRACE_LEVEL) {
-                    console.warn(`Generator locked in Error state - ignoring progress update: ${JSON.stringify(state)}`);
+                    console.warn(`${this.projectData.org}:${this.projectData.name} Generator locked in Error state - ignoring progress update: ${JSON.stringify(state)}`);
                 }
-                throw new Error(`Generator in Error - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
+                throw new Error(`${this.projectData.org}:${this.projectData.name} Generator in Error - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
             } else {
                 const errorText = await response.text() || 'Unknown Error';
-                console.error(`Unable to update ${this.dataType} resource generator progress: ${JSON.stringify(state)} - ${response.status} - ${errorText}`);
+                console.error(`${this.projectData.org}:${this.projectData.name} Unable to update ${this.dataType} resource generator progress: ${JSON.stringify(state)} - ${response.status} - ${errorText}`);
             }
         }
     }
@@ -291,10 +297,9 @@ export class Generator {
         // if we can't load the project file, just return an empty string - caller can decide if that's a fatal issue
         if (!response.ok) {
             const errorText = await response.text() || 'Unknown Error';
-            console.log(`Unable to load project file: ${filename} from ${this.projectData.resources[0].uri} - ${response.status} - ${errorText}`);
+            console.warn(`${this.projectData.org}:${this.projectData.name} Unable to load project file: ${filename} from ${this.projectData.resources[0].uri} - ${response.status} - ${errorText}`);
             return '';
         }
-
 
         const dataResponseRaw = await response.text();
 
@@ -304,7 +309,9 @@ export class Generator {
         //      if the response is not JSON, we'll just use the raw text as the data
         const isJson = dataResponseRaw && (dataResponseRaw[0] === '{' || dataResponseRaw[0] === '[');
         if (isJson) {
-            console.log(`Loaded ${this.dataType} data as JSON to extra body property`);
+            if (process.env.TRACE_LEVEL) {
+                console.log(`${this.projectData.org}:${this.projectData.name} Loaded ${this.dataType} data as JSON to extra body property`);
+            }
             const dataResponse = JSON.parse(dataResponseRaw);
             return dataResponse.body?dataResponse.body:dataResponseRaw;
         }
@@ -343,12 +350,12 @@ export class Generator {
             const fileContentList : FileContent[] = await localSelfDispatch<FileContent[]>(
                 this.email, '', this.serviceEndpoint, fullSourcePath, 'GET');
 
-            console.debug(`Got project source: ${fileContentList.length} files`);
+            console.info(`${this.projectData.org}:${this.projectData.name} Got project source: ${fileContentList.length} files`);
             
             return fileContentList;
 
         } catch (err) {
-            console.error(`Unable to get project source: ${err}`);
+            console.error(`${this.projectData.org}:${this.projectData.name} Unable to get project source: ${err}`);
             throw err;
         }
     }
@@ -367,7 +374,7 @@ export class Generator {
         }
 
         const errorText = await response.text() || 'Unknown Error';
-        console.error(`Unable to get boostignore file specs: ${response.status} - ${errorText}`);
+        console.error(`${this.projectData.org}:${this.projectData.name} Unable to get boostignore file specs: ${response.status} - ${errorText}`);
 
         // for now - if we fail to get the boostignore specs, just return an empty list since its only
         //      used to build a basic blueprint
@@ -379,7 +386,13 @@ export class Generator {
         await this.updateProgress('Scanning Files from GitHub Repo');
 
         try {
+            const startTime = Date.now();
             const fileList : string[] = await this.getFilenameList();
+
+            if (process.env.TRACE_TIMECHECKS) {
+                const getFileListTime = Date.now() - startTime;
+                console.info(`${this.projectData.org}:${this.projectData.name} TIMECHECK: getFileListTime: ` + getFileListTime + "ms");
+            }
 
             // need to filter the fileList based on the boostignore (similar to gitignore)
             // files in the filelist look like "foo/bar/baz.txt"
@@ -388,13 +401,22 @@ export class Generator {
             //      Or ".gitignore" which should ignore file named .gitignore in the root directory
             await this.updateProgress('Filtered File List for .boostignore');
             
+            const ignoreFileSpecsTime = Date.now();
             const boostIgnoreFileSpecs = await this.getBoostIgnoreFileSpecs();
             const boostIgnore = ignore().add(boostIgnoreFileSpecs);
             const filteredFileList = fileList.filter((file) => !boostIgnore.ignores(file));
 
+            if (process.env.TRACE_TIMECHECKS) {
+                const filterFileListTime = Date.now() - ignoreFileSpecsTime;
+                console.info(`${this.projectData.org}:${this.projectData.name} TIMECHECK: filterFileListTime: ` + filterFileListTime + "ms");
+
+                const totalTime = Date.now() - startTime;
+                console.info(`${this.projectData.org}:${this.projectData.name} TIMECHECK: Total Time: ` + totalTime + "ms");
+            }
+
             return filteredFileList;
         } catch (err) {
-            console.error(`Unable to get filtered file list for ${this.resourceUri}: ${err}`);
+            console.error(`${this.projectData.org}:${this.projectData.name} Unable to get filtered file list for ${this.resourceUri}: ${err}`);
             throw err;
         }
     }

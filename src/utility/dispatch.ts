@@ -165,12 +165,14 @@ export async function localSelfDispatch<T>(
 
                 console.warn(`TIMECHECK: TIMEOUT: ${httpVerb} ${selfEndpoint} timed out after ${timeoutMs / 1000} seconds`);
             } else {
-                // This block is for handling errors, including HTTP_FAILURE_NOT_FOUND and HTTP_FAILURE_INTERNAL_SERVER_ERROR status codes
-                if (axios.isAxiosError(error) && error.response) {
-                    console.log(`TIMECHECK: ${httpVerb} ${selfEndpoint} failed with status ${error.response.status}:${error.response.statusText} due to error:${error}`);
-                } else {
-                    // Handle other errors (e.g., network errors)
-                    console.log(`TIMECHECK: ${httpVerb} ${selfEndpoint} failed ${error}`);
+                if (process.env.TRACE_LEVEL) {
+                    // This block is for handling errors, including HTTP_FAILURE_NOT_FOUND and HTTP_FAILURE_INTERNAL_SERVER_ERROR status codes
+                    if (axios.isAxiosError(error) && error.response) {
+                        console.error(`${httpVerb} ${selfEndpoint} failed with status ${error.response.status}:${error.response.statusText} due to error:${error}`);
+                    } else {
+                        // Handle other errors (e.g., network errors)
+                        console.error(`${httpVerb} ${selfEndpoint} failed ${error}`);
+                    }
                 }
             }
             throw error;
