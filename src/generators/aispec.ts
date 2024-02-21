@@ -61,6 +61,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                 .replace('{projectRepo}', projectRepos);
 
             nextStage = ArchitecturalSpecificationStage.FileFiltering;
+            nextStage = Stages.Complete; // short-circuit for testing
 
             break;
 

@@ -164,33 +164,34 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
         return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
     }
     
-    const getFolderPaths = async (octokit: Octokit, owner: string, repo : string, path = '') : Promise<string[]> => {
-        let folderPaths : string[] = [];
+    const getFolderPaths = async (octokit: Octokit, owner: string, repo: string): Promise<string[]> => {
+        try {
+            const response = await octokit.rest.git.getTree({
+                owner,
+                repo,
+                tree_sha: 'HEAD', // Get the tree for the latest commit on the default branch
+                recursive: '1'    // Retrieve the tree recursively
+            });
     
-        const response = await octokit.rest.repos.getContent({
-            owner: owner,
-            repo: repo,
-            path: path
-        });
-
-        if (!Array.isArray(response.data)) {
-            throw new Error('Expected directory content, got something else');
-        }
-
-        for (const item of response.data.filter(item => !item.name.startsWith('.'))) {
-            if (item.type === 'dir') {
-                folderPaths.push(item.path);
-
-                // Recursively get paths of subdirectories
-                const subfolderPaths = await getFolderPaths(octokit, owner, repo, item.path);
-                folderPaths = folderPaths.concat(subfolderPaths);
+            // Validate the response structure
+            if (!response.data.tree) {
+                throw new Error('Invalid tree structure from GitHub API');
             }
-        }
-
-        return folderPaths;
-    };
     
-
+            // Filter for 'tree' items, which represent directories, and exclude any paths starting with '.'
+            const folderPaths = response.data.tree
+                .filter((item): item is {type: string, path: string} =>
+                    // Only include files with a defined path and ignore hidden folders
+                    item.type === 'tree' && typeof item.path === 'string' && !item.path.startsWith('.'))
+                .map(item => item.path); // Extract the path of each directory
+    
+            return folderPaths;
+        } catch (error) {
+            console.error('Failed to get folder paths:', error);
+            throw error;
+        }
+    };    
+    
     // Try to get the folders from GitHub via public path without authentication
     try {
         const octokit = new Octokit();
@@ -288,37 +289,28 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
         console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
         return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
     }
-
-    const getFilePaths = async (octokit : Octokit, owner : string, repo : string, path = '') : Promise<string[]> => {
-        let filePaths : string[] = [];
-
-        const response = await octokit.rest.repos.getContent({
+    const getFilePathsGitTree = async (octokit : Octokit, owner: string, repo: string) : Promise<string[]> => {
+        const response = await octokit.rest.git.getTree({
             owner: owner,
             repo: repo,
-            path: path
+            tree_sha: 'HEAD',
+            recursive: '1'
         });
 
-        if (!Array.isArray(response.data)) {
-            throw new Error('Expected file content, got something else');
+        // Check if the API call was successful but returned an unexpected structure
+        if (!response || !response.data || !Array.isArray(response.data.tree)) {
+            throw new Error('Invalid response structure from GitHub API');
         }
 
-        for (const item of response.data) {
-            if (item.type === 'file') {
-                filePaths.push(item.path);
-            } else if (item.type === 'dir') {
-                // Recursive call for directories
-                const subPaths = await getFilePaths(octokit, owner, repo, item.path);
-                filePaths = filePaths.concat(subPaths);
-            }
-        }
-
-        return filePaths;
+        return response.data.tree
+            .filter((item): item is {type: string, path: string} => item.type === 'blob' && typeof item.path === 'string') // Only include files with paths
+            .map(item => item.path); // Extract paths
     };
 
     // Try to get the files from GitHub via public path without authentication
     try {
         const octokit = new Octokit();
-        const filePaths = await getFilePaths(octokit, owner, repo);
+        const filePaths : string[] = await getFilePathsGitTree(octokit, owner, repo);
 
         console.log(`Success Retrieving ${filePaths.length} file paths from Public Repo ${repo}`)
 
@@ -391,7 +383,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
             }
         });
 
-        const filePaths : string[] = await getFilePaths(octokit, owner, repo);
+        const filePaths : string[] = await getFilePathsGitTree(octokit, owner, repo);
 
         console.log(`Success Retrieving ${filePaths.length} file paths from Private Repo ${repo}`)
 

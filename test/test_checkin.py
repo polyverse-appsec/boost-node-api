@@ -50,8 +50,16 @@ class BoostBackendCheckinSuite(unittest.TestCase):
     def helper_test_user_project_resource_creation_project(self, private: bool, project_name: str = None, git_project: str = None):
         if private:
             print("Running test: Create Project, Attach GitHub Private Resources")
+            if project_name:
+                print(f"Project Name: {project_name}")
+            if git_project:
+                print(f"Git Project: {git_project}")
         else:
             print("Running test: Create Project, Attach GitHub Public Resources")
+            if project_name:
+                print(f"Project Name: {project_name}")
+            if git_project:
+                print(f"Git Project: {git_project}")
 
         if private:
             signedHeaders = get_signed_headers(PREMIUM_EMAIL)

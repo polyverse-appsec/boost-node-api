@@ -15,6 +15,10 @@ Polyverse Boost ReST API (Backend)
 - Ensure Discovery Groomer skips any Projects that have a Grooming in active Pending Rediscovery
 - Updated Generators to abort themselves if they detect the underlying resource has gone into Error state
     - Example is Timeout by the Discovery process - Generator should abort quickly instead of continuing with failed progress updates
+- Enable support for large #s of files - greatly reduce # of GitHub API calls to pull file lists (one call instead of N calls for N files)
+    - Supported at least to 5000+ files (used to fail at 5000 files)
+    - Updated GitHub Service API for Files: /api/user/{org}/connectors/github/files (GET)
+    - Updated GitHub Service API for Folders: /api/user/{org}/connectors/github/folders (GET)
 
 ### Bug Fixes
 - Fix Discovery Groomer State Search to return the full Groomer State - not just the Status
