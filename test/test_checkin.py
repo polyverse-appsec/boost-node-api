@@ -5,7 +5,7 @@ import time
 
 from utils import get_signed_headers
 
-from constants import TARGET_URL, ORG, PREMIUM_EMAIL, PUBLIC_PROJECT, PRIVATE_PROJECT, EMAIL, PRIVATE_PROJECT_NAME_CHECKIN_TEST, PUBLIC_PROJECT_NAME_CHECKIN_TEST
+from constants import TARGET_URL, ORG, PREMIUM_EMAIL, PUBLIC_PROJECT, PRIVATE_PROJECT, EMAIL, PRIVATE_PROJECT_NAME_CHECKIN_TEST, PUBLIC_PROJECT_NAME_CHECKIN_TEST, PRIVATE_PROJECT_LARGE, PRIVATE_PROJECT_LARGE_NAME
 
 
 class BoostBackendCheckinSuite(unittest.TestCase):
@@ -47,7 +47,7 @@ class BoostBackendCheckinSuite(unittest.TestCase):
         self.assertFalse('title' in gettedData)
         self.assertFalse('details' in gettedData)
 
-    def helper_test_user_project_resource_creation_project(self, private: bool):
+    def helper_test_user_project_resource_creation_project(self, private: bool, project_name: str = None, git_project: str = None):
         if private:
             print("Running test: Create Project, Attach GitHub Private Resources")
         else:
@@ -55,12 +55,12 @@ class BoostBackendCheckinSuite(unittest.TestCase):
 
         if private:
             signedHeaders = get_signed_headers(PREMIUM_EMAIL)
-            public_git_project = PRIVATE_PROJECT
-            project_name = PRIVATE_PROJECT_NAME_CHECKIN_TEST
+            git_project = PRIVATE_PROJECT if git_project is None else git_project
+            project_name = PRIVATE_PROJECT_NAME_CHECKIN_TEST if project_name is None else project_name
         else:
             signedHeaders = get_signed_headers(PREMIUM_EMAIL if PREMIUM_EMAIL else EMAIL)
-            public_git_project = PUBLIC_PROJECT
-            project_name = PUBLIC_PROJECT_NAME_CHECKIN_TEST
+            git_project = PUBLIC_PROJECT if git_project is None else git_project
+            project_name = PUBLIC_PROJECT_NAME_CHECKIN_TEST if project_name is None else project_name
 
         response = requests.get(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}", headers=signedHeaders)
         if response.status_code == 200:
@@ -75,6 +75,10 @@ class BoostBackendCheckinSuite(unittest.TestCase):
                 response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/{resource}", headers=signedHeaders)
                 self.assertEqual(response.status_code, 200)
 
+            # delete the status info
+            response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/status", headers=signedHeaders)
+            self.assertEqual(response.status_code, 200)
+
             # delete the data_references (and associated openai files)
             response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data_references", headers=signedHeaders)
             self.assertEqual(response.status_code, 200)
@@ -83,7 +87,7 @@ class BoostBackendCheckinSuite(unittest.TestCase):
             response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}", headers=signedHeaders)
             self.assertEqual(response.status_code, 200)
 
-        project_data = {"resources": [{"uri": public_git_project}]}
+        project_data = {"resources": [{"uri": git_project}]}
         project_creation_time = time.time()
         response = requests.post(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}", json=project_data, headers=signedHeaders)
         project_creation_time = time.time() - project_creation_time
@@ -96,7 +100,7 @@ class BoostBackendCheckinSuite(unittest.TestCase):
         gotten_project_data = response.json()
         gotten_project_data = gotten_project_data if 'body' not in gotten_project_data else json.loads(gotten_project_data['body'])
         self.assertEqual(gotten_project_data['name'], project_name)
-        self.assertEqual(gotten_project_data['resources'][0]['uri'], public_git_project)
+        self.assertEqual(gotten_project_data['resources'][0]['uri'], git_project)
 
         # now we're going to loop every 20 seconds to see if the project status has completed synchronized
         # if it hasn't, we'll fail the test
@@ -145,3 +149,6 @@ class BoostBackendCheckinSuite(unittest.TestCase):
 
     def test_user_project_resource_creation_private_project(self):
         self.helper_test_user_project_resource_creation_project(private=True)
+
+    def test_user_project_resource_creation_private_large_project(self):
+        self.helper_test_user_project_resource_creation_project(private=True, git_project=PRIVATE_PROJECT_LARGE, project_name=PRIVATE_PROJECT_LARGE_NAME)

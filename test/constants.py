@@ -35,3 +35,6 @@ PRIVATE_PROJECT_NAME_CHECKIN_TEST = "checkin_test_private_repo"
 PUBLIC_PROJECT = "https://github.com/public-apis/public-apis"
 PUBLIC_PROJECT_NAME = "github-public-apis"
 PUBLIC_PROJECT_NAME_CHECKIN_TEST = "checkin_test_public_repo"
+
+PRIVATE_PROJECT_LARGE_NAME = "test-sara-large"
+PRIVATE_PROJECT_LARGE = "https://github.com/polyverse-appsec/polyx"
