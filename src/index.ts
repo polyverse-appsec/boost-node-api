@@ -62,8 +62,10 @@ import {
     HTTP_FAILURE_BAD_REQUEST_INPUT,
     HTTP_FAILURE_UNAUTHORIZED,
     HTTP_FAILURE_BUSY,
+    HTTP_CONFLICT,
     HTTP_SUCCESS_ACCEPTED,
-    HTTP_SUCCESS_NO_CONTENT
+    HTTP_SUCCESS_NO_CONTENT,
+    HTTP_LOCKED
 } from './utility/dispatch';
 
 import { usFormatter } from './utility/log';
@@ -211,7 +213,9 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
 async function loadProjectData(email: string, org: string, project: string): Promise<UserProjectData | undefined> {
     let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
     if (!projectData) {
-        console.error(`loadProjectData: not found: ${org}/${project}`);
+        if (process.env.TRACE_LEVEL) {
+            console.warn(`loadProjectData: not found: ${org}/${project}`);
+        }
         return undefined;
     }
     projectData = JSON.parse(projectData) as UserProjectData;
@@ -1389,7 +1393,9 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
                 return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
             }
             // if we have a real project, and we have no status, then let's try and generate it now
-            console.error(`Project Status not found; Project exists so let's refresh status`);
+            if (process.env.TRACE_LEVEL) {
+                console.warn(`Project Status not found; Project exists so let's refresh status`);
+            }
 
             // project uri starts at 'user_project/'
             const project_subpath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
@@ -2595,8 +2601,14 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
         }
         if (input.status !== currentGeneratorState.status) {
+            if (currentGeneratorState.status === TaskStatus.Error &&
+                input.status === TaskStatus.Processing) {
+                return res
+                    .status(HTTP_LOCKED)
+                    .send('Generator in error state - cannot process more updates');
+            }
             console.error(`Invalid PATCH status: ${input.status}`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid PATCH status: ${input.status}`)
+            return res.status(HTTP_CONFLICT).send(`Invalid PATCH status: ${input.status}`)
         }
         if (input.lastUpdated) {
             currentGeneratorState.lastUpdated = input.lastUpdated;

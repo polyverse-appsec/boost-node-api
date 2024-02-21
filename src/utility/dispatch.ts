@@ -12,10 +12,12 @@ export const HTTP_SUCCESS = 200;
 export const HTTP_SUCCESS_ACCEPTED = 202;
 export const HTTP_SUCCESS_NO_CONTENT = 204;
 
-export const HTTP_FAILURE_NOT_FOUND = 404;
 export const HTTP_FAILURE_BAD_REQUEST_INPUT = 400;
-export const HTTP_FAILURE_NO_ACCESS = 403;
 export const HTTP_FAILURE_UNAUTHORIZED = 401;
+export const HTTP_FAILURE_NO_ACCESS = 403;
+export const HTTP_FAILURE_NOT_FOUND = 404;
+export const HTTP_CONFLICT = 409;
+export const HTTP_LOCKED = 423;
 export const HTTP_FAILURE_BUSY = 429;
 
 export const HTTP_FAILURE_INTERNAL_SERVER_ERROR = 500;

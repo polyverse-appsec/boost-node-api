@@ -13,6 +13,8 @@ Polyverse Boost ReST API (Backend)
     - Default/WhatIf - To enable explicitly set environment variable DISCOVERY_GROOMER=whatif or leave unset
     - Automatic - enables automatic rediscovery of failed discovery runs
 - Ensure Discovery Groomer skips any Projects that have a Grooming in active Pending Rediscovery
+- Updated Generators to abort themselves if they detect the underlying resource has gone into Error state
+    - Example is Timeout by the Discovery process - Generator should abort quickly instead of continuing with failed progress updates
 
 ### Bug Fixes
 - Fix Discovery Groomer State Search to return the full Groomer State - not just the Status

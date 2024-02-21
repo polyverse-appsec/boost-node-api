@@ -5,7 +5,7 @@ import { signedAuthHeader } from "../auth";
 import { saveProjectDataResource, loadProjectDataResource } from "..";
 import { FileContent } from "../github";
 import { Stages } from "../types/GeneratorState";
-import { localSelfDispatch, HTTP_FAILURE_NOT_FOUND } from "../utility/dispatch";
+import { localSelfDispatch, HTTP_FAILURE_NOT_FOUND, HTTP_LOCKED } from "../utility/dispatch";
 import axios from "axios";
 
 const ignore = require('ignore');
@@ -262,6 +262,12 @@ export class Generator {
                 if (process.env.TRACE_LEVEL) {
                     console.warn(`Generator not found - ignoring progress update: ${JSON.stringify(state)}`);
                 }
+                throw new Error(`Generator not found - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
+            } else if (response.status === HTTP_LOCKED) {
+                if (process.env.TRACE_LEVEL) {
+                    console.warn(`Generator locked in Error state - ignoring progress update: ${JSON.stringify(state)}`);
+                }
+                throw new Error(`Generator in Error - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
             } else {
                 const errorText = await response.text() || 'Unknown Error';
                 console.error(`Unable to update ${this.dataType} resource generator progress: ${JSON.stringify(state)} - ${response.status} - ${errorText}`);
