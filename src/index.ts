@@ -2819,7 +2819,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     const newGeneratorState = await localSelfDispatch<ResourceGeneratorProcessState>(email, getSignedIdentityFromHeader(req)!, req, pathToProcess, "POST", processNextStageState.stage?processNextStageState:undefined,
                         secondsBeforeRestRequestMaximumTimeout * 1000, false);
                     if (!newGeneratorState?.stage) {
-                        throw new Error(`${req.originalUrl} Processor timed out ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"} Stage`);
+                        throw new Error(`${req.originalUrl} Processor timed out ${secondsBeforeRestRequestMaximumTimeout} sec - ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"} Stage`);
                     } else {
                         const processEndTime = Math.floor(Date.now() / 1000);
                         if (process.env.TRACE_LEVEL) {
