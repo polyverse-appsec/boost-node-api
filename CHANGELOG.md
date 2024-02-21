@@ -3,10 +3,10 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.11.4: February 20th, 2024
+## Version 0.12.0: February 20th, 2024
 
 ### New Features
-- N/A
+- Add Delete API for Project Status /api/user_project/{org}/{project}/status (DELETE)
 
 ### Enhancements
 - Enabled WhatIf Grooming Service - where failed Project Discoveries are identified, but not retried by Groomer

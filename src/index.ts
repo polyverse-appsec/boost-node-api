@@ -1258,6 +1258,37 @@ const MinutesToWaitBeforeGeneratorConsideredStalled = 3;
 
 const user_project_org_project_status = `user_project/:org/:project/status`;
 
+app.delete(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const { org, project } = req.params;
+
+        if (!org || !project) {
+            if (!org) {
+                console.error(`Org is required`);
+            } else if (!project) {
+                console.error(`Project is required`);
+            }
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+        }
+
+        await deleteProjectData(email, SourceType.General, org, project, '', 'status');
+
+        return res
+            .status(HTTP_SUCCESS)
+            .send();
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }    
+});
+
 app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
 
     logRequest(req);
