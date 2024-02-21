@@ -74,15 +74,20 @@ readonly fileSourceEntry =
 
                 await this.updateProgress('Filtering File Paths for .boostignore');
 
+                let totalSizeImported = 0;
+                let totalSizeSaved = 0;
                 for (const fileContent of fileContents) {
+                    totalSizeImported += fileContent.source.length;
                     if (boostIgnore.ignores(fileContent.path)) {
                         continue;
                     }
+                    totalSizeSaved += fileContent.source.length;
 
                     this.data += this.fileSourceEntry
                             .replace('{relativeFileName}', fileContent.path)
                             .replace('{fileSource}', fileContent.source)
                 }
+                console.log(`Total size to save: ${totalSizeSaved} bytes of ${totalSizeImported} bytes Imported`);
 
                 nextStage = Stages.Complete;
                 break;
