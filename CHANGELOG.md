@@ -3,7 +3,18 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.12.0: February 20th, 2024
+## Version 0.12.1: February 22nd, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- N/A
+
+### Bug Fixes
+- N/A
+
+## Version 0.12.0: February 21st, 2024
 
 ### New Features
 - Add Delete API for Project Status /api/user_project/{org}/{project}/status (DELETE)
