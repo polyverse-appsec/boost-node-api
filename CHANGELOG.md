@@ -9,7 +9,9 @@ Polyverse Boost ReST API (Backend)
 - N/A
 
 ### Enhancements
-- N/A
+- Converted Project Guideines from a simple string to a Record array - enabling custom guidelines to be edited from UI
+- Added Project title (User Title) and Description fields to Project data
+    - Project Name remains a unique identifier that cannot be changed after creation
 
 ### Bug Fixes
 - N/A

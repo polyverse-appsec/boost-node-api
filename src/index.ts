@@ -224,12 +224,21 @@ async function loadProjectData(email: string, org: string, project: string): Pro
 
     // create an object with the string fields, org, name, guidelines, array of string resources
     const userProjectData : UserProjectData = {
+        ...projectData,
         org : org,
         name : project,
-        guidelines : projectData.guidelines? projectData.guidelines : '',
         resources : projectData.resources? projectData.resources : [],
         lastUpdated : projectData.lastUpdated? projectData.lastUpdated : Date.now() / 1000,
     };
+
+    // repair steps for guidelines
+    if (typeof projectData.guidelines === 'string' && projectData.guidelines !== '') {
+        const newGuidelineRecord : Record<string, string> = {};
+        newGuidelineRecord['default'] = projectData.guidelines;
+        userProjectData.guidelines = [newGuidelineRecord];
+    } else if (!projectData.guidelines || projectData.guidelines === '') {
+        userProjectData.guidelines = [];
+    }
 
     return projectData;
 }
@@ -681,7 +690,25 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
                 return res;
             }
         }
+        if (body.title !== undefined && (body.title === '' || typeof body.title !== 'string')) {
+            console.error(`Invalid id: ${body.title}`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid id ${body.title} - must be a non-empty string`);
+        }
+        if (body.description !== undefined && typeof body.description !== 'string') {
+            console.error(`Invalid description: ${body.description}`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid description ${body.description} - must be a string`);
+        }
+
         if (body.guidelines !== undefined) {
+            if (typeof body.guidelines === 'string') {
+                console.error(`Invalid guidelines: ${body.guidelines}`);
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid guidelines - cannot be a string');
+            }
+            // must be an array of Record<string, string>
+            else if (!Array.isArray(body.guidelines)) {
+                console.error(`Invalid guidelines: ${body.guidelines}`);
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid guidelines - must be an array');
+            }
             updates.guidelines = body.guidelines;
         }
     
@@ -770,10 +797,38 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         const storedProject : UserProjectData = {
             org : org,
             name : project,
-            guidelines : updatedProject.guidelines? updatedProject.guidelines : '',
             resources : updatedProject.resources? updatedProject.resources : [],
             lastUpdated : Date.now() / 1000,
         };
+
+        // validate title
+        if (body.title !== undefined && (body.title === '' || typeof body.title !== 'string')) {
+            console.error(`Invalid id: ${body.title}`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid id ${body.title} - must be a non-empty string`);
+        } else if (body.title !== undefined) {
+            storedProject.title = updatedProject.title;
+        }
+
+        // validate description
+        if (body.description !== undefined && typeof body.description !== 'string') {
+            console.error(`Invalid description: ${body.description}`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid description ${body.description} - must be a string`);
+        } else if (body.description !== undefined) {
+            storedProject.description = updatedProject.description;
+        }
+
+        // validate guidelines
+        if (storedProject.guidelines !== undefined) {
+            if (typeof storedProject.guidelines === 'string') {
+                console.error(`Invalid guidelines: ${storedProject.guidelines}`);
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid guidelines - cannot be a string');
+            }
+            // must be an array of Record<string, string>
+            else if (!Array.isArray(storedProject.guidelines)) {
+                console.error(`Invalid guidelines: ${storedProject.guidelines}`);
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid guidelines - must be an array');
+            }
+        }
 
         const projectPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
         try {
@@ -965,6 +1020,26 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
         for (const projectData of projectDataList) {
             // the project owner is the first part of the project data path, up until the first '/'
             projectData.owner = (projectData as any)._userName;
+
+            // repair the guidelines if needed
+            if (projectData.guidelines !== undefined) {
+                if (typeof projectData.guidelines === 'string') {
+                    if (projectData.guidelines === '') {
+                        const newGuidelineRecord : Record<string, string> = {
+                            'default' : projectData.guidelines
+                        };
+                        console.warn(`Repaired guidelines: from: ${projectData.guidelines} to: ${newGuidelineRecord}`);
+                        projectData.guidelines = [newGuidelineRecord];
+                    } else {
+                        projectData.guidelines = [];
+                    }
+                }
+                // must be an array of Record<string, string>
+                else if (!Array.isArray(projectData.guidelines)) {
+                    console.error(`Invalid guidelines - resetting to empty: ${projectData.guidelines}`);
+                    projectData.guidelines = [];
+                }
+            }
         }
 
         if (process.env.TRACE_LEVEL) {
