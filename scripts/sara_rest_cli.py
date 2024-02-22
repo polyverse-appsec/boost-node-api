@@ -4,6 +4,7 @@ import os
 import sys
 import json
 import datetime
+import time
 
 # Determine the parent directory's path.
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,7 +29,7 @@ stage_url = {
 
 
 def make_request(method, url, email):
-    signed_header_value = get_signed_headers(email)
+    signed_header_value = get_signed_headers(email) if email is not None else None
     if method == "GET":
         response = requests.get(url, headers=signed_header_value)
     elif method == "POST":
@@ -43,6 +44,8 @@ def make_request(method, url, email):
 def main(email, org, project, method, stage, data):
     URL = stage_url[stage]
     endpoints = {
+        "test": f"{URL}/test",
+
         "status": f"{URL}/api/user_project/{org}/{project}/status",
         'status_refresh': f"{URL}/api/user_project/{org}/{project}/status",
 
@@ -94,6 +97,41 @@ def main(email, org, project, method, stage, data):
     if method not in endpoints:
         print(f"Method {method} is not supported.")
         return
+
+    test_url = endpoints["test"]
+    retry = 0
+    while True:
+        try:
+            response = make_request("GET", test_url, None)
+            if response.status_code == 200:
+                break
+        # control-c
+        except KeyboardInterrupt:
+            print("Aborting...")
+            return
+        # look for RemoteDisconnected to retry
+        # or NewConnectionError to retry
+        except requests.exceptions.ConnectionError as e:
+            if "NewConnectionError" in str(e) or "RemoteDisconnected" in str(e):
+                if retry == 0:
+                    print("Remote Server not responding... Retrying...")
+                retry += 1
+                # print a single dot (without a newline) for every retry
+                print(".", end="", flush=True)
+                try:
+                    time.sleep(1)
+                except KeyboardInterrupt:
+                    print("Aborting...")
+                    return
+                continue
+            else:
+                print(f"Failed: {e}")
+                return
+        except requests.exceptions.RequestException as e:
+            print(f"Failed: {e}")
+            return
+    if retry > 0:
+        print("")
 
     url = endpoints[method]
     # if method starts with "create_" or is "discovery", then it's a POST request

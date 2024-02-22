@@ -27,6 +27,8 @@ Polyverse Boost ReST API (Backend)
 - Fix Status filtering for Project Discovery Grooming State Search
 - Fix for Blueprint Generators stuck in FileScan or BuildingBlueprint stages - will now reset to initial Static stage
     - Can be overriden by AI_BLUEPRINT env variable to enable AI Blueprint generation
+- Updated Search Services (e.g. Grooming objects, Project objects, Status objects, etc.) to return full lists
+    - Pagination issues were preventing all objects from being returned
 
 ## Version 0.11.3: February 16th, 2024
 

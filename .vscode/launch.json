@@ -125,6 +125,21 @@
             ],
             "console": "integratedTerminal",
             "justMyCode": true
+        },
+        {
+            "name": "List User Projects",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/sara_rest_cli.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--email",
+                "airbear109@gmail.com",
+                "--method",
+                "projects"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
         }
     ]
 }

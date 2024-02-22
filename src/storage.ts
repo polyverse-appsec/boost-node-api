@@ -1,12 +1,18 @@
 import { DynamoDBClient, ScanCommand, ScanCommandInput } from "@aws-sdk/client-dynamodb";
 import { DeleteCommand, DeleteCommandInput, GetCommand, GetCommandInput, PutCommand, PutCommandInput } from "@aws-sdk/lib-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
-import { unmarshall } from "@aws-sdk/util-dynamodb";
 
 // Use the region from the serverless environment configuration
 const region = process.env.AWS_REGION || 'us-west-2'; // Fallback to 'us-west-2' if not set
 const client = new DynamoDBClient({ region });
 const dynamoDB = DynamoDBDocumentClient.from(client);
+
+interface BoostDynamoItem {
+    projectPath: { S: string };
+    dataPath: { S: string };
+    data?: any;
+    [key: string]: any; // For additional dynamic properties not explicitly defined
+}
 
 // Use the environment variable DYNAMO_DB_ANALYSIS for the table name
 const analysisDatastoreTableName = process.env.DYNAMO_DB_ANALYSIS || "Boost.AnalysisDataStore.prod";
@@ -61,24 +67,25 @@ export async function getProjectData(email: string | null, sourceType: SourceTyp
 // to search private data for all users, pass null as email
 // to search for any project - use "*" fpr project name
 // to search for any owner - use "*" for owner name
-export async function searchProjectData<T>(email: string | null, sourceType: SourceType, owner: string, project: string, resourcePath: string, analysisType: string): Promise<any[]> {
+export async function searchProjectData<T>(email: string | null, sourceType: string, owner: string, project: string, resourcePath: string, analysisType: string): Promise<any[]> {
     let filterExpression = '';
     const expressionAttributeValues: Record<string, any> = {};
 
     // Handle wildcard and specific cases for email
     if (email !== "*" && email !== null) {
-        filterExpression += 'contains(projectPath, :emailVal)';
-        expressionAttributeValues[':emailVal'] = { S: email };
+        // check for starting with this email
+        filterExpression += 'begins_with(projectPath, :emailVal)';
+        expressionAttributeValues[':emailVal'] = { S: email + '/' };
     }
 
     // Add sourceType to the filter
     filterExpression += (filterExpression ? ' AND ' : '') + 'contains(projectPath, :sourceTypeVal)';
-    expressionAttributeValues[':sourceTypeVal'] = { S: sourceType };
+    expressionAttributeValues[':sourceTypeVal'] = { S: "/" + sourceType + "/" };
 
     // Handle wildcard for owner
     if (owner !== "*") {
         filterExpression += ' AND contains(projectPath, :ownerVal)';
-        expressionAttributeValues[':ownerVal'] = { S: owner };
+        expressionAttributeValues[':ownerVal'] = { S: "/" + owner + "/" };
     }
 
     // Handle wildcard for project
@@ -87,61 +94,65 @@ export async function searchProjectData<T>(email: string | null, sourceType: Sou
         expressionAttributeValues[':projectVal'] = { S: project };
     }
 
-    // Add resourcePath (which is required, and cannot be wildcarded)
-    filterExpression += ' AND contains(dataPath, :resourcePathVal)';
-    expressionAttributeValues[':resourcePathVal'] = { S: resourcePath };
+    // Construct dataPath
+    const dataPathTarget = resourcePath + '/' + analysisType;
 
-    // Add analysisType (which is required, and cannot be wildcarded)
-    filterExpression += ' AND contains(dataPath, :analysisTypeVal)';
-    expressionAttributeValues[':analysisTypeVal'] = { S: analysisType };
+    // Add dataPath to the filter (required and cannot be wildcarded)
+    filterExpression += ' AND dataPath = :dataPathTarget';
+    expressionAttributeValues[':dataPathTarget'] = { S: dataPathTarget };
 
-    // Scan parameters
-    const params: ScanCommandInput = {
-        TableName: analysisDatastoreTableName,
-        FilterExpression: filterExpression,
-        ExpressionAttributeValues: expressionAttributeValues
-    };
-
-    // Execute the scan with retries for provisioned throughput exceeded
+    let items: T[] = [];
+    let exclusiveStartKey;
     let attempt = 0;
-    const maxAttempts = 5;
-    while (attempt < maxAttempts) {
+    const maxAttempts = 3;
+
+    do {
+        const params = {
+            TableName: analysisDatastoreTableName,
+            FilterExpression: filterExpression,
+            ExpressionAttributeValues: expressionAttributeValues,
+            ExclusiveStartKey: exclusiveStartKey
+        } as ScanCommandInput;
+
         try {
-            const data = await dynamoDB.send(new ScanCommand(params));
-            if (!data.Items) {
-                return [];
+            const response = await dynamoDB.send(new ScanCommand(params));
+            if (response.Items?.length) {
+                items = items.concat(response.Items.map(item => {
+                    const thisItem = item as BoostDynamoItem;
+                    const projectPathParts = thisItem.projectPath.S.split('/');
+
+                    const convertedItem = JSON.parse(thisItem.data.S) as T;
+                    return {
+                        ...convertedItem,
+                        _userName: projectPathParts[0],
+                        _ownerName: projectPathParts[2],
+                        _repoName: projectPathParts[3],
+                    } as T; // Cast to T, if T is the type you're working with
+                }));
+            } else {
+                break; // no items found - so break out of the loop
             }
-            
-            const items : T[] = [];
-            for (const item of data.Items) {
-                try {
-                    const unmarshalled = unmarshall(item);
-                    const dataObj : T = JSON.parse(unmarshalled.data);
-                    // extract the path into user, owner and repo based on following
-                    // example: "curtis@polyverse.com/blob/polyverse-appsec/boost_wasmer"
-                    const projectPath = unmarshalled.projectPath.split('/');
-                    (dataObj as any)._userName = projectPath[0];
-                    (dataObj as any)._ownerName = projectPath[2];
-                    (dataObj as any)._repoName = projectPath[3];
-                    items.push(dataObj);
-                } catch (error) {
-                    console.error(`Error parsing project data ${item.projectPath}/${item.dataPath}: ${error}`);
-                }
-            }
-            return items;
+
+            exclusiveStartKey = response.LastEvaluatedKey;
+            attempt = 0; // Reset attempt after successful response
         } catch (error: any) {
-            console.error(`Attempt ${attempt + 1}: Error scanning project data: ${error}`);
-            if (error.name === 'ProvisionedThroughputExceededException') {
-                const waitTime = (1000 * attempt) + (Math.random() * 2000); // Exponential backoff with jitter
-                console.error(`Throughput exceeded, retrying in ${waitTime / 1000} seconds`);
+            console.error(`Attempt ${attempt + 1}: Error scanning project data:`, error);
+            if (error.name === 'ProvisionedThroughputExceededException' && attempt < maxAttempts - 1) {
+                const waitTime = (1000 * attempt) + (Math.random() * 1000); // Exponential backoff with jitter
                 await new Promise(resolve => setTimeout(resolve, waitTime));
                 attempt++;
+                continue;
             } else {
-                throw error;
+                throw error; // Rethrow error if not related to throughput or max attempts reached
             }
         }
+    } while (exclusiveStartKey || attempt < maxAttempts);
+
+    if (attempt >= maxAttempts && exclusiveStartKey) {
+        console.warn('Not all items might have been retrieved due to reaching the maximum number of attempts.');
     }
-    throw new Error('Maximum retry attempts reached');
+
+    return items;
 }
 
 function sleep(ms: number) {
