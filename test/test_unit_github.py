@@ -1,6 +1,7 @@
 import unittest
 import requests
 import json
+import time
 
 from utils import get_signed_headers
 
@@ -31,6 +32,15 @@ class GitHubUnitTestSuite(unittest.TestCase):
         print("Running test: Retrieve full source from a private repo")
         signedHeaders = get_signed_headers(PREMIUM_EMAIL)
         response = requests.get(f"{TARGET_URL}/api/user/{ORG}/connectors/github/fullsource?uri={PRIVATE_PROJECT}", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+    def test_retrieve_fullsource_private_large_repo_access(self):
+        print("Running test: Retrieve full source from a private repo LARGE")
+        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
+        startTime = time.time()
+        response = requests.get(f"{TARGET_URL}/api/user/{ORG}/connectors/github/fullsource?uri={PRIVATE_PROJECT_LARGE}", headers=signedHeaders)
+        endTime = time.time()
+        print(f"Time to retrieve full source from a private repo LARGE: {endTime - startTime}")
         self.assertEqual(response.status_code, 200)
 
     def test_retrieve_file_private_access_repo_path(self):

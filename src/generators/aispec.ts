@@ -61,8 +61,11 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                 .replace('{projectRepo}', projectRepos);
 
             nextStage = ArchitecturalSpecificationStage.FileFiltering;
-            nextStage = Stages.Complete; // short-circuit for testing
 
+            if (process.env.AI_SPEC_SKIPPED) {
+                nextStage = Stages.Complete; // short-circuit for testing
+            }
+            
             break;
 
         case ArchitecturalSpecificationStage.FileFiltering:
@@ -72,9 +75,8 @@ export class ArchitecturalSpecificationGenerator extends Generator {
             // now we'll go back and update the file contents
             const fileContents : FileContent[] = await this.getProjectSource();
 
-
-            // we're going to start empty file contents to be fast, then we'll
-            //      update the contents later
+            // we're going to start by saving empty file contents to be fast,
+            //  then we'll update the contents later
             const boostIgnoreFileSpecs = await this.getBoostIgnoreFileSpecs();
             const boostIgnore = ignore().add(boostIgnoreFileSpecs);
 

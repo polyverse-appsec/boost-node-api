@@ -110,6 +110,11 @@ export const binaryFilePatterns = [
     "**/*.odt",
     "**/*.ods",
     "**/*.odp",
+    "**/*.a",
+    "**/*.lib",
+    "**/*.obj",
+    "**/*.dylib",
+    "**/*.debug",
 ];
 
 export const textFilePatterns = [

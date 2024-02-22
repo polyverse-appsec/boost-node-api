@@ -19,6 +19,7 @@ Polyverse Boost ReST API (Backend)
     - Supported at least to 5000+ files (used to fail at 5000 files)
     - Updated GitHub Service API for Files: /api/user/{org}/connectors/github/files (GET)
     - Updated GitHub Service API for Folders: /api/user/{org}/connectors/github/folders (GET)
+- Remove more binary files (e.g. *.a, *.lib, *.obj, *.debug, *.dylib)
 
 ### Bug Fixes
 - Fix Discovery Groomer State Search to return the full Groomer State - not just the Status
