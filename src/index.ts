@@ -8,7 +8,8 @@ import {
     storeProjectData,
     SourceType,
     convertToSourceType,
-    deleteProjectData
+    deleteProjectData,
+    searchWildcard
 } from './storage';
 import { validateUser, signedAuthHeader, getSignedIdentityFromHeader, local_sys_admin_email, header_X_Signed_Identity } from './auth';
 import {
@@ -226,14 +227,8 @@ async function loadProjectData(email: string, org: string, project: string): Pro
         name : project,
         guidelines : projectData.guidelines? projectData.guidelines : '',
         resources : projectData.resources? projectData.resources : [],
-        lastUpdated : projectData.lastUpdated? projectData.lastUpdated : (Date.now() / 1000).toString(),
+        lastUpdated : projectData.lastUpdated? projectData.lastUpdated : Date.now() / 1000,
     };
-
-    // if we didn't have a timestamp on the project data, then let's add it now (temporary rebuild step of the data store)
-    if (!projectData.lastUpdated) {
-        console.warn(`loadProjectData: added lastUpdated to ${org}/${project}`);
-        await storeProjectData(email, SourceType.General, org, project, '', 'project', JSON.stringify(userProjectData));
-    }
 
     return projectData;
 }
@@ -929,7 +924,6 @@ app.delete(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reque
     
 });
 
-const searchWildcard = '*';
 // Services to search the entire system for any project
 const search_projects = `search/projects`;
 app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Response) => {
@@ -1048,6 +1042,67 @@ app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, re
             .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(groomingDataListFilteredByStatus);
+
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
+// Services to search the entire system for any grooming of projects
+const search_projects_generators_groom = `search/projects/generators`;
+app.get(`${api_root_endpoint}/${search_projects_generators_groom}`, async (req: Request, res: Response) => {
+
+    logRequest(req);
+
+    try {
+        // since project search is system wide by default, we're going to require admin access to
+        //      run a search
+        const email = await validateUser(req, res, AuthType.Admin);
+        if (!email) {
+            return;
+        }
+
+        // query params support:
+        //  - org?: string - specific org, or all if not specified
+        //  - project?: string - specific project, or all if not specified
+        //  - user?: string - a specific user, or all if not specified
+        //  - resourceType?: string - a specific resource type, or all if not specified
+
+        const { org, project, user, resource, status } = req.query;
+        if (org && typeof org !== 'string') {
+            console.error(`Org must be a string`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid org');
+        } else if (project && typeof project !== 'string') {
+            console.error(`Project must be a string`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid project');
+        } else if (user && typeof user !== 'string') {
+            console.error(`User must be a string`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid user');
+        } else if (resource && typeof resource !== 'string') {
+            console.error(`Resource must be a string`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource');
+        } else if (status && typeof status !== 'string') {
+            console.error(`Status must be a string`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid status');
+        }
+
+        const generatorDataList : GeneratorState[] =
+            await searchProjectData<GeneratorState>(
+            user?user as string:searchWildcard, SourceType.GitHub,
+            org?org as string:searchWildcard,
+            project?project as string:searchWildcard,
+            resource?resource as string:searchWildcard,
+            'generator');
+
+        console.info(`${req.originalUrl} retrieved ${generatorDataList.length} Generators`);
+
+        const generatorDataListFilteredByStatus : GeneratorState[] =
+            generatorDataList.filter((generatorData) => status?generatorData.status === status:true);
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType('application/json')
+            .send(generatorDataListFilteredByStatus);
 
     } catch (error) {
         return handleErrorResponse(error, req, res);

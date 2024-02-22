@@ -7,6 +7,8 @@ const region = process.env.AWS_REGION || 'us-west-2'; // Fallback to 'us-west-2'
 const client = new DynamoDBClient({ region });
 const dynamoDB = DynamoDBDocumentClient.from(client);
 
+export const searchWildcard = '*';
+
 interface BoostDynamoItem {
     projectPath: { S: string };
     dataPath: { S: string };
@@ -95,14 +97,14 @@ export async function searchProjectData<T>(email: string | null, sourceType: str
     }
 
     // Construct dataPath
-    const dataPathTarget = resourcePath + '/' + analysisType;
+    const dataPathTarget = ((resourcePath == searchWildcard)?'':resourcePath) + '/' + analysisType;
 
     // Add dataPath to the filter (required and cannot be wildcarded)
-    filterExpression += ' AND dataPath = :dataPathTarget';
+    filterExpression += (resourcePath == searchWildcard)?' AND contains(dataPath, :dataPathTarget)':' AND dataPath = :dataPathTarget';
     expressionAttributeValues[':dataPathTarget'] = { S: dataPathTarget };
 
     let items: T[] = [];
-    let exclusiveStartKey;
+    let exclusiveStartKey = undefined;
     let attempt = 0;
     const maxAttempts = 3;
 
@@ -114,26 +116,33 @@ export async function searchProjectData<T>(email: string | null, sourceType: str
             ExclusiveStartKey: exclusiveStartKey
         } as ScanCommandInput;
 
+        exclusiveStartKey = undefined; // Reset exclusiveStartKey for each attempt
         try {
             const response = await dynamoDB.send(new ScanCommand(params));
             if (response.Items?.length) {
-                items = items.concat(response.Items.map(item => {
-                    const thisItem = item as BoostDynamoItem;
-                    const projectPathParts = thisItem.projectPath.S.split('/');
+                items = items.concat(response.Items
+                    // if we are filtering on the resourcePath, then we need to filter the results
+                    .filter(item =>
+                        resourcePath !== searchWildcard || item.dataPath.S?.endsWith(dataPathTarget))
+                    .map(item => {
+                        const thisItem = item as BoostDynamoItem;
+                        const projectPathParts = thisItem.projectPath.S.split('/');
 
-                    const convertedItem = JSON.parse(thisItem.data.S) as T;
-                    return {
-                        ...convertedItem,
-                        _userName: projectPathParts[0],
-                        _ownerName: projectPathParts[2],
-                        _repoName: projectPathParts[3],
-                    } as T; // Cast to T, if T is the type you're working with
-                }));
-            } else {
-                break; // no items found - so break out of the loop
+                        const convertedItem = JSON.parse(thisItem.data.S) as T;
+                        return {
+                            ...convertedItem,
+                            _userName: projectPathParts[0],
+                            _ownerName: projectPathParts[2],
+                            _repoName: projectPathParts[3],
+                        } as T; // Cast to T, if T is the type you're working with
+                    }));
             }
 
             exclusiveStartKey = response.LastEvaluatedKey;
+            if (!exclusiveStartKey) {
+                break; // Exit loop if no more items to retrieve
+            }
+
             attempt = 0; // Reset attempt after successful response
         } catch (error: any) {
             console.error(`Attempt ${attempt + 1}: Error scanning project data:`, error);
@@ -146,7 +155,7 @@ export async function searchProjectData<T>(email: string | null, sourceType: str
                 throw error; // Rethrow error if not related to throughput or max attempts reached
             }
         }
-    } while (exclusiveStartKey || attempt < maxAttempts);
+    } while (exclusiveStartKey);
 
     if (attempt >= maxAttempts && exclusiveStartKey) {
         console.warn('Not all items might have been retrieved due to reaching the maximum number of attempts.');

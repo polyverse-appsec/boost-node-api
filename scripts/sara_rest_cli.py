@@ -77,6 +77,11 @@ def main(email, org, project, method, stage, data):
         "aispec_status": f"{URL}/api/user_project/{org}/{project}/data/aispec/status",
         "blueprint_status": f"{URL}/api/user_project/{org}/{project}/data/blueprint/status",
 
+        "generators_all": f"{URL}/api/search/projects/generators",
+        "generators_blueprint": f"{URL}/api/search/projects/generators?resource=blueprint",
+        "generators_aispec": f"{URL}/api/search/projects/generators?resource=aispec",
+        "generators_projectsource": f"{URL}/api/search/projects/generators?resource=projectsource",
+
         "create_blueprint": f"{URL}/api/user_project/{org}/{project}/data/blueprint/generator/start",
         "create_aispec": f"{URL}/api/user_project/{org}/{project}/data/aispec/generator/start",
         "create_projectsource": f"{URL}/api/user_project/{org}/{project}/data/projectsource/generator/start",
@@ -154,12 +159,12 @@ def main(email, org, project, method, stage, data):
         def print_response(responseObj):
             def print_json(json_obj):
                 if 'lastUpdated' in json_obj:
-                    # pretty print a unixtime as a human-readable date
-                    pretty_last_updated = datetime.datetime.fromtimestamp(json_obj['lastUpdated'])
+                    # pretty print a unixtime as a human-readable date - lastUpdated can be a string or a number
+                    pretty_last_updated = datetime.datetime.fromtimestamp(json_obj['lastUpdated'] if isinstance(
+                        json_obj['lastUpdated'], float) else float(json_obj['lastUpdated']))
                     print(f"lastUpdated: {pretty_last_updated}")
-                if 'lastSynchronized' in json_obj:
-                    pretty_last_synchronized = datetime.datetime.fromtimestamp(json_obj['lastSynchronized'])
-                    print(f"lastSynchronized: {pretty_last_synchronized}")
+                    if isinstance(json_obj['lastUpdated'], str):
+                        print("Invalid lastUpdated format")
                 print(json_obj)
                 print()
 
@@ -167,6 +172,8 @@ def main(email, org, project, method, stage, data):
             if isinstance(responseObj, list):
                 for item in responseObj:
                     print_json(item)
+
+                print(str(len(responseObj)) + " items")
             else:
                 print_json(responseObj)
 
@@ -194,6 +201,11 @@ if __name__ == "__main__":
                                  'projects',
                                  'project',
                                  'projects_all',
+
+                                 'generators_all',
+                                 'generators_blueprint',
+                                 'generators_aispec',
+                                 'generators_projectsource',
 
                                  'account',
 
@@ -246,6 +258,10 @@ if __name__ == "__main__":
         "github_access",
         "projects",
         "projects_all",
+        "generators_all",
+        "generators_blueprint",
+        "generators_aispec",
+        "generators_projectsource",
         "timer_interval",
         "list_pending_discoveries"
     ]):
