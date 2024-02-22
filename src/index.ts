@@ -1091,7 +1091,7 @@ app.get(`${api_root_endpoint}/${search_projects_generators_groom}`, async (req: 
             user?user as string:searchWildcard, SourceType.GitHub,
             org?org as string:searchWildcard,
             project?project as string:searchWildcard,
-            resource?resource as string:searchWildcard,
+            resource?`/${resource as string}`:searchWildcard,
             'generator');
 
         console.info(`${req.originalUrl} retrieved ${generatorDataList.length} Generators`);
