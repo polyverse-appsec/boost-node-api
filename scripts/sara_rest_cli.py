@@ -92,6 +92,7 @@ def main(email, org, project, method, stage, data):
         "aifile_delete": f"{URL}/api/user/{org}/connectors/openai/files/{data}",
 
         "assistants": f"{URL}/api/user/{org}/connectors/openai/assistants",
+        "delete_assistants": f"{URL}/api/user/{org}/connectors/openai/assistants?noFiles" + "&confirm" if data == "confirm" else "",
 
         "github_access": f"{URL}/api/user/{org}/connectors/github/access?uri={data}",
 
@@ -140,7 +141,9 @@ def main(email, org, project, method, stage, data):
 
     url = endpoints[method]
     # if method starts with "create_" or is "discovery", then it's a POST request
-    verb = "POST" if method.startswith("create_") or method.endswith("_gen") or method in ["discovery", "data_references_refresh", "status_refresh", "timer_interval"] else "DELETE" if (method in ["aifiles_groom", "aifiles_groom_at", "aifile_delete"]) else "GET"
+    verb = "POST" if method.startswith("create_") or method.endswith("_gen") or method in [
+        "discovery", "data_references_refresh", "status_refresh", "timer_interval"] else "DELETE" if (
+            method in ["delete_assistants", "aifiles_groom", "aifiles_groom_at", "aifile_delete"]) else "GET"
     print(f"Requesting {verb} {url}")
     try:
         response = make_request(verb, url, email)
@@ -235,6 +238,7 @@ if __name__ == "__main__":
                                  'aifile_delete',
 
                                  'assistants',
+                                 'delete_assistants',
 
                                  'github_access',
 
@@ -263,7 +267,8 @@ if __name__ == "__main__":
         "generators_aispec",
         "generators_projectsource",
         "timer_interval",
-        "list_pending_discoveries"
+        "list_pending_discoveries",
+        "delete_assistants"
     ]):
         parser.error("The --project argument is required for the method"
                      f" {args.method}.")

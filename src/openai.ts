@@ -419,9 +419,67 @@ export interface OpenAIAssistantQuery {
     has_more: boolean;
 }
 
+export const deleteOpenAIAssistant = async (assistantId: string): Promise<void> => {
+    const secretData: any = await getSecretsAsObject('exetokendev');
+    let openAiKey = secretData['openai-personal'];
 
+    if (!openAiKey) {
+        throw new Error('OpenAI API key not found');
+    }
 
-export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria, activeFileHandler?: any): Promise<OpenAIAssistant[]> => {
+    const deleteAssistantIdRest = `https://api.openai.com/v1/assistants/${assistantId}`;
+
+    const axiosConfig = {
+        headers: {
+            'Authorization': `Bearer ${openAiKey}`,
+            'OpenAI-Beta': 'assistants=v1',
+        },
+        timeout: 2000, // 2 second timeout
+    };
+
+    // Retry logic
+    const maxRetries = 2;
+    let attempt = 0;
+
+    while (attempt <= maxRetries) {
+        try {
+            await axios.delete(deleteAssistantIdRest, axiosConfig);
+
+            // If call was successful, break out of the loop
+            return;
+        } catch (error: any) {
+            if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
+                attempt++;
+                if (attempt > maxRetries) {
+                    throw new Error(`Failed to delete ${assistantId} after ${maxRetries + 1} attempts due to timeout.`);
+                }
+                console.warn(`deleteOpenAIAssistant:RETRY ${attempt} for ${assistantId} after Error: ${error.message}`);
+            } else {
+                console.error(`deleteOpenAIAssistant:FAILED: ${assistantId} after Error: ${error.message}`);
+                // Handle non-timeout errors
+                if (error.response) {
+                    // The request was made and the server responded with a status code
+                    // that falls out of the range of 2xx
+                    const errorMessage = error.response.data.error?.message || 'No error message';
+                    const statusCode = error.response.status;
+                    if (statusCode === 429) {
+                        throw new Error(`OpenAI Delete Call Rate limit exceeded for ${assistantId}: ${errorMessage}`);
+                    } else {
+                        throw new Error(`OpenAI Delete assistant failure for ${assistantId} status: ${statusCode}, error: ${errorMessage}`);
+                    }
+                } else if (error.request) {
+                    // The request was made but no response was received
+                    throw new Error(`OpenAI Delete assistant failure for ${assistantId}: No response from server`);
+                } else {
+                    // Something happened in setting up the request that triggered an Error
+                    throw new Error(`Error deleting assistant ${assistantId}: ${error.message}`);
+                }
+            }
+        }
+    }
+};
+
+export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria, assistantHandler?: any): Promise<OpenAIAssistant[]> => {
     const secretData : any = await getSecretsAsObject('exetokendev');
     let openAiKey = secretData['openai-personal'];
 
@@ -484,7 +542,7 @@ export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria,
 
     console.log(`${currentTime} searchOpenAIAssistants:SUCCEEDED: ${allAssistants.length} Assistants : ${searchParameters}`);
 
-    const filteredAssistants = allAssistants.filter((assistant: OpenAIAssistant) => {
+    let filteredAssistants = allAssistants.filter((assistant: OpenAIAssistant) => {
         let isMatch = true;
 /*
         if (email) {
@@ -503,10 +561,8 @@ export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria,
         return true;
     });
 
-    if (activeFileHandler) {
-        filteredAssistants.forEach(assistant => {
-            activeFileHandler(assistant.file_ids);
-        });
+    if (assistantHandler) {
+        filteredAssistants = filteredAssistants.filter(assistant => assistantHandler(assistant));
     }
 
     return filteredAssistants;

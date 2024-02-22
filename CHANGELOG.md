@@ -7,6 +7,7 @@ Polyverse Boost ReST API (Backend)
 
 ### New Features
 - Add Delete API for Project Status /api/user_project/{org}/{project}/status (DELETE)
+- Add Delete API for Assistants /api/user/{org}/connectors/openai/assistants (DELETE)
 
 ### Enhancements
 - Enabled WhatIf Grooming Service - where failed Project Discoveries are identified, but not retried by Groomer

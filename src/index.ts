@@ -28,7 +28,8 @@ import {
     uploadProjectDataForAIAssistant,
     deleteOpenAIFiles,
     searchOpenAIAssistants,
-    OpenAIAssistant
+    OpenAIAssistant,
+    deleteOpenAIAssistant
 } from './openai';
 import { UserProjectData } from './types/UserProjectData';
 import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
@@ -4079,7 +4080,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, async (
     logRequest(req);
 
     try {
-        const email = await validateUser(req, res);
+        const email = await validateUser(req, res, AuthType.Admin);
         if (!email) {
             return;
         }
@@ -4093,6 +4094,70 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, async (
         const project = typeof req.query.project === 'string' ? req.query.project : undefined;
 
         const aiAssistants : OpenAIAssistant[] = await searchOpenAIAssistants({ email, org, project });
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType('application/json')
+            .send(aiAssistants);
+            
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
+app.delete(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, async (req: Request, res: Response, next) => {
+    logRequest(req);
+
+    try {
+        const email = await validateUser(req, res, AuthType.Admin);
+        if (!email) {
+            return;
+        }
+
+        const org = req.params.org;
+        if (!org) {
+            console.error(`Org is required`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+        }
+
+        const project = (typeof req.query.project === 'string') ? req.query.project : undefined;
+        const startDate = (typeof req.query.startDate === 'string') ? req.query.startDate : undefined;
+        const noFiles = req.query.noFiles != undefined;
+        const confirm = req.query.confirm != undefined;
+
+        const shouldDeleteAssistantHandler = (assistant: OpenAIAssistant) : boolean => {
+            const createdDate = new Date(assistant.created_at * 1000);
+
+            if (startDate) {
+                if (assistant.created_at > parseInt(startDate)) {
+                    const startingDate = new Date(parseInt(startDate) * 1000);
+                    console.warn(`Identified assistant ${assistant.name}:${assistant.id} for deletion - created at ${createdDate.toLocaleDateString()} after ${startingDate.toLocaleDateString()}`);
+                    return true;
+                }
+            }
+            if (noFiles) {
+                if (!assistant.file_ids || assistant.file_ids.length === 0) {
+                    console.warn(`Identified assistant ${assistant.name}:${assistant.id} for deletion (created: ${createdDate.toLocaleDateString()}) - no files`);
+                    return true;
+                }
+            }
+            console.log(`Keeping assistant ${assistant.name}:${assistant.id} (created: ${createdDate.toLocaleDateString()})`);
+            return false;
+        }
+
+        const aiAssistants : OpenAIAssistant[] = await searchOpenAIAssistants({ email, org, project },
+            shouldDeleteAssistantHandler);
+        
+        if (confirm) {
+            for (const assistant of aiAssistants) {
+                try {
+                    await deleteOpenAIAssistant(assistant.id);
+                    console.info(`Deleted assistant ${assistant.name}:${assistant.id} created at ${new Date(assistant.created_at * 1000).toLocaleDateString()}`);
+                } catch (error) {
+                    console.error(`Error deleting assistant ${assistant.name}:${assistant.id} created at ${new Date(assistant.created_at * 1000).toLocaleDateString()}:`, error);
+                }
+            }
+        }
 
         return res
             .status(HTTP_SUCCESS)
@@ -4175,10 +4240,14 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
         const liveReferencedDataFiles : Map<string, OpenAIFile> = new Map();
 
         const activeFileIdsInAssistants : string[] = [];
-        const assistantFileSearchHandler = async (fileIds: string[]) => {
-            for (const fileId of fileIds) {
+        const assistantSearchHandler = (assistant: OpenAIAssistant) : boolean => {
+            if (!assistant.file_ids?.length) {
+                return false;
+            }
+            for (const fileId of assistant.file_ids) {
                 activeFileIdsInAssistants.push(fileId);
             }
+            return true;
         }
 
         // create a synchronous handler that will receive an OpenAIFile and check if it exists in liveReferenceDataFiles
@@ -4205,7 +4274,7 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
         }
         if (shouldGroomInactiveFiles) {
 
-            await searchOpenAIAssistants({email, org, project}, assistantFileSearchHandler);
+            await searchOpenAIAssistants({email, org, project}, assistantSearchHandler);
 
             // Split the pathname by '/' and filter out empty strings
             const pathSegments = !repoUri?undefined:repoUri.pathname!.split('/').filter(segment => segment);
