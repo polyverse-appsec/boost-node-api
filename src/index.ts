@@ -3668,7 +3668,7 @@ app.post(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`,
     try {
         const email = await validateUser(req, res);
         if (!email) {
-            return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
+            return;
         }
 
         const { source, owner, project, pathBase64, analysisType } = req.params;
@@ -3709,7 +3709,7 @@ const handleProxyRequest = async (req: Request, res: Response) => {
 
         const email = await validateUser(req, res);
         if (!email) {
-            return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
+            return;
         }
 
         const signedIdentity = await signedAuthHeader(email, org);
@@ -3795,7 +3795,7 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
 
         const email = await validateUser(req, res);
         if (!email) {
-            return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
+            return;
         }
 
         const signedIdentity = getSignedIdentityFromHeader(req);

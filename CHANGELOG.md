@@ -12,6 +12,8 @@ Polyverse Boost ReST API (Backend)
 - Converted Project Guideines from a simple string to a Record array - enabling custom guidelines to be edited from UI
 - Added Project title (User Title) and Description fields to Project data
     - Project Name remains a unique identifier that cannot be changed after creation
+- Added support for Authorization Bearer token in addition to x-signed-identity header
+    - Default is custom header when crafting requests internally
 
 ### Bug Fixes
 - N/A

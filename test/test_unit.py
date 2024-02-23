@@ -22,6 +22,24 @@ class UnitTestSuite(unittest.TestCase):
         response = requests.get(f"{TARGET_URL}/api/user/{ORG}/account", headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
+    def test_strong_authn_bearer_token(self):
+        print("Running test: Strong authentication")
+
+        signedHeaders = get_signed_headers(EMAIL, True, True)
+
+        response = requests.get(f"{TARGET_URL}/api/user/{ORG}/account", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+    def test_strong_authn_bearer_token_missing(self):
+        print("Running test: Strong authentication")
+
+        signedHeaders = get_signed_headers(EMAIL, True, True)
+        # remove everything after Bearer to test broken token
+        signedHeaders['Authorization'] = signedHeaders['Authorization'].split(' ')[0]
+
+        response = requests.get(f"{TARGET_URL}/api/user/{ORG}/account", headers=signedHeaders)
+        self.assertEqual(response.status_code, 401)
+
     def test_weak_authn(self):
         print("Running test: Weak authentication")
 
