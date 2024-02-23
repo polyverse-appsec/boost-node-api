@@ -43,10 +43,12 @@ class UnitTestSuite(unittest.TestCase):
     def test_weak_authn(self):
         print("Running test: Weak authentication")
 
+        # this is disabled by default
+
         unsignedHeader = {'x-user-account': EMAIL}
 
         response = requests.get(f"{TARGET_URL}/api/user/profile", headers=unsignedHeader)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 401)
 
     def test_user_account(self):
         print("Running test: Strong authentication")

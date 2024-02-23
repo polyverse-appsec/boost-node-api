@@ -14,6 +14,8 @@ Polyverse Boost ReST API (Backend)
     - Project Name remains a unique identifier that cannot be changed after creation
 - Added support for Authorization Bearer token in addition to x-signed-identity header
     - Default is custom header when crafting requests internally
+- All Secret Data is now loaded from AWS Dynamo - special CriticalData table - instead of SecretManager, to lower operational costs
+    - SecretManager and the in-memory cache is still available as well
 
 ### Bug Fixes
 - N/A
