@@ -20,12 +20,17 @@ let successfulCacheRetrievals = 0;
 const isCacheEnabled = !process.env.DISABLE_SECRET_CACHE;
 
 export async function getSecretsAsObject(
-    secretName: string
+    secretName: string,
+    secretEntry: string = ""
 ): Promise<SecretObject> {
     if (isCacheEnabled && secretsCache.has(secretName)) {
         const cachedSecretString = secretsCache.get(secretName) as string;
         successfulCacheRetrievals++;
-        return JSON.parse(cachedSecretString);
+        if (secretEntry !== "") {
+            return JSON.parse(cachedSecretString)[secretEntry];
+        } else {
+            return JSON.parse(cachedSecretString);
+        }
     }
 
     try {
@@ -38,7 +43,11 @@ export async function getSecretsAsObject(
         if (isCacheEnabled) {
             secretsCache.set(secretName, rawSecretData.SecretString);
         }
-        return JSON.parse(rawSecretData.SecretString);
+        if (secretEntry !== "") {
+            return JSON.parse(rawSecretData.SecretString)[secretEntry];
+        } else {
+            return JSON.parse(rawSecretData.SecretString);
+        }
     } catch (err) {
         console.error(`Error retrieving secrets from ${secretName}:`, err);
         throw err;

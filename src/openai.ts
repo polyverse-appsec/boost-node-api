@@ -110,9 +110,7 @@ const createAssistantFileWithRetry = async (dataFilename: string, data: string, 
 };
 
 const createAssistantFile = async (dataFilename: string, data: string): Promise<OpenAIFile> => {
-    const secretData : any = await getSecretsAsObject('exetokendev');
-    let openAiKey = secretData['openai-personal'];
-
+    const openAiKey : any = await getSecretsAsObject('exetokendev', 'openai-personal');
     if (!openAiKey) {
         throw new Error('OpenAI API key not found');
     }
@@ -188,9 +186,7 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
 };
 
 export const deleteAssistantFile = async (fileId: string): Promise<void> => {
-    const secretData: any = await getSecretsAsObject('exetokendev');
-    let openAiKey = secretData['openai-personal'];
-
+    const openAiKey : any = await getSecretsAsObject('exetokendev', 'openai-personal');
     if (!openAiKey) {
         throw new Error('OpenAI API key not found');
     }
@@ -260,9 +256,7 @@ export interface DataSearchCriteria {
 }
 
 export const searchOpenAIFiles = async (criteria: DataSearchCriteria): Promise<OpenAIFile[]> => {
-    const secretData: any = await getSecretsAsObject('exetokendev');
-    let openAiKey = secretData['openai-personal'];
-
+    const openAiKey : any = await getSecretsAsObject('exetokendev', 'openai-personal');
     if (!openAiKey) {
         throw new Error('OpenAI API key not found');
     }
@@ -420,9 +414,7 @@ export interface OpenAIAssistantQuery {
 }
 
 export const deleteOpenAIAssistant = async (assistantId: string): Promise<void> => {
-    const secretData: any = await getSecretsAsObject('exetokendev');
-    let openAiKey = secretData['openai-personal'];
-
+    const openAiKey : any = await getSecretsAsObject('exetokendev', 'openai-personal');
     if (!openAiKey) {
         throw new Error('OpenAI API key not found');
     }
@@ -480,9 +472,7 @@ export const deleteOpenAIAssistant = async (assistantId: string): Promise<void> 
 };
 
 export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria, assistantHandler?: any): Promise<OpenAIAssistant[]> => {
-    const secretData : any = await getSecretsAsObject('exetokendev');
-    let openAiKey = secretData['openai-personal'];
-
+    const openAiKey : any = await getSecretsAsObject('exetokendev', 'openai-personal');
     if (!openAiKey) {
         throw new Error('OpenAI API key not found');
     }
