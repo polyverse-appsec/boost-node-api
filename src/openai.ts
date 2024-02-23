@@ -342,6 +342,11 @@ export const searchOpenAIFiles = async (criteria: DataSearchCriteria): Promise<O
         }
 
         const data = (await response.json()).data as OpenAIFile[];
+
+        if (data.length === 0) {
+            break; // No more files to fetch
+        }
+        
         page++;
 
         // log out the currenttime, the size of the current slice, the starting id and created_at

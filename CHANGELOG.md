@@ -18,7 +18,7 @@ Polyverse Boost ReST API (Backend)
     - SecretManager and the in-memory cache is still available as well
 
 ### Bug Fixes
-- N/A
+- Fixed bug that caused OpenAI file search to fail when page search retrieves an empty list
 
 ## Version 0.12.0: February 21st, 2024
 

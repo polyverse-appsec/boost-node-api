@@ -4349,7 +4349,9 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
         }
         if (shouldGroomInactiveFiles) {
 
-            await searchOpenAIAssistants({email, org, project}, assistantSearchHandler);
+            const assistants = await searchOpenAIAssistants({email, org, project}, assistantSearchHandler);
+
+            console.log(`Found ${activeFileIdsInAssistants.length} active files in ${assistants.length} assistants`);
 
             // Split the pathname by '/' and filter out empty strings
             const pathSegments = !repoUri?undefined:repoUri.pathname!.split('/').filter(segment => segment);
