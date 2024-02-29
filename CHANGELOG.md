@@ -10,6 +10,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Ensure REST Requests are logged in all stages (not just 'dev' stage)
+- Add limit to Resource Generator stage processing - to avoid risk of self-perpetuating infinite loops (e.g. a stage loops on itself) - set to 2000
 
 ### Bug Fixes
 - Fix infinite loop if source is not loaded for AI Spec Generator

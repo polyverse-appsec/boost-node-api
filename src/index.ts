@@ -2930,8 +2930,33 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 console.log(`${user_project_org_project_data_resource_generator}: processing task: ${JSON.stringify(userGeneratorRequest)}`);
 
                 try {
+                    // to prevent a runaway generator - where it infinite loops on one stage, or processes too many stages
+                    //    e.g. 1000 processing steps per stage for a 3 stage process - with 1000 files... we're going to limit
+                    //    the number of processed stages to 2000.
+                    // that will ensure a resource with 1000 files, should only process each file once at most.
+                    // this counter will reset on error or completion of the generator or generator going idle (meaning a pause in processing)
+                    // This is mainly to prevent runaway CPU usage on a single resource
+                    const maximumLimitForProcessedStages = 2000;
+
+                    // if we're starting processing - from Idle, Error or Complete, then we'll reset the processed stages
+                    // NOTE This means that a runaway generator that keeps reprocessing the same stages or many operations per file
+                    //      and periodically goes into an error or idle state - could go beyond the maximum limit
+                    // But since a generator in an error or idle or complete state won't automatically restart itself, we assume something
+                    //      else started this process, so it isn't a self-perpetuating loop
+                    if (currentGeneratorState.status !== TaskStatus.Processing) {
+                        currentGeneratorState.processedStages = 0;
+                    }
+
+                    if (currentGeneratorState?.processedStages && currentGeneratorState.processedStages > maximumLimitForProcessedStages) {
+                        throw new Error(`${req.originalUrl} Generator exceeded Processing Limit of ${maximumLimitForProcessedStages} stages - ${currentGeneratorState.processedStages} stages already processed`);
+                    } else if (currentGeneratorState?.processedStages) {
+                        currentGeneratorState.processedStages++;
+                    } else {
+                        currentGeneratorState.processedStages = 1;
+                    }
+
                     currentGeneratorState.status = TaskStatus.Processing;
-                    currentGeneratorState.lastUpdated = undefined; // get a refreshed last updated timestamp 
+                    currentGeneratorState.lastUpdated = undefined; // get a refreshed last updated timestamp
                     await updateGeneratorState(currentGeneratorState);
 
                     // Launch the processing task
