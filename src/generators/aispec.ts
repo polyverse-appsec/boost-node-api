@@ -125,14 +125,17 @@ export class ArchitecturalSpecificationGenerator extends Generator {
 
             if (filteredFileContents.length === 0) {
                 nextStage = Stages.Complete;
+                return nextStage;
             }
 
-            if (!nextStage) {
-                // remove the first file from the file source list - to process
-                const fileContent : FileContent | undefined = filteredFileContents.shift();
-                if (!fileContent) {
-                    nextStage = Stages.Complete;
-                }
+            // remove the first file from the file source list - to process
+            const fileContent : FileContent | undefined = filteredFileContents.shift();
+            if (!fileContent) {
+                nextStage = Stages.Complete;
+                return nextStage;
+            }
+
+            try {
                 if (!fileContent?.path) {
                     console.warn(`File content missing path - skipping AI spec gen`);
                     return ArchitecturalSpecificationStage.FileSummarization;
@@ -141,68 +144,65 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                     console.warn(`File content missing source - skipping AI spec gen for ${fileContent.path}`);
                     return ArchitecturalSpecificationStage.FileSummarization;
                 }
-
+            } finally {
                     // re-save the filtered file contents (without the newest entry)
                 await this.saveScratchData<FileContent[]>(filteredFileContents, ArchitecturalSpecificationStage.FileFiltering);
+            }
 
-                await this.load(); // load the resource data before updating it
+            await this.load(); // load the resource data before updating it
 
-                if (!nextStage) {
+            const unavailableSpecForThisFile = this.fileArchitecturalSpecificationEntry
+                .replace('{relativeFileName}', fileContent.path)
+                .replace('{architecturalSpec}', NoSpecificationAvailable)
 
-                    const unavailableSpecForThisFile = this.fileArchitecturalSpecificationEntry
-                        .replace('{relativeFileName}', fileContent.path)
-                        .replace('{architecturalSpec}', NoSpecificationAvailable)
+            const fileSummarizationStatus = await this.loadScratchData<FileSummarizationStatus>(ArchitecturalSpecificationStage.FileSummarization);
+            if (!fileSummarizationStatus) {
+                throw new GeneratorProcessingError(
+                    `Unable to load file summarization status from previous stage`,
+                    ArchitecturalSpecificationStage.FileFiltering);
+            }
 
-                    const fileSummarizationStatus = await this.loadScratchData<FileSummarizationStatus>(ArchitecturalSpecificationStage.FileSummarization);
-                    if (!fileSummarizationStatus) {
-                        throw new GeneratorProcessingError(
-                            `Unable to load file summarization status from previous stage`,
-                            ArchitecturalSpecificationStage.FileFiltering);
-                    }
+            try {
+                await this.updateProgress('Building AI Specification for ' + fileContent.path);
 
-                    try {
-                        await this.updateProgress('Building AI Specification for ' + fileContent.path);
-
-                        const architecturalSpec : string = await this.createArchitecturalSpecification(fileContent.path, fileContent.source);
-                        
-                        fileSummarizationStatus.filesProcessed++;
-
-                        const availableSpecForThisFile = this.fileArchitecturalSpecificationEntry
-                                .replace('{relativeFileName}', fileContent.path)
-                                .replace('{architecturalSpec}', architecturalSpec);
-
-                        this.data = this.data.replace(unavailableSpecForThisFile, availableSpecForThisFile);
-
-                    } catch (err: any) {
-                        console.log(`Error creating architectural specification for ${fileContent.path}: ${err}`);
-
-                        fileSummarizationStatus.numberOfErrors++;
-                        fileSummarizationStatus.currentErrorStreak++;
+                const architecturalSpec : string = await this.createArchitecturalSpecification(fileContent.path, fileContent.source);
                 
-                        await this.checkAndSetErrorState(fileSummarizationStatus, err);
+                fileSummarizationStatus.filesProcessed++;
 
-                        const errorSpecificationForThisFile = this.fileArchitecturalSpecificationEntry
-                                .replace('{relativeFileName}', fileContent.path)
-                                .replace('{architecturalSpec}', ErrorGeneratingSpecification)
+                const availableSpecForThisFile = this.fileArchitecturalSpecificationEntry
+                        .replace('{relativeFileName}', fileContent.path)
+                        .replace('{architecturalSpec}', architecturalSpec);
 
-                        this.data = this.data.replace(unavailableSpecForThisFile, errorSpecificationForThisFile);
+                this.data = this.data.replace(unavailableSpecForThisFile, availableSpecForThisFile);
 
-                        await this.updateProgress(`Failed to Build AI Spec for ${fileContent!.path} due to ${err}`);
-                    }
+            } catch (err: any) {
+                console.log(`Error creating architectural specification for ${fileContent.path}: ${err}`);
 
-                    await this.saveScratchData<FileSummarizationStatus>(fileSummarizationStatus, ArchitecturalSpecificationStage.FileSummarization);
+                fileSummarizationStatus.numberOfErrors++;
+                fileSummarizationStatus.currentErrorStreak++;
+        
+                await this.checkAndSetErrorState(fileSummarizationStatus, err);
 
-                    // if there are no more files to process, we're done
-                    if (filteredFileContents.length === 0) {
-                        nextStage = Stages.Complete;
-                    } else {
-                        if (process.env.ONE_AI_SPEC) {
-                            console.warn(`Processing ONE AI Spec for testing only`);
-                            nextStage = Stages.Complete; // short-circuit after one spec for testing
-                        } else {
-                            nextStage = ArchitecturalSpecificationStage.FileSummarization;
-                        }
-                    }
+                const errorSpecificationForThisFile = this.fileArchitecturalSpecificationEntry
+                        .replace('{relativeFileName}', fileContent.path)
+                        .replace('{architecturalSpec}', ErrorGeneratingSpecification)
+
+                this.data = this.data.replace(unavailableSpecForThisFile, errorSpecificationForThisFile);
+
+                await this.updateProgress(`Failed to Build AI Spec for ${fileContent!.path} due to ${err}`);
+            }
+
+            await this.saveScratchData<FileSummarizationStatus>(fileSummarizationStatus, ArchitecturalSpecificationStage.FileSummarization);
+
+            // if there are no more files to process, we're done
+            if (filteredFileContents.length === 0) {
+                nextStage = Stages.Complete;
+            } else {
+                if (process.env.ONE_AI_SPEC) {
+                    console.warn(`Processing ONE AI Spec for testing only`);
+                    nextStage = Stages.Complete; // short-circuit after one spec for testing
+                } else {
+                    nextStage = ArchitecturalSpecificationStage.FileSummarization;
                 }
             }
             break;

@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.12.2: February 29th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Ensure REST Requests are logged in all stages (not just 'dev' stage)
+
+### Bug Fixes
+- Fix infinite loop if source is not loaded for AI Spec Generator
+
 ## Version 0.12.1: February 22nd, 2024
 
 ### New Features
