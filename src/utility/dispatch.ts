@@ -23,9 +23,7 @@ export const HTTP_FAILURE_BUSY = 429;
 export const HTTP_FAILURE_INTERNAL_SERVER_ERROR = 500;
 
 export const logRequest = (req: Request) => {
-    if (process.env.DEPLOYMENT_STAGE === 'dev') {
-        console.log(`Request: ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    }
+    console.log(`Request: ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`);
 }
 
 export const handleErrorResponse = (error: any, req: Request, res: Response, supplementalErrorMessage: string = 'Error', status_code: number = HTTP_FAILURE_INTERNAL_SERVER_ERROR) : Response => {
