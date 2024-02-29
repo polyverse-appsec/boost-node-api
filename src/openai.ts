@@ -341,12 +341,14 @@ export const searchOpenAIFiles = async (criteria: DataSearchCriteria): Promise<O
             throw new Error('Failed to fetch files');
         }
 
-        const data = (await response.json()).data as OpenAIFile[];
+        const searchResult = await response.json() as FileSearchResult;
+
+        const data = searchResult.data as OpenAIFile[];
 
         if (data.length === 0) {
             break; // No more files to fetch
         }
-        
+
         page++;
 
         // log out the currenttime, the size of the current slice, the starting id and created_at
