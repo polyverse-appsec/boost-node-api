@@ -16,4 +16,5 @@ export interface GeneratorState {
     lastUpdated?: number;
     status: TaskStatus;
     status_details?: string;
+    processedStages?: number;
 }

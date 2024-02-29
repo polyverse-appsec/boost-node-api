@@ -2843,6 +2843,9 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             currentGeneratorState = JSON.parse(currentGeneratorState) as GeneratorState;
         }
 
+        // get the current # of processed stages
+        const currentProcessedStages = currentGeneratorState.processedStages || 0;
+
         let body = req.body;
         if (typeof body !== 'string') {
             if (Buffer.isBuffer(body) || Array.isArray(body)) {
@@ -2884,6 +2887,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 return;
             } else if (generatorState.status === TaskStatus.Idle && generatorState.stage !== Stages.Complete) {
                 // if we're idle, but not complete, then we'll skip a full project refresh and resource upload
+                return;
             }
 
             // we have completed all stages or reached a terminal point (e.g. error or non-active updating)

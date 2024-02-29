@@ -13,6 +13,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Bug Fixes
 - Fix infinite loop if source is not loaded for AI Spec Generator
+- Fix issue where Generators would force a project refresh and data upload on an idle / incomplete Generator
 
 ## Version 0.12.1: February 22nd, 2024
 
