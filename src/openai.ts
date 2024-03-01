@@ -282,22 +282,22 @@ export const searchOpenAIFiles = async (criteria: DataSearchCriteria): Promise<O
         const filteredFiles = retrievedFiles.filter((file) => {
             let isMatch = true;
             if (email) {
-                isMatch && file.filename.includes(`${email.replace(/[^a-zA-Z0-9]/g, '_')}`);
+                isMatch &&= file.filename.includes(`${email.replace(/[^a-zA-Z0-9]/g, '_')}`);
             }
             if (org) {
-                isMatch && file.filename.includes(`_${org.replace(/[^a-zA-Z0-9]/g, '_')}`);
+                isMatch &&= file.filename.includes(`_${org.replace(/[^a-zA-Z0-9]/g, '_')}`);
             }
             if (project) {
-                isMatch && file.filename.includes(`_${project.replace(/[^a-zA-Z0-9]/g, '_')}`);
+                isMatch &&= file.filename.includes(`_${project.replace(/[^a-zA-Z0-9]/g, '_')}`);
             }
             if (repoName) {
-                isMatch && file.filename.includes(`${repoName.toString().replace(/[^a-zA-Z0-9]/g, '_')}`);
+                isMatch &&= file.filename.includes(`${repoName.toString().replace(/[^a-zA-Z0-9]/g, '_')}`);
             }
             if (ownerName) {
-                isMatch && file.filename.includes(`${ownerName.toString().replace(/[^a-zA-Z0-9]/g, '_')}`);
+                isMatch &&= file.filename.includes(`${ownerName.toString().replace(/[^a-zA-Z0-9]/g, '_')}`);
             }
             if (dataType) {
-                isMatch && file.filename.includes(`${dataType}`);
+                isMatch &&= file.filename.includes(`${dataType}`);
             }
             return isMatch;
         });
@@ -534,6 +534,9 @@ export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria,
 
         const queryReply = await response.json() as OpenAIAssistantQuery;
         allAssistants = allAssistants.concat(queryReply.data);
+        if (queryReply.has_more !== undefined && !queryReply.has_more) {
+            break;
+        }
         afterCursor = queryReply.last_id;
     } while (afterCursor);
 
@@ -541,19 +544,19 @@ export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria,
 
     let filteredAssistants = allAssistants.filter((assistant: OpenAIAssistant) => {
         let isMatch = true;
-/*
-        if (email) {
-            isMatch && assistant.name?.includes(`${email.replace(/[^a-zA-Z0-9]/g, '_')}`);
+
+        if (email && assistant.name) {
+            isMatch &&= assistant.name?.includes(`${email.replace(/[^a-zA-Z0-9]/g, '_')}`);
         }
-*/
-        if (isMatch && org) {
-            isMatch && assistant.name?.includes(`_${org.replace(/[^a-zA-Z0-9]/g, '_')}`);
+
+        if (isMatch && org && assistant.name) {
+            isMatch &&= assistant.name?.includes(`_${org.replace(/[^a-zA-Z0-9]/g, '_')}`);
         }
         if (isMatch && project) {
-            isMatch && assistant.metadata.projectName?.includes(`_${project.replace(/[^a-zA-Z0-9]/g, '_')}`);
+            isMatch &&= assistant.metadata.projectName?.includes(`_${project.replace(/[^a-zA-Z0-9]/g, '_')}`);
         }
         if (!isMatch) {
-            console.warn(`Assistant: ${assistant.name} should be excluded based on filter; but Assistant creation is not yet filtered by project, org, or email.`)
+            return false;
         }
         return true;
     });

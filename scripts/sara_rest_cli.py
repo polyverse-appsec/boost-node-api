@@ -92,7 +92,7 @@ def main(email, org, project, method, stage, data):
         "aifile_delete": f"{URL}/api/user/{org}/connectors/openai/files/{data}",
 
         "assistants": f"{URL}/api/user/{org}/connectors/openai/assistants",
-        "delete_assistants": f"{URL}/api/user/{org}/connectors/openai/assistants?noFiles" + "&confirm" if data == "confirm" else "",
+        "delete_assistants": f"{URL}/api/user/{org}/connectors/openai/assistants?noFiles" + ("&confirm" if data == "confirm" else ""),
 
         "github_access": f"{URL}/api/user/{org}/connectors/github/access?uri={data}",
 
@@ -195,7 +195,7 @@ def main(email, org, project, method, stage, data):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="CLI utility for managing user projects.")
     parser.add_argument("--email", required=False, help="The user's email address")
-    parser.add_argument("--org", default="polyverse-appsec", help="The organization name (default: polyverse-appsec)")
+    parser.add_argument("--org", required=False, help="The organization name (default: polyverse-appsec)")
     parser.add_argument("--project", required=False, help="The project name")
     parser.add_argument("--method", default="status",
                         choices=['status',
@@ -276,5 +276,11 @@ if __name__ == "__main__":
             "projects_all"]):
         parser.error("The --email argument is required for the method"
                      f" {args.method}.")
+    if args.org is None:
+        if args.method not in ["aifiles_groom", "aifiles_groom_at", "aifile_delete", "delete_assistants", "assistants"]:
+            parser.error("The --org argument is required for the method"
+                         f" {args.method}.")
+        else:
+            args.org = "localhost"  # default org to make connector calls, even though it will be ignored
 
     main(args.email, args.org, args.project, args.method, args.stage, args.data)

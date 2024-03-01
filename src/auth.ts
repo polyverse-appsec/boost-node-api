@@ -18,7 +18,7 @@ export enum AuthType {
     Admin
 }
 
-export async function validateUser(req: Request, res: Response, accessType: AuthType = AuthType.User): Promise<string | undefined> {
+export async function validateUser(req: Request, res: Response, accessType: AuthType = AuthType.User, throwIfNotAuthorized : boolean = false): Promise<string | undefined> {
     let email = '';
 
     // if the identity of the caller is signed, we need to verify AuthN
@@ -35,6 +35,9 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
         let signingKey = process.env.JWT_SIGNING_KEY || await getSingleSecret('boost-sara/sara-client-public-key');
         if (!signingKey) {
             console.error(`Unauthorized: Signing key is required`);
+            if (throwIfNotAuthorized) {
+                throw new Error(`Unauthorized`);
+            }
             res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             return undefined;
         }
@@ -49,6 +52,9 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
             // Check the expiration
             if (identity.expires && identity.expires < (Date.now() / 1000)) {
                 console.error(`Unauthorized: Signed identity expired`);
+                if (throwIfNotAuthorized) {
+                    throw new Error(`Unauthorized`);
+                }
                 res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
                 return undefined;
             }
@@ -56,6 +62,9 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
             email = normalizeEmail(identity.email);
         } catch (err) {
             console.error(`Unauthorized: Invalid signed identity: ${err} - Identity Header: ${identityJWT}`);
+            if (throwIfNotAuthorized) {
+                throw new Error(`Unauthorized`);
+            }
             res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             return undefined;
         }
@@ -66,12 +75,18 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
         const userAccountHeader = Object.keys(req.headers).find(key => key.toLowerCase() === 'x-user-account');
         if (!userAccountHeader || !req.headers[userAccountHeader]) {
             console.error(`Unauthorized: Email is required`);
+            if (throwIfNotAuthorized) {
+                throw new Error(`Unauthorized`);
+            }
             res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             return undefined;
         }
         // only support this header if we are running locally and not in AWS / Cloud
         if (!process.env.ENABLE_UNSIGNED_AUTHN) {
             console.error(`Unauthorized: UNSIGNED_AUTHN is not enabled; set ENABLE_UNSIGNED_AUTHN=true to enable`);
+            if (throwIfNotAuthorized) {
+                throw new Error(`Unauthorized`);
+            }
             res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             return undefined;
         } else {
@@ -91,6 +106,9 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
     if (accessType === AuthType.Admin) {
         if (email !== local_sys_admin_email) {
             console.error(`Unauthorized: Admin access is required`);
+            if (throwIfNotAuthorized) {
+                throw new Error(`Unauthorized`);
+            }
             res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             return undefined;
         }

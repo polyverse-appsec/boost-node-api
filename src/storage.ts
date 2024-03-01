@@ -69,7 +69,7 @@ export async function getProjectData(email: string | null, sourceType: SourceTyp
 // to search private data for all users, pass null as email
 // to search for any project - use "*" fpr project name
 // to search for any owner - use "*" for owner name
-export async function searchProjectData<T>(email: string | null, sourceType: string, owner: string, project: string, resourcePath: string, analysisType: string): Promise<any[]> {
+export async function searchProjectData<T>(email: string | undefined, sourceType: string, owner: string, project: string, resourcePath: string, analysisType: string): Promise<any[]> {
     let filterExpression = '';
     const expressionAttributeValues: Record<string, any> = {};
 

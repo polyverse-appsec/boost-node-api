@@ -4184,13 +4184,25 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, async (
     logRequest(req);
 
     try {
-        const email = await validateUser(req, res, AuthType.Admin);
-        if (!email) {
-            return;
+        let email = undefined;
+        let admin = false;
+        try {
+            // try to elevate to admin first to determine if we should search all assistants
+            email = await validateUser(req, res, AuthType.Admin, true);
+            admin = true;
+        } catch (error) {
+            email = await validateUser(req, res);
         }
 
-        const org = req.params.org;
-        if (!org) {
+        if (!email) {
+            return;
+        } else if (admin) {
+            // if running as admin, then reset email to undefined so we can search all assistants
+            email = undefined;
+        }
+
+        const org = admin?undefined:req.params.org;
+        if (!org && !admin) {
             console.error(`Org is required`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
@@ -4213,13 +4225,24 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, asyn
     logRequest(req);
 
     try {
-        const email = await validateUser(req, res, AuthType.Admin);
+        let email = undefined;
+        let admin = false;
+        try {
+            // try to elevate to admin first to determine if we should search all assistants
+            email = await validateUser(req, res, AuthType.Admin, true);
+            admin = true;
+        } catch (error) {
+            email = await validateUser(req, res);
+        }
         if (!email) {
             return;
+        } else if (admin) {
+            // if running as admin, then reset email to undefined so we can search all assistants
+            email = undefined;
         }
 
-        const org = req.params.org;
-        if (!org) {
+        const org = admin?undefined:req.params.org;
+        if (!org && !admin) {
             console.error(`Org is required`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
@@ -4253,14 +4276,25 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, asyn
             shouldDeleteAssistantHandler);
         
         if (confirm) {
+            const deletedAssistants : OpenAIAssistant[] = [];
             for (const assistant of aiAssistants) {
+                const beforeDeleteTimeInMs = Date.now();
                 try {
                     await deleteOpenAIAssistant(assistant.id);
+                    deletedAssistants.push(assistant);
                     console.info(`Deleted assistant ${assistant.name}:${assistant.id} created at ${new Date(assistant.created_at * 1000).toLocaleDateString()}`);
+                    const remainingTimeOutOfOneSecond = 1000 - (Date.now() - beforeDeleteTimeInMs);
+                    if (remainingTimeOutOfOneSecond > 0) {
+                        await delay(remainingTimeOutOfOneSecond);
+                    }
                 } catch (error) {
                     console.error(`Error deleting assistant ${assistant.name}:${assistant.id} created at ${new Date(assistant.created_at * 1000).toLocaleDateString()}:`, error);
                 }
             }
+            return res
+                .status(HTTP_SUCCESS)
+                .contentType('application/json')
+                .send(deletedAssistants);
         }
 
         return res
@@ -4311,13 +4345,26 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
     logRequest(req);
 
     try {
-        const email = await validateUser(req, res);
-        if (!email) {
-            return;
+        let admin = false;
+        let email = undefined;
+
+        try {
+            // try to elevate to admin first to determine if we should search all files
+            email = await validateUser(req, res, AuthType.Admin, true);
+            admin = true;
+        } catch (error) {
+            email = await validateUser(req, res);
         }
 
-        const org = req.params.org;
-        if (!org) {
+        if (!email) {
+            return;
+        } else if (admin) {
+            // if running as admin, then reset email to undefined so we can search all files
+            email = undefined;
+        }
+
+        const org = admin?undefined:req.params.org;
+        if (!org && !admin) {
             console.error(`Org is required`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
@@ -4326,6 +4373,13 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
         const dataType : string | undefined = typeof req.query.dataType === 'string' ? req.query.dataType : undefined;
         let repoUri = undefined;
         if (project) {
+            if (!email) {
+                console.error(`Email is required when deleting files in a project`);
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            } else if (!org) {
+                console.error(`Org is required when deleting files in a project`);
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            }
             const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
             if (!loadedProjectData) {
                 console.warn(`${req.originalUrl} Project not found: ${org}/${project} - cannot filter on repos`);
