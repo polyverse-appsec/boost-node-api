@@ -38,18 +38,8 @@ class End2EndTestSuite(unittest.TestCase):
         # cleanup resources
         response = requests.get(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}", headers=headers)
         if response.status_code == 200:
-            response = requests.get(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/{resource_type}", headers=headers)
-            if response.status_code == 200:
-                response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/{resource_type}", headers=headers)
-                self.assertTrue(response.status_code == 200 or response.status_code == 404)
-
-            response = requests.get(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/{resource_type}/generator", headers=headers)
-            if response.status_code == 200:
-                response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/{resource_type}/generator", headers=headers)
-                self.assertTrue(response.status_code == 200 or response.status_code == 404)
-
-        # response = requests.delete(f"{self.BASE_URL}/api/user_project/org123/project456/data_references", headers=headers)
-        # self.assertEqual(response.status_code, 200)
+            response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}", headers=headers)
+            self.assertTrue(response.status_code == 200 or response.status_code == 404)
 
         # create a sample project to test with
         data = {"resources": [{"uri": PUBLIC_PROJECT if not private else PRIVATE_PROJECT}]}

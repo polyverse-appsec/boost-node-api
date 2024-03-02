@@ -968,6 +968,37 @@ app.delete(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reque
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
+        try { // delete the data_references as well
+            const projectDataReferencesPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project")) + '/data_references';
+            await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, projectDataReferencesPath, 'DELETE');
+        } catch (error: any) { // ignore 404 errors
+            if (!error.code || error.code !== HTTP_FAILURE_NOT_FOUND.toString()) {
+                console.warn(`${req.originalUrl} Unable to delete data references for ${org}/${project} - due to error: ${error}`);
+            }
+        }
+
+        try { // delete the project status as well
+            const projectStatusPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project")) + '/status';
+            await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, projectStatusPath, 'DELETE');
+        } catch (error: any) { // ignore 404 errors
+            if (!error.code || error.code !== HTTP_FAILURE_NOT_FOUND.toString()) {
+                console.warn(`${req.originalUrl} Unable to delete project status for ${org}/${project} - due to error: ${error}`);
+            }
+        }
+
+        const possibleResources = [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification];
+        for (const resourceType of possibleResources) {
+            try {
+                const resourcePath = req.originalUrl.substring(req.originalUrl.indexOf("user_project")) + `/data/${resourceType}`;
+                await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, resourcePath, 'DELETE');
+            } catch (error: any) { // ignore 404 errors
+                if (!error.code || error.code !== HTTP_FAILURE_NOT_FOUND.toString()) {
+                    console.warn(`${req.originalUrl} Unable to delete resource for ${org}/${project} - due to error: ${error}`);
+                }
+            }
+        }
+
+        // we delete project at end - to avoid the above sub-resources from getting leaked by their owner being deleted
         await deleteProjectData(email, SourceType.General, org, project, '', 'project');
 
         return res
@@ -1651,7 +1682,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         const missingResources : string[] = [];
 
         const lastResourceUpdatedTimeStamp : Map<string, number> = new Map<string, number>();
-        for (const resource of [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification]) {
+        const possibleResources = [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification];
+        for (const resource of possibleResources) {
             // check if this resource exists, and get its timestamp
             let resourceStatus : ResourceStatusState;
             try {
@@ -1673,7 +1705,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
         const incompleteResources : string[] = [];
         const currentResourceStatus : TaskStatus[] = [];
-        for (const resource of [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification]) {
+        for (const resource of possibleResources) {
             let generatorStatus : GeneratorState;
             try {
                 generatorStatus = await localSelfDispatch<GeneratorState>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data/${resource}/generator`, 'GET');                console.debug
@@ -2566,6 +2598,24 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource}`, asy
         const { _, __, resource } = req.params;
         
         await deleteProjectData(email, SourceType.GitHub, ownerName, repoName, '', resource);
+
+        try {
+            const statusPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project")) + `/status`;
+            await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, statusPath, 'DELETE');
+        } catch (error: any) { // ignore 404 errors
+            if (!error.code || error.code !== HTTP_FAILURE_NOT_FOUND.toString()) {
+                console.warn(`${req.originalUrl} Unable to delete resource status for ${org}/${project} - due to error: ${error}`);
+            }
+        }
+
+        try {
+            const generatorPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project")) + `/generator`;
+            await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, generatorPath, 'DELETE');
+        } catch (error: any) { // ignore 404 errors
+            if (!error.code || error.code !== HTTP_FAILURE_NOT_FOUND.toString()) {
+                console.warn(`${req.originalUrl} Unable to delete resource generator for ${org}/${project} - due to error: ${error}`);
+            }
+        }
 
         return res
             .status(HTTP_SUCCESS)

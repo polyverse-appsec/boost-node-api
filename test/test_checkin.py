@@ -72,25 +72,7 @@ class BoostBackendCheckinSuite(unittest.TestCase):
 
         response = requests.get(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}", headers=signedHeaders)
         if response.status_code == 200:
-
-            # we're going to iterate over the 3 resources (blueprint, projectsource, aispec) and delete each of them
-            for resource in ["blueprint", "projectsource", "aispec"]:
-                # delete the generator
-                response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/{resource}/generator", headers=signedHeaders)
-                self.assertEqual(response.status_code, 200)
-
-                # delete the resource
-                response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/{resource}", headers=signedHeaders)
-                self.assertEqual(response.status_code, 200)
-
-            # delete the status info
-            response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/status", headers=signedHeaders)
-            self.assertEqual(response.status_code, 200)
-
-            # delete the data_references (and associated openai files)
-            response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data_references", headers=signedHeaders)
-            self.assertEqual(response.status_code, 200)
-
+            
             # delete the project
             response = requests.delete(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}", headers=signedHeaders)
             self.assertEqual(response.status_code, 200)
