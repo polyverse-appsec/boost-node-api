@@ -3282,7 +3282,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const user_project_org_project_data_references = `user_project/:org/:project/data_references`;
-const userProjectDataReferences = async (req: Request, res: Response) => {
+const postUserProjectDataReferences = async (req: Request, res: Response) => {
 
     logRequest(req);
 
@@ -3386,8 +3386,27 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                     const timeDifferenceInSeconds = timeDifference?timeDifference / 1000:0;
 
                     if (lastUploaded && lastUploaded > resourceStatus.lastUpdated) {
-                        console.debug(`${req.originalUrl}: Skipping upload of ${projectDataTypes[i]} - likely uploaded at ${usFormatter.format(lastUploadedDate)} and resource updated at ${usFormatter.format(resourceStatusDate)}`);
-                        continue;
+                        const timeBeforeOpenAICall = Date.now();
+                        let needsRefresh : boolean = existingProjectFileIds.get(projectDataTypes[i])?.id === undefined;
+                        if (!needsRefresh) {
+                            // the resource upload looks like it's newer than the resource status - but we need to verify the uploaded
+                            //      file still exists
+                            const existingFile : OpenAIFile | undefined = await getOpenAIFile(existingProjectFileIds.get(projectDataTypes[i])?.id!);
+                            if (!existingFile) {
+                                console.debug(`${req.originalUrl}: Existing Project AI File ${projectDataTypes[i]} ${existingProjectFileIds.get(projectDataTypes[i])?.id} not found - needs refresh`);
+                                needsRefresh = true;
+                            }
+                        }
+
+                        if (!needsRefresh) {
+                            const timeRemainingFromOneSecondThrottle = 1000 - (Date.now() - timeBeforeOpenAICall);
+                            // only need throttling delay for non-last resource
+                            if (timeRemainingFromOneSecondThrottle > 0 && i < projectDataTypes.length - 1) {
+                                await delay(timeRemainingFromOneSecondThrottle);
+                            }
+                            console.debug(`${req.originalUrl}: Skipping upload of ${projectDataTypes[i]} - likely uploaded at ${usFormatter.format(lastUploadedDate)} and resource updated at ${usFormatter.format(resourceStatusDate)}`);
+                            continue;
+                        }
                     }
 
                     if (lastUploaded) {
@@ -3405,6 +3424,7 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
 
                 try {
 
+                    const timeBeforeOpenAICall = Date.now();
                     const storedProjectDataId = await uploadProjectDataForAIAssistant(email, userProjectData.org, userProjectData.name, repoUri, projectDataTypes[i], projectDataNames[i], projectData);
                     if (process.env.TRACE_LEVEL) {
                         console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${JSON.stringify(storedProjectDataId)}`);
@@ -3414,7 +3434,10 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                     // update the existing resources with the newly uploaded info
                     const previousProjectFileId = existingProjectFileIds.get(projectDataTypes[i])?.id;
                     if (previousProjectFileId) {
-                        await delay(1000); // one second delay to avoid getting throttled by OpenAI for above upload (60 calls / min)
+                        const timeRemainingFromOneSecondThrottle = 1000 - (Date.now() - timeBeforeOpenAICall);
+                        if (timeRemainingFromOneSecondThrottle > 0) {
+                            await delay(timeRemainingFromOneSecondThrottle);
+                        }
                         try {
                             await deleteAssistantFile(previousProjectFileId);
                         } catch (error) { // we're going to ignore failure to delete and keep going... auto groomer will cleanup later
@@ -3499,8 +3522,8 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
 };
 
 app.route(`${api_root_endpoint}/${user_project_org_project_data_references}`)
-   .post(userProjectDataReferences)
-   .put(userProjectDataReferences);
+   .post(postUserProjectDataReferences)
+   .put(postUserProjectDataReferences);
 
 app.get(`${api_root_endpoint}/${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
 
