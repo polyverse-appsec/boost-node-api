@@ -29,7 +29,8 @@ import {
     deleteOpenAIFiles,
     searchOpenAIAssistants,
     OpenAIAssistant,
-    deleteOpenAIAssistant
+    deleteOpenAIAssistant,
+    getOpenAIFile
 } from './openai';
 import { UserProjectData } from './types/UserProjectData';
 import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
@@ -1515,14 +1516,15 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
             projectStatus = JSON.parse(rawProjectStatusData) as ProjectStatusState;
         }
 
+        // if we have no status, let's see if there's a real project here...
+        const projectData = await loadProjectData(email, org, project) as UserProjectData;
+        // if no project, then just HTTP_FAILURE_NOT_FOUND so user knows not to ask again
+        if (!projectData) {
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
+        }
+
         // if there's no project status yet - let's try and build one
         if (!projectStatus) {
-            // if we have no status, let's see if there's a real project here...
-            const projectData = await loadProjectData(email, org, project) as UserProjectData;
-            // if no project, then just HTTP_FAILURE_NOT_FOUND so user knows not to ask again
-            if (!projectData) {
-                return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
-            }
             // if we have a real project, and we have no status, then let's try and generate it now
             if (process.env.TRACE_LEVEL) {
                 console.warn(`Project Status not found; Project exists so let's refresh status`);
@@ -1607,10 +1609,12 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         try {
             projectData = await localSelfDispatch<UserProjectData>(email, getSignedIdentityFromHeader(req)!, req, projectDataUri, 'GET');
         } catch (error: any) {
-            if (error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) {
+            if ((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
+                (error.code === HTTP_FAILURE_NOT_FOUND.toString())) {
                 console.error(`Project not found: ${projectDataUri}`);
                 return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
-            } else if (error.response && error.response.status === HTTP_FAILURE_UNAUTHORIZED) {
+            } else if ((error.response && error.response.status === HTTP_FAILURE_UNAUTHORIZED) ||
+                          (error.code === HTTP_FAILURE_UNAUTHORIZED.toString())) {
                 console.error(`Unauthorized: ${projectDataUri}`);
                 return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             }
@@ -2043,7 +2047,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         try {
             projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, `${projectPath}/status`, 'GET');
         } catch (error: any) {
-            if (error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) {
+            if ((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
+                (error.code === HTTP_FAILURE_NOT_FOUND.toString())) {
                 console.error(`Project Status not found; Project may not exist or hasn't been discovered yet`);
                 return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
             }
@@ -3473,8 +3478,12 @@ const userProjectDataReferences = async (req: Request, res: Response) => {
                 await localSelfDispatch<ProjectStatusState>(
                     email, getSignedIdentityFromHeader(req)!, req,
                     `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs, false);
+
             } catch (error: any) {
-                if (!error.response || error.response.status !== HTTP_FAILURE_NOT_FOUND) {
+                if ((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
+                    (error.code === HTTP_FAILURE_NOT_FOUND.toString())) {
+                    // since we may not have status available yet to PATCH - ignore status missing
+                } else {
                     throw error;
                 }
             }
@@ -4252,7 +4261,7 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, asyn
         const noFiles = req.query.noFiles != undefined;
         const confirm = req.query.confirm != undefined;
 
-        const shouldDeleteAssistantHandler = (assistant: OpenAIAssistant) : boolean => {
+        const shouldDeleteAssistantHandler = async (assistant: OpenAIAssistant) : Promise<boolean> => {
             const createdDate = new Date(assistant.created_at * 1000);
 
             if (startDate) {
@@ -4266,6 +4275,14 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, asyn
                 if (!assistant.file_ids || assistant.file_ids.length === 0) {
                     console.warn(`Identified assistant ${assistant.name}:${assistant.id} for deletion (created: ${createdDate.toLocaleDateString()}) - no files`);
                     return true;
+                }
+                // verify each openai file exists
+                for (const fileId of assistant.file_ids) {
+                    const file : OpenAIFile | undefined = await getOpenAIFile(fileId);
+                    if (!file) {
+                        console.warn(`Identified assistant ${assistant.name}:${assistant.id} for deletion (created: ${createdDate.toLocaleDateString()}) - missing file ${fileId}`);
+                        return true;
+                    }
                 }
             }
             console.log(`Keeping assistant ${assistant.name}:${assistant.id} (created: ${createdDate.toLocaleDateString()})`);
@@ -4398,7 +4415,7 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
         const liveReferencedDataFiles : Map<string, OpenAIFile> = new Map();
 
         const activeFileIdsInAssistants : string[] = [];
-        const assistantSearchHandler = (assistant: OpenAIAssistant) : boolean => {
+        const assistantSearchHandler = async (assistant: OpenAIAssistant) : Promise<boolean> => {
             if (!assistant.file_ids?.length) {
                 return false;
             }

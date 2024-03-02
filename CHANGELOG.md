@@ -11,11 +11,13 @@ Polyverse Boost ReST API (Backend)
 ### Enhancements
 - Enable grooming/deletion of Assistants and Files to filter by username or org if the user is not an admin
 - Enable grooming/deletion of Assistants and Files to delete across users if the user is an admin
+- Enable Assistant grooming to detect Assistants with missing/dead files linked
 
 ### Bug Fixes
 - Fix OpenAI throttling issue with Assistant batch delete (wasn't waiting 1 second)
 - Fix search/filter checks for Assistant and File Searches/Deletions
     - Was not correctly filtering based on email, org, project - and deleted too many files
+- Fix bug with Project Status reporting 500 instead of 404 if the project is not found
 
 ## Version 0.12.2: February 29th, 2024
 

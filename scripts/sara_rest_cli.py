@@ -58,6 +58,7 @@ def main(email, org, project, method, stage, data):
         "projects_all": f"{URL}/api/search/projects",
 
         "project": f"{URL}/api/user_project/{org}/{project}",
+        "project_delete": f"{URL}/api/user_project/{org}/{project}",
 
         "discovery": f"{URL}/api/user_project/{org}/{project}/discover",
 
@@ -143,7 +144,7 @@ def main(email, org, project, method, stage, data):
     # if method starts with "create_" or is "discovery", then it's a POST request
     verb = "POST" if method.startswith("create_") or method.endswith("_gen") or method in [
         "discovery", "data_references_refresh", "status_refresh", "timer_interval"] else "DELETE" if (
-            method in ["delete_assistants", "aifiles_groom", "aifiles_groom_at", "aifile_delete"]) else "GET"
+            "delete" in method or "groom" in method) else "GET"
     print(f"Requesting {verb} {url}")
     try:
         response = make_request(verb, url, email)
@@ -204,6 +205,7 @@ if __name__ == "__main__":
                                  'projects',
                                  'project',
                                  'projects_all',
+                                 'project_delete',
 
                                  'generators_all',
                                  'generators_blueprint',
@@ -252,7 +254,6 @@ if __name__ == "__main__":
 
     if (args.project is None and args.method not in [
         "account",
-        "status",
         "data_references",
         "aifiles",
         "aifiles_groom",
@@ -278,8 +279,7 @@ if __name__ == "__main__":
                      f" {args.method}.")
     if args.org is None:
         if args.method not in ["aifiles_groom", "aifiles_groom_at", "aifile_delete", "delete_assistants", "assistants"]:
-            parser.error("The --org argument is required for the method"
-                         f" {args.method}.")
+            args.org = "polyverse-appsec"
         else:
             args.org = "localhost"  # default org to make connector calls, even though it will be ignored
 
