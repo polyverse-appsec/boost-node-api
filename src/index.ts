@@ -727,8 +727,11 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
 
         // get the path of the project data uri - excluding the api root endpoint
         const projectDataPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
+        const discoveryWithResetState : DiscoverState = {
+            resetResources: true
+        };
         try {
-            await localSelfDispatch<void>(email, signedIdentity, req, `${projectDataPath}/discover`, 'POST');
+            await localSelfDispatch<void>(email, signedIdentity, req, `${projectDataPath}/discover`, 'POST', discoveryWithResetState);
         } catch (error) {
             console.error(`Unable to launch discovery for ${projectDataPath}`, error);
         }
@@ -864,36 +867,31 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         // so we'll use the axios timeout to ensure we don't wait too long for the discovery process
         const maximumDiscoveryTimeoutOnProjectCreationInSeconds = 15;
 
-        let selfEndpoint = `${req.protocol}://${req.get('host')}${req.originalUrl}/discover`;
-        // if we're running locally, then we'll use http:// no matter what
-        if (req.get('host')!.includes('localhost')) {
-            selfEndpoint = `http://${req.get('host')}${req.originalUrl}/discover`;
-        }
-        const authHeader = await signedAuthHeader(email);
-        await axios.post(selfEndpoint, undefined, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...authHeader,
-            },
-            timeout: maximumDiscoveryTimeoutOnProjectCreationInSeconds * 1000 })
-        .then(response => {
+        const discoveryWithResetState : DiscoverState = {
+            resetResources: true
+        };
+
+        try {
+            await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, `${projectPath}/discover`, 'POST',
+                discoveryWithResetState, maximumDiscoveryTimeoutOnProjectCreationInSeconds * 1000);
+
             // if the new task stage completes in 1 seconds, we'll wait...
             console.log(`TIMECHECK: ${org}:${project}:discovery completed in ${maximumDiscoveryTimeoutOnProjectCreationInSeconds} seconds`);
-        })
-            // otherwise, we'll move on
-        .catch(error => {
+        } catch (error: any) {
             if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
                 console.log(`TIMECHECK: TIMEOUT: ${org}:${project}:discovery timed out after ${maximumDiscoveryTimeoutOnProjectCreationInSeconds} seconds`);
             } else {
                 // This block is for handling errors, including HTTP_FAILURE_NOT_FOUND and HTTP_FAILURE_INTERNAL_SERVER_ERROR status codes
                 if (axios.isAxiosError(error) && error.response) {
                     console.log(`TIMECHECK: ${org}:${project}:discovery failed ${error.response.status}:${error.response.data} - due to error: ${error}`);
+                } else if (error.code !== undefined) {
+                    console.log(`TIMECHECK: ${org}:${project}:discovery failed ${error.code} - due to error: ${error}`);
                 } else {
                     // Handle other errors (e.g., network errors)
                     console.log(`TIMECHECK: ${org}:${project}:discovery failed due to error: ${error}`);
                 }
             }
-        });
+        }
 
         return res
             .status(HTTP_SUCCESS)

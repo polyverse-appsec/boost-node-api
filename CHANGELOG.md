@@ -14,6 +14,7 @@ Polyverse Boost ReST API (Backend)
 - Enable Assistant grooming to detect Assistants with missing/dead files linked
 - Refreshing Data References ( /api/user_project/{org}/{project}/data_references (POST) ) will check if known OpenAI files are missing and re-upload them
 - Ensure Project Status returns Out of Sync if AI files are missing (e.g. uploaded to OpenAI in past, but OpenAI reports they are missing)
+- Ensure changing project data - via PATCH, POST or PUT resets the generators to recreate the resources
 
 ### Bug Fixes
 - Fix OpenAI throttling issue with Assistant batch delete (wasn't waiting 1 second)
