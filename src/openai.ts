@@ -185,6 +185,64 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
     }
 };
 
+export const getOpenAIFile = async (fileId: string): Promise<OpenAIFile | undefined> => {
+    const openAiKey : any = await getSecretsAsObject('exetokendev', 'openai-personal');
+    if (!openAiKey) {
+        throw new Error('OpenAI API key not found');
+    }
+
+    const getFileRest = `https://api.openai.com/v1/files/${fileId}`;
+
+    const axiosConfig = {
+        headers: {
+            'Authorization': `Bearer ${openAiKey}`,
+        },
+        timeout: 2000, // 2 second timeout
+    };
+
+    // Retry logic
+    const maxRetries = 2;
+    let attempt = 0;
+
+    while (attempt <= maxRetries) {
+        try {
+            const response = await axios.get(getFileRest, axiosConfig);
+            return response.data as OpenAIFile;
+        } catch (error: any) {
+            if (error?.response.status === 404) {
+                return undefined;
+            } else if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
+                attempt++;
+                if (attempt > maxRetries) {
+                    throw new Error(`Failed to fetch ${fileId} after ${maxRetries + 1} attempts due to timeout.`);
+                }
+                console.warn(`getOpenAIFile:RETRY ${attempt} for ${fileId} after Error: ${error.message}`);
+            } else {
+                console.error(`getOpenAIFile:FAILED: ${fileId} after Error: ${error.message}`);
+                // Handle non-timeout errors
+                if (error.response) {
+                    // The request was made and the server responded with a status code
+                    // that falls out of the range of 2xx
+                    const errorMessage = error.response.data.error?.message || 'No error message';
+                    const statusCode = error.response.status;
+                    if (statusCode === 429) {
+                        throw new Error(`OpenAI Get Call Rate limit exceeded for ${fileId}: ${errorMessage}`);
+                    } else {
+                        throw new Error(`OpenAI Get file failure for ${fileId} status: ${statusCode}, error: ${errorMessage}`);
+                    }
+                } else if (error.request) {
+                    // The request was made but no response was received
+                    throw new Error(`OpenAI Get file failure for ${fileId}: No response from server`);
+                } else {
+                    // Something happened in setting up the request that triggered an Error
+                    throw new Error(`Error fetching file ${fileId}: ${error.message}`);
+                }
+            }
+        }
+    }
+    return undefined;
+}
+
 export const deleteAssistantFile = async (fileId: string): Promise<void> => {
     const openAiKey : any = await getSecretsAsObject('exetokendev', 'openai-personal');
     if (!openAiKey) {
@@ -562,7 +620,18 @@ export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria,
     });
 
     if (assistantHandler) {
-        filteredAssistants = filteredAssistants.filter(assistant => assistantHandler(assistant));
+        async function filterAsync(array: any, predicate: any) {
+            const filteredArray = [];
+            for (const item of array) {
+                if (await predicate(item)) {
+                    filteredArray.push(item);
+                }
+            }
+            return filteredArray;
+        }
+                
+        // Usage
+        filteredAssistants = await filterAsync(filteredAssistants, assistantHandler);
     }
 
     return filteredAssistants;
