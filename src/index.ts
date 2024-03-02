@@ -1821,15 +1821,40 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         //      last synchronized time for the AI server upload
         const outOfDateResources : ProjectDataType[] = [];
         let lastResourceUpdated : number = 0;
-        for (const resource of [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification]) {
+
+        let openAiFileCheckCalls = 0;
+        const resourcesToCheck = [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification];
+        for (const resource of resourcesToCheck) {
             const thisDataReference : ProjectDataReference | undefined = dataReferences.find(dataReference => dataReference.type === resource);
 
             if (lastResourceUpdatedTimeStamp.get(resource) && lastResourceUpdated < lastResourceUpdatedTimeStamp.get(resource)!) {
                 lastResourceUpdated = lastResourceUpdatedTimeStamp.get(resource)!;
             }
-            if (!thisDataReference || thisDataReference.lastUpdated < lastResourceUpdatedTimeStamp.get(resource)!) {
+
+            // if the upload doesn't exist or the file is missing from OpenAI, then we're out of date
+            if (!thisDataReference || !thisDataReference.id) {
+                outOfDateResources.push(resource);
+                continue;
+            }
+            const startTimeOfOpenAICall = Date.now();
+            const existingFile : OpenAIFile | undefined = await getOpenAIFile(thisDataReference.id);
+            const endTimeOfOpenAICall = Date.now();
+            const remainingTimeOutOfOneSecond = 1000 - (endTimeOfOpenAICall - startTimeOfOpenAICall);
+            // throttle openai call to 1 per second
+            if (remainingTimeOutOfOneSecond > 0 && openAiFileCheckCalls < resourcesToCheck.length - 1) {
+                await delay(remainingTimeOutOfOneSecond);
+            }
+            openAiFileCheckCalls++;
+            // if the openai file doesn't exist, then report it missing and continue
+            if (!existingFile) {
+                outOfDateResources.push(resource);
+                continue;
+            }
+
+            if (thisDataReference.lastUpdated < lastResourceUpdatedTimeStamp.get(resource)!) {
                 outOfDateResources.push(resource);
             }
+
         }
 
         const lastResourceCompletedDate = new Date(lastResourceUpdated * 1000);
