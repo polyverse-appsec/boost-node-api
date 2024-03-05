@@ -1656,7 +1656,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             // save the project status
             try {
                 // set current timestamp
-                projectStatus.lastUpdated = Math.floor(Date.now() / 1000);
+                projectStatus.lastUpdated = Date.now() / 1000;
 
                 await storeProjectData(email, SourceType.General, org, project, '', 'status', JSON.stringify(projectStatus));
 
@@ -1774,7 +1774,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
         // if the first resource was generated BEFORE the current project timestamp, then at least one of our resources is out of date
         //      so we'll mark the whole project as out of date
-        if (firstResourceGeneratingTime && projectData.lastUpdated > firstResourceGeneratingTime) {
+        if (firstResourceGeneratingTime && projectData.lastUpdated > (firstResourceGeneratingTime + 1)) {
             const projectLastUpdatedDate = new Date(projectData.lastUpdated * 1000);
             const firstResourceGeneratingDate = new Date(firstResourceGeneratingTime * 1000);
 
@@ -2834,7 +2834,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
 
         const updateGeneratorState = async (generatorState: GeneratorState) => {
             if (!generatorState.lastUpdated) {
-                generatorState.lastUpdated = Math.floor(Date.now() / 1000);
+                generatorState.lastUpdated = Date.now() / 1000;
             }
 
             await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', 
@@ -2953,7 +2953,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
         const updateGeneratorState = async (generatorState: GeneratorState) => {
             if (!generatorState.lastUpdated) {
-                generatorState.lastUpdated = Math.floor(Date.now() / 1000);
+                generatorState.lastUpdated = Date.now() / 1000;
             }
             // need to delete the current state property 'last_updated' if it exists
             // it's a legacy property on the object, so it isn't in the GeneratorState definition

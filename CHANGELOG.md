@@ -14,6 +14,8 @@ Polyverse Boost ReST API (Backend)
 - Enable Generators to bypass Error state during processing if forceProcessing=True is passed in POST/PUT
 - Ensure Generators only wait 25 seconds to pull project source from GitHub (e.g. to avoid long delays)
 - Increase JSON payload limit to 50mb (from 10mb) to support large project source downloads
+- Increase precision of lastUpdated timestamps on all objects to include milliseconds
+    - To ensure comparisons between timestamps are accurate (e.g. project status reporting)
 
 ### Bug Fixes
 - Fix missing error result for Generator errors during processing
