@@ -62,30 +62,18 @@ def main(email, org, project, method, stage, data):
 
         "discovery": f"{URL}/api/user_project/{org}/{project}/discover",
 
-        "projectsource": f"{URL}/api/user_project/{org}/{project}/data/projectsource",
-        "aispec": f"{URL}/api/user_project/{org}/{project}/data/aispec",
-        "blueprint": f"{URL}/api/user_project/{org}/{project}/data/blueprint",
+        "resource": f"{URL}/api/user_project/{org}/{project}/data/{data}",
 
-        "projectsource_gen": f"{URL}/api/user_project/{org}/{project}/data/projectsource/generator",
-        "aispec_gen": f"{URL}/api/user_project/{org}/{project}/data/aispec/generator",
-        "blueprint_gen": f"{URL}/api/user_project/{org}/{project}/data/blueprint/generator",
+        "gen_resource": f"{URL}/api/user_project/{org}/{project}/data/{data}/generator",
 
-        "projectsource_gen_status": f"{URL}/api/user_project/{org}/{project}/data/projectsource/generator",
-        "aispec_gen_status": f"{URL}/api/user_project/{org}/{project}/data/aispec/generator",
-        "blueprint_gen_status": f"{URL}/api/user_project/{org}/{project}/data/blueprint/generator",
+        "gen_status": f"{URL}/api/user_project/{org}/{project}/data/{data}/generator",
 
-        "projectsource_status": f"{URL}/api/user_project/{org}/{project}/data/projectsource/status",
-        "aispec_status": f"{URL}/api/user_project/{org}/{project}/data/aispec/status",
-        "blueprint_status": f"{URL}/api/user_project/{org}/{project}/data/blueprint/status",
+        "resource_status": f"{URL}/api/user_project/{org}/{project}/data/{data}/status",
 
-        "generators_all": f"{URL}/api/search/projects/generators",
-        "generators_blueprint": f"{URL}/api/search/projects/generators?resource=blueprint",
-        "generators_aispec": f"{URL}/api/search/projects/generators?resource=aispec",
-        "generators_projectsource": f"{URL}/api/search/projects/generators?resource=projectsource",
+        "search_generators_all": f"{URL}/api/search/projects/generators",
+        "search_generators": f"{URL}/api/search/projects/generators?resource={data}",
 
-        "create_blueprint": f"{URL}/api/user_project/{org}/{project}/data/blueprint/generator/start",
-        "create_aispec": f"{URL}/api/user_project/{org}/{project}/data/aispec/generator/start",
-        "create_projectsource": f"{URL}/api/user_project/{org}/{project}/data/projectsource/generator/start",
+        "gen_resource_process": f"{URL}/api/user_project/{org}/{project}/data/{data}/generator/process",
 
         "aifiles": f"{URL}/api/user/{org}/connectors/openai/files",
         "aifiles_groom": f"{URL}/api/user/{org}/connectors/openai/files?groom&afterDate={data}",
@@ -207,10 +195,8 @@ if __name__ == "__main__":
                                  'projects_all',
                                  'project_delete',
 
-                                 'generators_all',
-                                 'generators_blueprint',
-                                 'generators_aispec',
-                                 'generators_projectsource',
+                                 'search_generators_all',
+                                 'search_generators',
 
                                  'account',
 
@@ -218,21 +204,13 @@ if __name__ == "__main__":
                                  'data_references',
                                  "data_references_refresh",
 
-                                 'projectsource',
-                                 'aispec',
-                                 'blueprint',
+                                 'resource',
 
-                                 'blueprint_gen',
-                                 'projectsource_gen',
-                                 'aispec_gen',
+                                 'gen_resource',
 
-                                 'blueprint_gen_status',
-                                 'projectsource_gen_status',
-                                 'aispec_gen_status',
+                                 'gen_status',
 
-                                 'blueprint_status',
-                                 'projectsource_status',
-                                 'aispec_status',
+                                 'resource_status',
 
                                  'aifiles',
                                  'aifiles_groom',
@@ -263,10 +241,8 @@ if __name__ == "__main__":
         "github_access",
         "projects",
         "projects_all",
-        "generators_all",
-        "generators_blueprint",
-        "generators_aispec",
-        "generators_projectsource",
+        "search_generators_all",
+        "search_generators",
         "timer_interval",
         "list_pending_discoveries",
         "delete_assistants"
