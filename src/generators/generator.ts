@@ -277,7 +277,7 @@ export class Generator {
                     console.warn(`${this.projectData.org}:${this.projectData.name} Generator locked in Error state - ignoring progress update: ${JSON.stringify(state)}`);
                 }
                 if (!this.forceProcessing) {
-                throw new Error(`${this.projectData.org}:${this.projectData.name} Generator in Error - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
+                    throw new Error(`${this.projectData.org}:${this.projectData.name} Generator in Error - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
                 }
             } else {
                 const errorText = await response.text() || 'Unknown Error';

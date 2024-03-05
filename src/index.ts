@@ -3529,8 +3529,8 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
                         try {
                             await deleteAssistantFile(previousProjectFileId);
                             console.debug(`${req.originalUrl}: Deleted previous Project File Resource ${projectDataTypes[i]} ${previousProjectFileId}`);
-                        } catch (error) { // we're going to ignore failure to delete and keep going... auto groomer will cleanup later
-                            console.error(`${req.originalUrl} Unable to delete previous Project File Resource ${projectDataTypes[i]} ${previousProjectFileId}:`, error);
+                        } catch (error: any) { // we're going to ignore failure to delete and keep going... auto groomer will cleanup later
+                            console.error(`${req.originalUrl} Unable to delete previous Project File Resource ${projectDataTypes[i]} ${previousProjectFileId}:`, error.message);
                         }
                     }
                     existingProjectFileIds.set(projectDataTypes[i], storedProjectDataId);
