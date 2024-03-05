@@ -6,7 +6,9 @@ import json
 from utils import get_signed_headers
 
 from constants import (
-    TARGET_URL, EMAIL, ORG, PUBLIC_PROJECT, PUBLIC_PROJECT_NAME,
+    TARGET_URL,
+    CLOUD_URL_PROD, CLOUD_URL_TEST, CLOUD_URL_DEV, LOCAL_URL,
+    EMAIL, ORG, PUBLIC_PROJECT, PUBLIC_PROJECT_NAME,
     PREMIUM_EMAIL, PRIVATE_PROJECT_NAME_CHECKIN_TEST, LOCAL_ADMIN_EMAIL,
     AARON_EMAIL, PRIVATE_PROJECT_CUSTOM_NFTMINT, PRIVATE_PROJECT_NAME_CUSTOM_NFTMINT
 )
@@ -348,3 +350,53 @@ class UnitTestSuite(unittest.TestCase):
             response = response.text
 
         self.assertEqual(response, data)
+
+    def test_search_user_projects(self):
+        print("Running test: Search User Projects")
+
+        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
+
+        responses = {}
+
+        # get current time in seconds / unix time
+        call_start = datetime.datetime.now()
+
+        response = requests.get(f"{CLOUD_URL_DEV}/api/user_project/{ORG}/projects", headers=signedHeaders)
+        responses['dev'] = response
+
+        call_time = datetime.datetime.now() - call_start
+        print(f"Call Time: {call_time}")
+
+        self.assertEqual(response.status_code, 200)
+
+        self.assertGreaterEqual(len(response.json()), 0)
+
+        response = requests.get(f"{CLOUD_URL_TEST}/api/user_project/{ORG}/projects", headers=signedHeaders)
+        responses['test'] = response
+
+        call_time = datetime.datetime.now() - call_start
+        print(f"Call Time: {call_time}")
+
+        self.assertEqual(response.status_code, 200)
+
+        self.assertGreaterEqual(len(response.json()), 0)
+
+        response = requests.get(f"{CLOUD_URL_PROD}/api/user_project/{ORG}/projects", headers=signedHeaders)
+        responses['prod'] = response
+
+        call_time = datetime.datetime.now() - call_start
+        print(f"Call Time: {call_time}")
+
+        self.assertEqual(response.status_code, 200)
+
+        self.assertGreaterEqual(len(response.json()), 0)
+
+        response = requests.get(f"{LOCAL_URL}/api/user_project/{ORG}/projects", headers=signedHeaders)
+        responses['local'] = response
+
+        call_time = datetime.datetime.now() - call_start
+        print(f"Call Time: {call_time}")
+
+        self.assertEqual(response.status_code, 200)
+
+        self.assertGreaterEqual(len(response.json()), 0)
