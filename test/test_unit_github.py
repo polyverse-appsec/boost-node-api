@@ -43,6 +43,18 @@ class GitHubUnitTestSuite(unittest.TestCase):
         print(f"Time to retrieve full source from a private repo LARGE: {endTime - startTime}")
         self.assertEqual(response.status_code, 200)
 
+    def test_retrieve_fullsource_private_custom_repo_access(self):
+        print("Running test: Retrieve full source from nftmint repo")
+        PRIVATE_PROJECT_CUSTOM_NFTMINT = "https://github.com/polyverse-appsec/NFT-Mint"
+        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
+        startTime = time.time()
+        response = requests.get(f"{TARGET_URL}/api/user/{ORG}/connectors/github/fullsource?uri={PRIVATE_PROJECT_CUSTOM_NFTMINT}", headers=signedHeaders)
+        endTime = time.time()
+        print(f"Time to retrieve full source from a private repo LARGE: {endTime - startTime}")
+        self.assertEqual(response.status_code, 200)
+        response = response.json() if 'body' not in response else json.loads(response['body'])
+        self.assertTrue(response)
+
     def test_retrieve_file_private_access_repo_path(self):
         print("Running test: Retrieve a private file from the team's project based on repo and path")
         signedHeaders = get_signed_headers(PREMIUM_EMAIL)
