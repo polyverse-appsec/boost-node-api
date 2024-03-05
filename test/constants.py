@@ -38,3 +38,6 @@ PUBLIC_PROJECT_NAME_CHECKIN_TEST = "checkin_test_public_repo"
 
 PRIVATE_PROJECT_LARGE_NAME = "test-sara-large"
 PRIVATE_PROJECT_LARGE = "https://github.com/polyverse-appsec/polyx"
+
+PRIVATE_PROJECT_NAME_CUSTOM_NFTMINT = "test-sara-nftmint"
+PRIVATE_PROJECT_CUSTOM_NFTMINT = "https://github.com/polyverse-appsec/NFT-Mint"
