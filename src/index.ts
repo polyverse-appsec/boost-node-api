@@ -2950,6 +2950,9 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
         let userGeneratorRequest : GeneratorState = {
             status: input.status
         };
+        if (input.stage) {
+            userGeneratorRequest.stage = input.stage;
+        }
 
         const updateGeneratorState = async (generatorState: GeneratorState) => {
             if (!generatorState.lastUpdated) {
@@ -3050,8 +3053,10 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         selfEndpoint = `http://${req.get('host')}`;
                     }
 
+                    // if user requested a specific stage, then we'll process that stage
+                    //      otherwise, we'll process the current stage in the generator
                     const processNextStageState : ResourceGeneratorProcessState = {
-                        stage: currentGeneratorState.stage!,
+                        stage: userGeneratorRequest.stage?userGeneratorRequest.stage:currentGeneratorState.stage!,
                     };
                     if (typeof processNextStageState.stage !== 'string') {
                         processNextStageState.stage = "";

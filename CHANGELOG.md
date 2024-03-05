@@ -19,6 +19,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Bug Fixes
 - Fix missing error result for Generator errors during processing
+- Fix Discovery to honor the Reset request (e.g. generatorState.resetResources=True)
 
 ## Version 0.12.3: March 2nd, 2024
 

@@ -28,12 +28,12 @@ stage_url = {
 }
 
 
-def make_request(method, url, email):
+def make_request(method, url, email, data):
     signed_header_value = get_signed_headers(email) if email is not None else None
     if method == "GET":
         response = requests.get(url, headers=signed_header_value)
     elif method == "POST":
-        response = requests.post(url, headers=signed_header_value)
+        response = requests.post(url, headers=signed_header_value, data=data)
     elif method == "DELETE":
         response = requests.delete(url, headers=signed_header_value)
     else:
@@ -60,7 +60,8 @@ def main(email, org, project, method, stage, data):
         "project": f"{URL}/api/user_project/{org}/{project}",
         "project_delete": f"{URL}/api/user_project/{org}/{project}",
 
-        "discovery": f"{URL}/api/user_project/{org}/{project}/discover",
+        "discover": f"{URL}/api/user_project/{org}/{project}/discover",
+        "rediscover": f"{URL}/api/user_project/{org}/{project}/discover",
 
         "resource": f"{URL}/api/user_project/{org}/{project}/data/{data}",
 
@@ -97,7 +98,7 @@ def main(email, org, project, method, stage, data):
     retry = 0
     while True:
         try:
-            response = make_request("GET", test_url, None)
+            response = make_request("GET", test_url, None, None)
             if response.status_code == 200:
                 break
         # control-c
@@ -129,13 +130,14 @@ def main(email, org, project, method, stage, data):
         print("")
 
     url = endpoints[method]
-    # if method starts with "create_" or is "discovery", then it's a POST request
+    # if method starts with "create_" or is "discover", then it's a POST request
     verb = "POST" if method.startswith("create_") or method.endswith("_gen") or method in [
-        "discovery", "data_references_refresh", "status_refresh", "timer_interval"] else "DELETE" if (
+        "discover", "rediscover", "data_references_refresh", "status_refresh", "timer_interval"] else "DELETE" if (
             "delete" in method or "groom" in method) else "GET"
+    data = None if method not in ["rediscover"] else json.dumps({"resetResources": True})
     print(f"Requesting {verb} {url}")
     try:
-        response = make_request(verb, url, email)
+        response = make_request(verb, url, email, data)
     except requests.exceptions.RequestException as e:
         print(f"Failed: {e}")
         return
@@ -200,7 +202,8 @@ if __name__ == "__main__":
 
                                  'account',
 
-                                 'discovery',
+                                 'discover',
+                                 'rediscover',
                                  'data_references',
                                  "data_references_refresh",
 
