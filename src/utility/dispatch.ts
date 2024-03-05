@@ -178,6 +178,9 @@ export async function localSelfDispatch<T>(
                         console.error(`${httpVerb} ${selfEndpoint} failed ${error}`);
                     }
                 }
+                if (axios.isAxiosError(error) && error.response) {
+                    throw new axios.AxiosError(error.response.data, error.code, undefined, undefined, error.response);
+                }
             }
             throw error;
         }

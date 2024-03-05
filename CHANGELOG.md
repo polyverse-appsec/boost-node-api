@@ -3,6 +3,19 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.12.4: March 4th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Ensure full error stack for all internal errors (e.g. 500) - to help debug issues
+- Prevent Projects/Repos with >1000 files from being processed (to avoid unexpected scale errors)
+- Enable Generators to bypass Error state during processing if forceProcessing=True is passed in POST/PUT
+
+### Bug Fixes
+- N/A
+
 ## Version 0.12.3: March 2nd, 2024
 
 ### New Features
