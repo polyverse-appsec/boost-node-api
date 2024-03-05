@@ -2828,6 +2828,9 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         if (input.stage) {
             currentGeneratorState.stage = input.stage;
         }
+        // need to delete the current state property 'last_updated' if it exists
+        // it's a legacy property on the object, so it isn't in the GeneratorState definition
+        delete (currentGeneratorState as any).last_updated;
 
         const updateGeneratorState = async (generatorState: GeneratorState) => {
             if (!generatorState.lastUpdated) {
@@ -2952,6 +2955,9 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             if (!generatorState.lastUpdated) {
                 generatorState.lastUpdated = Math.floor(Date.now() / 1000);
             }
+            // need to delete the current state property 'last_updated' if it exists
+            // it's a legacy property on the object, so it isn't in the GeneratorState definition
+            delete (currentGeneratorState as any).last_updated;
 
             await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', 
                 `${resource}/generator`, JSON.stringify(generatorState));
@@ -3068,8 +3074,6 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
                     // if we've finished all stages, then we'll set the status to complete and idle
                     if (currentGeneratorState.stage === Stages.Complete) {
-                        console.log(`${req.originalUrl}: completed all stages`);
-
                         currentGeneratorState.status = TaskStatus.Idle;
                     }
 
@@ -3507,6 +3511,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
                     if (process.env.TRACE_LEVEL) {
                         console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${JSON.stringify(storedProjectDataId)}`);
                     }
+                    console.debug(`${req.originalUrl}: Uploaded ${storedProjectDataId.id} - ${projectDataTypes[i]} (${projectData.length} bytes) to AI Servers in ${Date.now() - timeBeforeOpenAICall} ms`);
                     refreshedProjectData = true;
 
                     // update the existing resources with the newly uploaded info
@@ -3518,6 +3523,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
                         }
                         try {
                             await deleteAssistantFile(previousProjectFileId);
+                            console.debug(`${req.originalUrl}: Deleted previous Project File Resource ${projectDataTypes[i]} ${previousProjectFileId}`);
                         } catch (error) { // we're going to ignore failure to delete and keep going... auto groomer will cleanup later
                             console.error(`${req.originalUrl} Unable to delete previous Project File Resource ${projectDataTypes[i]} ${previousProjectFileId}:`, error);
                         }
