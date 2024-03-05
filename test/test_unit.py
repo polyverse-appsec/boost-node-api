@@ -8,7 +8,7 @@ from utils import get_signed_headers
 from constants import (
     TARGET_URL, EMAIL, ORG, PUBLIC_PROJECT, PUBLIC_PROJECT_NAME,
     PREMIUM_EMAIL, PRIVATE_PROJECT_NAME_CHECKIN_TEST, LOCAL_ADMIN_EMAIL,
-    AARON_EMAIL
+    AARON_EMAIL, PRIVATE_PROJECT_CUSTOM_NFTMINT, PRIVATE_PROJECT_NAME_CUSTOM_NFTMINT
 )
 
 
@@ -194,6 +194,30 @@ class UnitTestSuite(unittest.TestCase):
 
         self.assertEqual(response['stage'], 'Full Source Code Import')
 
+    def test_generator_resource_projectsource_stage_filescan_customrepo(self):
+        print("Running test: Generator Resource ProjectSource Stage Filescan - Custom Repo")
+
+        project_name = PRIVATE_PROJECT_NAME_CHECKIN_TEST
+
+        data = {"stage": 'File Paths Scan'}
+        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
+
+        # response = requests.post(f"{TARGET_URL}/test", json=data, headers=signedHeaders)
+        # self.assertEqual(response.status_code, 200)
+
+        response = requests.post(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/projectsource/generator/process", json=data, headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+        # if running locally - the result will be a string, but if running remotely, the result will be a JSON object for HTTP frame
+        #     so we need to see if we can parse the JSON, and if not, just use the string
+        try:
+            response = response.json()
+            response = json.loads(response['body']) if 'body' in response else response
+        except json.JSONDecodeError:
+            response = response.text
+
+        self.assertEqual(response['stage'], 'Full Source Code Import')
+
     def test_generator_resource_projectsource_stage_fullsourceimport(self):
         print("Running test: Generator Resource ProjectSource Stage Filescan")
 
@@ -203,6 +227,86 @@ class UnitTestSuite(unittest.TestCase):
         signedHeaders = get_signed_headers(PREMIUM_EMAIL)
 
         response = requests.post(f"{TARGET_URL}/api/user_project/{ORG}/{project_name}/data/projectsource/generator/process", json=data, headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+        # if running locally - the result will be a string, but if running remotely, the result will be a JSON object for HTTP frame
+        #     so we need to see if we can parse the JSON, and if not, just use the string
+        try:
+            response = response.json()
+            response = json.loads(response['body']) if 'body' in response else response
+        except json.JSONDecodeError:
+            response = response.text
+
+        self.assertEqual(response['stage'], 'Complete')
+
+    def test_generator_resource_projectsource_stage_filepathscan_custom_repo(self):
+        print("Running test: Generator Resource ProjectSource Stage Filescan")
+
+        project_name = PRIVATE_PROJECT_NAME_CUSTOM_NFTMINT
+        email = PREMIUM_EMAIL
+        email = "airbear109@gmail.com"
+
+        org = "polyverse-appsec"
+        project_name = "nftmintONE"
+
+        dataPathScan = {"stage": 'File Paths Scan'}
+        dataSourceImport = {"stage": 'Full Source Code Import'}
+        signedHeaders = get_signed_headers(email)
+
+        response = requests.post(f"{TARGET_URL}/api/user_project/{org}/{project_name}/data/projectsource/generator/process", json=dataPathScan, headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+        # if running locally - the result will be a string, but if running remotely, the result will be a JSON object for HTTP frame
+        #     so we need to see if we can parse the JSON, and if not, just use the string
+        try:
+            response = response.json()
+            response = json.loads(response['body']) if 'body' in response else response
+        except json.JSONDecodeError:
+            response = response.text
+
+        self.assertEqual(response['stage'], dataSourceImport['stage'])
+
+    def test_generator_resource_projectsource_custom_repo(self):
+        print("Running test: Generator Resource ProjectSource - Custom Repo")
+
+        project_name = PRIVATE_PROJECT_CUSTOM_NFTMINT
+
+        org = "polyverse-appsec"
+        project_name = "nftmintONE"
+        email = PREMIUM_EMAIL
+        email = "airbear109@gmail.com"
+
+        data = {"status": 'processing'}
+        signedHeaders = get_signed_headers(email)
+
+        response = requests.post(f"{TARGET_URL}/api/user_project/{org}/{project_name}/data/projectsource/generator", json=data, headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
+
+        # if running locally - the result will be a string, but if running remotely, the result will be a JSON object for HTTP frame
+        #     so we need to see if we can parse the JSON, and if not, just use the string
+        try:
+            response = response.json()
+            response = json.loads(response['body']) if 'body' in response else response
+        except json.JSONDecodeError:
+            response = response.text
+
+        self.assertEqual(response['stage'], 'Complete')
+
+    def test_generator_resource_projectsource_stage_fullsourceimport_custom_repo(self):
+        print("Running test: Generator Resource ProjectSource Stage Filescan - Custom Repo")
+
+        project_name = PRIVATE_PROJECT_CUSTOM_NFTMINT
+
+        org = "polyverse-appsec"
+        project_name = "nftmintONE"
+        email = PREMIUM_EMAIL
+        email = "airbear109@gmail.com"
+
+        # data = {"stage": 'File Paths Scan'}
+        data = {"stage": 'Full Source Code Import', "forceProcessing": True}
+        signedHeaders = get_signed_headers(email)
+
+        response = requests.post(f"{TARGET_URL}/api/user_project/{org}/{project_name}/data/projectsource/generator/process", json=data, headers=signedHeaders)
         self.assertEqual(response.status_code, 200)
 
         # if running locally - the result will be a string, but if running remotely, the result will be a JSON object for HTTP frame
