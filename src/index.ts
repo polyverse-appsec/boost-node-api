@@ -76,7 +76,7 @@ import { usFormatter } from './utility/log';
 export const app = express();
 
 // set limits to 1mb for text and 10mb for json
-app.use(express.json({ limit: '10mb' })); // Make sure to use express.json middleware to parse json request body
+app.use(express.json({ limit: '50mb' })); // Make sure to use express.json middleware to parse json request body
 app.use(express.text({ limit: '5mb' })); // Make sure to use express.text middleware to parse text request body
 
 /*
@@ -3329,7 +3329,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
 
             let currentStage = resourceGeneratorProcessState?.stage;
             if (!currentStage) {
-                currentStage = "[Current Stage";
+                currentStage = "[Current Stage]";
             }
 
             if (error instanceof GeneratorProcessingError) {

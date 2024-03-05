@@ -12,6 +12,8 @@ Polyverse Boost ReST API (Backend)
 - Ensure full error stack for all internal errors (e.g. 500) - to help debug issues
 - Prevent Projects/Repos with >1000 files from being processed (to avoid unexpected scale errors)
 - Enable Generators to bypass Error state during processing if forceProcessing=True is passed in POST/PUT
+- Ensure Generators only wait 25 seconds to pull project source from GitHub (e.g. to avoid long delays)
+- Increase JSON payload limit to 50mb (from 10mb) to support large project source downloads
 
 ### Bug Fixes
 - Fix missing error result for Generator errors during processing

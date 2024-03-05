@@ -3,7 +3,7 @@ import { Octokit } from '@octokit/rest';
 import { createAppAuth } from '@octokit/auth-app';
 import { getSingleSecret } from './secrets';
 import { getUser } from './users';
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 import AdmZip from 'adm-zip';
 import { App } from "octokit";
 import {
@@ -13,7 +13,8 @@ import {
     HTTP_FAILURE_NOT_FOUND,
     HTTP_FAILURE_NO_ACCESS,
     HTTP_FAILURE_UNAUTHORIZED,
-    HTTP_FAILURE_BUSY
+    HTTP_FAILURE_BUSY,
+    secondsBeforeRestRequestMaximumTimeout
 } from './utility/dispatch';
 
 
@@ -582,17 +583,37 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
     }
 
     const downloadAndExtractRepo = async (url: string, authToken: string): Promise<FileContent[]> => {
-        const params: any = authToken ? {
-                headers: {
-                    'Authorization': `Bearer ${authToken}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                },
-                responseType: 'arraybuffer'
-            } : {
-                responseType: 'arraybuffer'
+        const source = axios.CancelToken.source();
+        const getConfig: AxiosRequestConfig = {
+            responseType: 'arraybuffer',
+            cancelToken: source.token,
+        };
+        if (authToken) {
+            getConfig.headers = {
+                'Authorization': `Bearer ${authToken}`,
+                'Accept': 'application/vnd.github.v3+json',
             };
-        const response = await axios.get(url, params);
-        const zip = new AdmZip(response.data);
+        }
+    
+        // Set a timeout to cancel the request if it takes too long
+        setTimeout(() => {
+            source.cancel(`Request cancelled due to timeout.`);
+        }, secondsBeforeRestRequestMaximumTimeout);
+    
+        let zip = undefined;
+        try {
+            const response = await axios.get(url, getConfig);
+            zip = new AdmZip(response.data);
+        } catch (error) {
+            if (axios.isCancel(error)) {
+                const errorMsg = `${req.originalUrl} GitHub Zip Download cancelled due to ${secondsBeforeRestRequestMaximumTimeout} seconds timeout`;
+                console.error(errorMsg);
+                throw new Error(errorMsg);
+            } else {
+                throw error;
+            }
+        }
+    
         const zipEntries = zip.getEntries();
     
         const skippedFiles : string[] = [];

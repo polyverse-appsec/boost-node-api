@@ -6,7 +6,7 @@ import { saveProjectDataResource, loadProjectDataResource } from "..";
 import { FileContent } from "../github";
 import { Stages } from "../types/GeneratorState";
 import { localSelfDispatch, HTTP_FAILURE_NOT_FOUND, HTTP_LOCKED, secondsBeforeRestRequestMaximumTimeout } from "../utility/dispatch";
-import axios from "axios";
+import axios, { Axios } from "axios";
 
 const ignore = require('ignore');
 
@@ -353,7 +353,7 @@ export class Generator {
 
         try {
             const fileContentList : FileContent[] = await localSelfDispatch<FileContent[]>(
-                this.email, '', this.serviceEndpoint, fullSourcePath, 'GET');
+                this.email, '', this.serviceEndpoint, fullSourcePath, 'GET', undefined, secondsBeforeRestRequestMaximumTimeout * 1000, true);
 
             console.info(`${this.projectData.org}:${this.projectData.name} Got project source: ${fileContentList.length} files`);
             
@@ -361,6 +361,10 @@ export class Generator {
 
         } catch (err) {
             console.error(`${this.projectData.org}:${this.projectData.name} Unable to get project source: ${err}`);
+            if (axios.isAxiosError(err) && err.response) {
+                const errorMsg = err.response.data || err.message;
+                throw new axios.AxiosError(`Unable to get project source: ${errorMsg}`, err.code);
+            }
             throw err;
         }
     }
