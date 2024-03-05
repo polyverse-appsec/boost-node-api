@@ -598,7 +598,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
         // Set a timeout to cancel the request if it takes too long
         setTimeout(() => {
             source.cancel(`Request cancelled due to timeout.`);
-        }, secondsBeforeRestRequestMaximumTimeout);
+        }, secondsBeforeRestRequestMaximumTimeout * 1000);
     
         let zip = undefined;
         try {
