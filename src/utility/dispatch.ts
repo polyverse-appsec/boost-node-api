@@ -1,6 +1,8 @@
 import axios from 'axios';
+
 import { Request, Response } from 'express';
 import { header_X_Signed_Identity, signedAuthHeader } from '../auth';
+import { usFormatter } from './log';
 
 export const api_root_endpoint : string = '/api';
 
@@ -23,7 +25,10 @@ export const HTTP_FAILURE_BUSY = 429;
 export const HTTP_FAILURE_INTERNAL_SERVER_ERROR = 500;
 
 export const logRequest = (req: Request) => {
-    console.log(`Request: ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`);
+    const logLine = `Request: ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
+
+    const currentDate = usFormatter.format(new Date(Date.now()));
+    console.log(process.env.IS_OFFLINE?`${currentDate}: ${logLine}`:logLine);
 }
 
 export const handleErrorResponse = (error: any, req: Request, res: Response, supplementalErrorMessage: string = 'Error', status_code: number = HTTP_FAILURE_INTERNAL_SERVER_ERROR) : Response => {
@@ -32,18 +37,19 @@ export const handleErrorResponse = (error: any, req: Request, res: Response, sup
 
     const errorCodeText = status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'Internal Server Error' : 'Error';
 
+    const currentDate = usFormatter.format(new Date(Date.now()));
     // Check if we're in the development environment
     if (process.env.DEPLOYMENT_STAGE === 'dev' || process.env.DEPLOYMENT_STAGE === 'test' || process.env.DEPLOYMENT_STAGE === 'local'
         || process.env.DEPLOYMENT_STAGE === 'prod') {
         // In development, print the full error stack if available, or the error message otherwise
-        console.error(`${supplementalErrorMessage} - ${errorMessage}`, error.stack || error);
+        console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage} - ${errorMessage}`, error.stack || error);
         // Respond with the detailed error message for debugging purposes
         return res
             .status(status_code)
             .send(`${errorCodeText}: ${supplementalErrorMessage} - ` + (error.stack || error));
     } else { // we'll use this for 'prod' and 'test' Stages in the future
         // In non-development environments, log the error message for privacy/security reasons
-        console.error(`${supplementalErrorMessage} - ${errorMessage}`, error.message || error);
+        console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage} - ${errorMessage}`, error.message || error);
         // Respond with a generic error message to avoid exposing sensitive error details
         return res
             .status(status_code)
