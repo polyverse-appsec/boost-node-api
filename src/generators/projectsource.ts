@@ -66,7 +66,6 @@ readonly fileSourceEntry =
                 // now we'll go back and update the file contents
                 const fileContents : FileContent[] = await this.getProjectSource();
 
-
                 // we're going to start empty file contents to be fast, then we'll
                 //      update the contents later
                 const boostIgnoreFileSpecs = await this.getBoostIgnoreFileSpecs();

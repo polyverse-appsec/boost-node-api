@@ -5,7 +5,7 @@ import { signedAuthHeader } from "../auth";
 import { saveProjectDataResource, loadProjectDataResource } from "..";
 import { FileContent } from "../github";
 import { Stages } from "../types/GeneratorState";
-import { localSelfDispatch, HTTP_FAILURE_NOT_FOUND, HTTP_LOCKED } from "../utility/dispatch";
+import { localSelfDispatch, HTTP_FAILURE_NOT_FOUND, HTTP_LOCKED, secondsBeforeRestRequestMaximumTimeout } from "../utility/dispatch";
 import axios from "axios";
 
 const ignore = require('ignore');
@@ -26,6 +26,7 @@ export class Generator {
     serviceEndpoint: string;
     dataType: string;
     currentStage: string;
+    forceProcessing: boolean = false;
 
     data: string;
 
@@ -268,12 +269,16 @@ export class Generator {
                 if (process.env.TRACE_LEVEL) {
                     console.warn(`${this.projectData.org}:${this.projectData.name} Generator not found - ignoring progress update: ${JSON.stringify(state)}`);
                 }
+                if (!this.forceProcessing) {
                 throw new Error(`Generator not found - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
+                }
             } else if (response.status === HTTP_LOCKED) {
                 if (process.env.TRACE_LEVEL) {
                     console.warn(`${this.projectData.org}:${this.projectData.name} Generator locked in Error state - ignoring progress update: ${JSON.stringify(state)}`);
                 }
+                if (!this.forceProcessing) {
                 throw new Error(`${this.projectData.org}:${this.projectData.name} Generator in Error - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
+                }
             } else {
                 const errorText = await response.text() || 'Unknown Error';
                 console.error(`${this.projectData.org}:${this.projectData.name} Unable to update ${this.dataType} resource generator progress: ${JSON.stringify(state)} - ${response.status} - ${errorText}`);
@@ -412,6 +417,12 @@ export class Generator {
 
                 const totalTime = Date.now() - startTime;
                 console.info(`${this.projectData.org}:${this.projectData.name} TIMECHECK: Total Time: ` + totalTime + "ms");
+            }
+
+            // for now we don't want to process projects > 1000 files as the github pull will be too large
+            if (filteredFileList.length >= 1000) {
+                console.warn(`${this.projectData.org}:${this.projectData.name} Filtered File List is large: ${filteredFileList.length} files`);
+                throw new GeneratorProcessingError(`Filtered File List is large: ${filteredFileList.length} files`, this.currentStage);
             }
 
             return filteredFileList;

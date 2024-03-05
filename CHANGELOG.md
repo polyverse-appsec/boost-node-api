@@ -14,7 +14,7 @@ Polyverse Boost ReST API (Backend)
 - Enable Generators to bypass Error state during processing if forceProcessing=True is passed in POST/PUT
 
 ### Bug Fixes
-- N/A
+- Fix missing error result for Generator errors during processing
 
 ## Version 0.12.3: March 2nd, 2024
 

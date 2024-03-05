@@ -3097,7 +3097,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     await updateGeneratorState(currentGeneratorState);
 
                     // we errored out, so we'll return an error HTTP status code for operation failed, may need to retry
-                    return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send();
+                    return handleErrorResponse(error, req, res);
                 }
 
                 // if we're processing and not yet completed the full stages, then we need to process the next stage
@@ -3219,7 +3219,7 @@ app.route(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
    .post(putOrPostuserProjectDataResourceGenerator)
    .put(putOrPostuserProjectDataResourceGenerator);
 
-async function processStage(serviceEndpoint: string, email: string, project: UserProjectData, resource: string, stage?: string) {
+async function processStage(serviceEndpoint: string, email: string, project: UserProjectData, resource: string, stage?: string, forceProcessing: boolean = false) {
     
     if (stage) {
         console.log(`${project.org}:${project.name} Processing ${resource} stage ${stage}...`);
@@ -3238,11 +3238,13 @@ async function processStage(serviceEndpoint: string, email: string, project: Use
         default:
             throw new Error(`Invalid resource: ${resource}`);
     }
+    thisGenerator.forceProcessing = forceProcessing;
     return thisGenerator.generate(stage);
 }
 
 interface ResourceGeneratorProcessState {
     stage: string;
+    forceProcessing?: boolean;
 }
 
 const user_project_org_project_data_resource_generator_process = `user_project/:org/:project/data/:resource/generator/process`;
@@ -3294,6 +3296,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
                 resourceGeneratorProcessState = {
                     stage: input.stage
                 };
+                if (input.forceProcessing) {
+                    resourceGeneratorProcessState.forceProcessing = input.forceProcessing;
+                }
             }
         }
 
@@ -3311,7 +3316,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
         }
 
         try {
-            const nextStage : string = await processStage(selfEndpoint, email, projectData, resource, resourceGeneratorProcessState?.stage);
+            const nextStage : string = await processStage(selfEndpoint, email, projectData, resource, resourceGeneratorProcessState?.stage, resourceGeneratorProcessState?.forceProcessing);
             const nextGeneratorState : ResourceGeneratorProcessState = {
                 stage: nextStage
             };
