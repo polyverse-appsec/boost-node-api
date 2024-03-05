@@ -5,7 +5,16 @@ import time
 
 from utils import get_signed_headers
 
-from constants import TARGET_URL, EMAIL, PREMIUM_EMAIL, ORG, BASIC_EMAIL, BASIC_EMAIL_WITH_GITHUB_APP, PRIVATE_PROJECT, PUBLIC_PROJECT, PRIVATE_PROJECT_LARGE
+from constants import (
+    TARGET_URL,
+    EMAIL,
+    PREMIUM_EMAIL,
+    ORG, BASIC_EMAIL,
+    BASIC_EMAIL_WITH_GITHUB_APP,
+    PRIVATE_PROJECT, PUBLIC_PROJECT,
+    PRIVATE_PROJECT_CUSTOM_NFTMINT,
+    PRIVATE_PROJECT_LARGE
+)
 
 
 class GitHubUnitTestSuite(unittest.TestCase):
@@ -45,7 +54,6 @@ class GitHubUnitTestSuite(unittest.TestCase):
 
     def test_retrieve_fullsource_private_custom_repo_access(self):
         print("Running test: Retrieve full source from nftmint repo")
-        PRIVATE_PROJECT_CUSTOM_NFTMINT = "https://github.com/polyverse-appsec/NFT-Mint"
         signedHeaders = get_signed_headers(PREMIUM_EMAIL)
         startTime = time.time()
         response = requests.get(f"{TARGET_URL}/api/user/{ORG}/connectors/github/fullsource?uri={PRIVATE_PROJECT_CUSTOM_NFTMINT}", headers=signedHeaders)
