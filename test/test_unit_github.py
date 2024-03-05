@@ -54,6 +54,7 @@ class GitHubUnitTestSuite(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         response = response.json() if 'body' not in response else json.loads(response['body'])
         self.assertTrue(response)
+        self.assertTrue(len(response) > 4000)
 
     def test_retrieve_file_private_access_repo_path(self):
         print("Running test: Retrieve a private file from the team's project based on repo and path")
