@@ -15,6 +15,7 @@ all_stages = {
 }
 
 EMAIL = "unittest@polytest.ai"
+MONITOR_EMAIL = "monitor@polytest.ai"
 PREMIUM_EMAIL = "stephen@polyverse.com"
 BASIC_EMAIL = "unittest@polyverse-test.com"
 BASIC_EMAIL_WITH_GITHUB_APP = "Sara.polyverse.test@gmail.com"

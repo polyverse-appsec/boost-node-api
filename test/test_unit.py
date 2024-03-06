@@ -11,11 +11,20 @@ from constants import (  # noqa: F401
     EMAIL, ORG, PUBLIC_PROJECT, PUBLIC_PROJECT_NAME,
     PREMIUM_EMAIL, PRIVATE_PROJECT_NAME_CHECKIN_TEST, LOCAL_ADMIN_EMAIL,
     AARON_EMAIL, PRIVATE_PROJECT_CUSTOM_NFTMINT, PRIVATE_PROJECT_NAME_CUSTOM_NFTMINT,
-    all_stages
+    all_stages,
+    MONITOR_EMAIL
 )
 
 
 class UnitTestSuite(unittest.TestCase):
+
+    def test_monitor_account_authn(self):
+        print("Running test: Strong authentication")
+
+        signedHeaders = get_signed_headers(MONITOR_EMAIL, False, True)
+
+        response = requests.get(f"{TARGET_URL}/api/user/{ORG}/account", headers=signedHeaders)
+        self.assertEqual(response.status_code, 200)
 
     def test_strong_authn(self):
         print("Running test: Strong authentication")
