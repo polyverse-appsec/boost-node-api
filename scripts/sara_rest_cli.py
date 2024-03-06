@@ -192,6 +192,8 @@ if __name__ == "__main__":
                         choices=['status',
                                  'status_refresh',
 
+                                 'account',
+
                                  'projects',
                                  'project',
                                  'projects_all',
