@@ -1,4 +1,4 @@
-// arn:aws:lambda:us-west-2:507760724064:function:cwsyn-boost-api-dev-test-aeda0c1e-8ae3-4132-a87c-672e75ec6e7a
+// arn:aws:lambda:us-west-2:507760724064:function:cwsyn-boost-api-prod-test-4ea278b4-e39f-425b-8b2b-6fcbb14fd4ceå
 
 const synthetics = require('Synthetics');
 const log = require('SyntheticsLogger');
@@ -82,7 +82,7 @@ const apiCanaryBlueprint = async function () {
     console.log("Executing HTTP Step with diagnostics...");
 
     let accountParams = {
-        'hostname': '3c27qu2ddje63mw2dmuqp6oa7u0ergex.lambda-url.us-west-2.on.aws',
+        'hostname': '33pdosoitl22c42c7sf46tabi40qwlae.lambda-url.us-west-2.on.aws',
         'method': 'GET',
         'path': '/api/user/polyverse-appsec/account', // The path is the part of the URL after the hostname and before the querystring
         'port': 443,
