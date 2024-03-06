@@ -4119,24 +4119,6 @@ app.get(`${api_root_endpoint}/${api_status}`, async (req: Request, res: Response
     }
 });
 
-app.get("/test", (req: Request, res: Response, next) => {
-
-    try {
-        logRequest(req);
-
-        return res
-            .status(HTTP_SUCCESS)
-            .contentType("text/plain")
-            .send("Test HTTP GET Ack");
-    } catch (error) {
-        return handleErrorResponse(error, req, res);
-    }
-});
-
-import { AuthType } from './auth';
-import { log } from 'console';
-import { getUser } from './users';
-
 const DefaultGroomingIntervalInMinutes = 5;
 
 let existingInterval : NodeJS.Timeout | undefined = undefined;
@@ -4603,6 +4585,20 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
             .contentType('application/json')
             .send(aiFiles);
             
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
+app.get("/test", (req: Request, res: Response, next) => {
+
+    try {
+        logRequest(req);
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType("text/plain")
+            .send("Test HTTP GET Ack");
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }
