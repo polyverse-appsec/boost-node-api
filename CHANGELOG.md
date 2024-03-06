@@ -12,7 +12,7 @@ Polyverse Boost ReST API (Backend)
 - N/A
 
 ### Bug Fixes
-- N/A
+- Fix guidelines being lost during Project creation
 
 ## Version 0.12.4: March 5th, 2024
 

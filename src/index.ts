@@ -1057,7 +1057,7 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
             // repair the guidelines if needed
             if (projectData.guidelines !== undefined) {
                 if (typeof projectData.guidelines === 'string') {
-                    if (projectData.guidelines === '') {
+                    if (projectData.guidelines !== '') {
                         const newGuidelineRecord : Record<string, string> = {
                             'default' : projectData.guidelines
                         };
