@@ -9,7 +9,8 @@
     "deploy": "npm run deploy-dev",
     "deploy-dev": "serverless deploy --stage dev",
     "deploy-prod": "serverless deploy --stage prod",
-    "deploy-test": "serverless deploy --stage test"
+    "deploy-test": "serverless deploy --stage test",
+    "deploy-monitors": "python3 update_canary.py test/monitors/boost-api-dev-test.js"
   },
   "keywords": [],
   "author": "",
