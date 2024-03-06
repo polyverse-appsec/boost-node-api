@@ -650,7 +650,9 @@ app.get(`${api_root_endpoint}/${user_project_org_projects}`, async (req: Request
         const projectsFound = await localSelfDispatch<UserProjectData[]>(
             email, localAdminAuthHeader[header_X_Signed_Identity], req, `${search_projects}?user=${encodedEmail}&org=${org}`, 'GET');
 
-        console.log(`ProjectSearch: Found ${projectsFound.length} projects for ${org}`);
+        if (process.env.TRACE_LEVEL) {
+            console.debug(`ProjectSearch: Found ${projectsFound.length} projects for ${org}:${email}`);
+        }
 
         return res
             .status(HTTP_SUCCESS)

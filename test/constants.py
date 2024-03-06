@@ -7,6 +7,13 @@ CLOUD_URL_PROD = "https://33pdosoitl22c42c7sf46tabi40qwlae.lambda-url.us-west-2.
 
 TARGET_URL = LOCAL_URL  # CLOUD_URL_DEV  # LOCAL_URL
 
+all_stages = {
+    "dev": CLOUD_URL_DEV,
+    "test": CLOUD_URL_TEST,
+    "prod": CLOUD_URL_PROD,
+    "local": LOCAL_URL
+}
+
 EMAIL = "unittest@polytest.ai"
 PREMIUM_EMAIL = "stephen@polyverse.com"
 BASIC_EMAIL = "unittest@polyverse-test.com"

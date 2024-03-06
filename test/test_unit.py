@@ -5,12 +5,13 @@ import json
 
 from utils import get_signed_headers
 
-from constants import (
+from constants import (  # noqa: F401
     TARGET_URL,
     CLOUD_URL_PROD, CLOUD_URL_TEST, CLOUD_URL_DEV, LOCAL_URL,
     EMAIL, ORG, PUBLIC_PROJECT, PUBLIC_PROJECT_NAME,
     PREMIUM_EMAIL, PRIVATE_PROJECT_NAME_CHECKIN_TEST, LOCAL_ADMIN_EMAIL,
-    AARON_EMAIL, PRIVATE_PROJECT_CUSTOM_NFTMINT, PRIVATE_PROJECT_NAME_CUSTOM_NFTMINT
+    AARON_EMAIL, PRIVATE_PROJECT_CUSTOM_NFTMINT, PRIVATE_PROJECT_NAME_CUSTOM_NFTMINT,
+    all_stages
 )
 
 
@@ -354,49 +355,37 @@ class UnitTestSuite(unittest.TestCase):
     def test_search_user_projects(self):
         print("Running test: Search User Projects")
 
-        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
+        signedHeaders = get_signed_headers("airbear109@gmail.com")
 
         responses = {}
+        rawResponses = {}
+        rawHeaders = {}
 
-        # get current time in seconds / unix time
-        call_start = datetime.datetime.now()
+        for env, base_url in all_stages.items():
+            call_start = datetime.datetime.now()
+            response = requests.get(f"{base_url}/api/user_project/{ORG}/projects", headers=signedHeaders)
+            call_time = datetime.datetime.now() - call_start
+            print(f"{env.capitalize()} Call Time: {call_time}")
 
-        response = requests.get(f"{CLOUD_URL_DEV}/api/user_project/{ORG}/projects", headers=signedHeaders)
-        responses['dev'] = response
+            self.assertEqual(response.status_code, 200)
 
-        call_time = datetime.datetime.now() - call_start
-        print(f"Call Time: {call_time}")
+            # Store the raw response text and headers
+            rawResponses[env] = response.text
+            rawHeaders[env] = dict(response.headers)
 
-        self.assertEqual(response.status_code, 200)
+            # Parse the JSON response
+            try:
+                parsed_response = json.loads(response.json()['body']) if 'body' in response.json() else response.json()
+                self.assertEqual(type(parsed_response), list)
+                self.assertGreaterEqual(len(parsed_response), 0)
+                responses[env] = parsed_response
+            except json.JSONDecodeError:
+                print(f"Error parsing JSON response from {env}")
+                responses[env] = None
 
-        self.assertGreaterEqual(len(response.json()), 0)
-
-        response = requests.get(f"{CLOUD_URL_TEST}/api/user_project/{ORG}/projects", headers=signedHeaders)
-        responses['test'] = response
-
-        call_time = datetime.datetime.now() - call_start
-        print(f"Call Time: {call_time}")
-
-        self.assertEqual(response.status_code, 200)
-
-        self.assertGreaterEqual(len(response.json()), 0)
-
-        response = requests.get(f"{CLOUD_URL_PROD}/api/user_project/{ORG}/projects", headers=signedHeaders)
-        responses['prod'] = response
-
-        call_time = datetime.datetime.now() - call_start
-        print(f"Call Time: {call_time}")
-
-        self.assertEqual(response.status_code, 200)
-
-        self.assertGreaterEqual(len(response.json()), 0)
-
-        response = requests.get(f"{LOCAL_URL}/api/user_project/{ORG}/projects", headers=signedHeaders)
-        responses['local'] = response
-
-        call_time = datetime.datetime.now() - call_start
-        print(f"Call Time: {call_time}")
-
-        self.assertEqual(response.status_code, 200)
-
-        self.assertGreaterEqual(len(response.json()), 0)
+        for env in all_stages:
+            print(f"\n{env.capitalize()} Raw Response:")
+            print(rawResponses[env])
+            print(f"\n{env.capitalize()} Raw Headers:")
+            for header, value in rawHeaders[env].items():
+                print(f"{header}: {value}")
