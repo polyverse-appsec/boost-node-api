@@ -158,7 +158,11 @@ export async function localSelfDispatch<T>(
             }
     
             // Axios automatically parses JSON, so no need to manually parse it here.
-            return response.data as T;
+            if (response.data.body) {
+                return JSON.parse(response.data.body) as T;
+            } else {
+                return response.data as T;
+            }
         } catch (error : any) {
             if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
                 if (process.env.TRACE_LEVEL || throwOnTimeout) {
@@ -173,8 +177,8 @@ export async function localSelfDispatch<T>(
                 if (process.env.TRACE_LEVEL) {
                     // This block is for handling errors, including HTTP_FAILURE_NOT_FOUND and HTTP_FAILURE_INTERNAL_SERVER_ERROR status codes
                     if (axios.isAxiosError(error) && error.response) {
-                        console.error(`${httpVerb} ${selfEndpoint} failed with status ${error.response.status}:${error.response.statusText} due to error:
-                        ${error.response.data}`);
+                        const errorMessage = error.response.data.body || error.response.data;
+                        console.error(`${httpVerb} ${selfEndpoint} failed with status ${error.response.status}:${error.response.statusText} due to error: ${errorMessage}`);
                     } else {
                         // Handle other errors (e.g., network errors)
                         console.error(`${httpVerb} ${selfEndpoint} failed ${error.stack || error}`);

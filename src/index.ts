@@ -1377,7 +1377,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
                     false);
                 // check if we timed out, with an empty object
                 if (Object.keys(newGeneratorState).length === 0) {
-                    console.warn(`${req.originalUrl} Async generator for ${resource} timed out`);
+                    console.warn(`${req.originalUrl} Async generator for ${resource} timed out after ${secondsBeforeRestRequestMaximumTimeout} seconds: ${JSON.stringify(newGeneratorState)}`);
                 } else {
                     if (process.env.TRACE_LEVEL) {
                         console.log(`${req.originalUrl} New Generator State: ${JSON.stringify(newGeneratorState)}`);
@@ -1385,7 +1385,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
                 }
             } catch (error: any) {
                 if (axios.isAxiosError(error) && error.response) {
-                    console.error(`${req.originalUrl} Discovery unable to launch generator (continuing) for ${generatorPath} - due to error: ${error.response.status}:${error.response.data}`);
+                    const errorMessage = error.response.data.body || error.response.data;
+                    console.error(`${req.originalUrl} Discovery unable to launch generator (continuing) for ${generatorPath} - due to error: ${error.response.status}:${errorMessage}`);
                 } else {
                     console.error(`${req.originalUrl} Discovery unable to launch generator (continuing) for ${generatorPath}`, (error.stack || error));
                 }
@@ -3086,12 +3087,13 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
                     const newGeneratorState = await localSelfDispatch<ResourceGeneratorProcessState>(email, getSignedIdentityFromHeader(req)!, req, pathToProcess, "POST", processNextStageState.stage?processNextStageState:undefined,
                         secondsBeforeRestRequestMaximumTimeout * 1000, false);
+                    const processEndTime = Math.floor(Date.now() / 1000);
+
                     if (!newGeneratorState?.stage) {
-                        throw new Error(`${req.originalUrl} Processor timed out ${secondsBeforeRestRequestMaximumTimeout} sec - ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"} Stage`);
+                        throw new Error(`Processor timed out ${processEndTime - processStartTime} sec - ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"} Stage`);
                     } else {
-                        const processEndTime = Math.floor(Date.now() / 1000);
                         if (process.env.TRACE_LEVEL) {
-                            console.log(`TIMECHECK: ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"}: processing started:${processStartTime} ended:${processEndTime} (${processEndTime - processStartTime} seconds) - move to stage:${currentGeneratorState.stage}`);
+                            console.log(`${req.originalUrl} TIMECHECK: ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"}: processing started:${processStartTime} ended:${processEndTime} (${processEndTime - processStartTime} seconds) - move to stage: ${currentGeneratorState.stage}`);
                         }
                     }
                     currentGeneratorState.stage = newGeneratorState.stage;
@@ -3120,7 +3122,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         if (axios.isAxiosError(error)) {
                             currentGeneratorState.status_details = `${error.response?.status}:${error.response?.statusText} due to error:${error.stack || error}`;
                         } else {
-                            currentGeneratorState.status_details = `${error}, Stack: ${error || error.stack}`;
+                            currentGeneratorState.status_details = `${error.stack || error}`;
                         }
                     }
 
@@ -3216,7 +3218,7 @@ app.route(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
 async function processStage(serviceEndpoint: string, email: string, project: UserProjectData, resource: string, stage?: string, forceProcessing: boolean = false) {
     
     if (stage) {
-        console.log(`${project.org}:${project.name} Processing ${resource} stage ${stage}...`);
+        console.log(`${project.org}:${project.name}:${resource} Processing stage ${stage}...`);
     }
     let thisGenerator : Generator;
     switch (resource) {
@@ -3233,7 +3235,7 @@ async function processStage(serviceEndpoint: string, email: string, project: Use
             throw new Error(`Invalid resource: ${resource}`);
     }
     thisGenerator.forceProcessing = forceProcessing;
-    return thisGenerator.generate(stage);
+    return await thisGenerator.generate(stage);
 }
 
 interface ResourceGeneratorProcessState {
@@ -3314,12 +3316,15 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
             const nextGeneratorState : ResourceGeneratorProcessState = {
                 stage: nextStage
             };
+            if (process.env.TRACE_LEVEL) {
+                console.log(`${req.originalUrl}: Completed stage ${nextStage}`);
+            }
 
             return res
                 .status(HTTP_SUCCESS)
                 .contentType('application/json')
                 .send(nextGeneratorState);
-        } catch (error) {
+        } catch (error: any) {
 
             let currentStage = resourceGeneratorProcessState?.stage;
             if (!currentStage) {
@@ -3329,7 +3334,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
             if (error instanceof GeneratorProcessingError) {
                 const processingError = error as GeneratorProcessingError;
                 if (processingError.stage != currentStage) {
-                    console.error(`${req.originalUrl}: Resetting to ${processingError.stage} due to error in ${resource} stage ${currentStage}:`, processingError);
+                    console.error(`${req.originalUrl}: Resetting to ${processingError.stage} due to error in ${resource} stage ${currentStage}:`, (processingError.stack || processingError));
             
                     const nextGeneratorState : ResourceGeneratorProcessState = {
                         stage: processingError.stage
@@ -3342,7 +3347,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
                 }
             }
 
-            console.error(`${req.originalUrl} Error processing stage ${currentStage}:`, error);
+            console.error(`${req.originalUrl} Error processing stage ${currentStage}:`, (error.stack || error));
 
             throw error;
         }
