@@ -76,7 +76,7 @@ export class Generator {
         } else {
             console.debug(`${this.projectData.org}:${this.projectData.name} ${this.dataType} No Data Generated - Skipping Save`);
         }
-        await this.updateProgress('Finished Stage ' + this.currentStage);
+        await this.updateProgress('Finished Stage ' + this.currentStage + ' - Moving to ' + nextStage);
 
         return nextStage;
     }
