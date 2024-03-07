@@ -58,6 +58,7 @@ def main(email, org, project, method, stage, data):
         "projects_all": f"{URL}/api/search/projects",
 
         "project": f"{URL}/api/user_project/{org}/{project}",
+        "project_create": f"{URL}/api/user_project/{org}/{project}",
         "project_delete": f"{URL}/api/user_project/{org}/{project}",
 
         "discover": f"{URL}/api/user_project/{org}/{project}/discover",
@@ -131,10 +132,11 @@ def main(email, org, project, method, stage, data):
 
     url = endpoints[method]
     # if method starts with "create_" or is "discover", then it's a POST request
-    verb = "POST" if method.startswith("create_") or method.endswith("_gen") or method in [
+    verb = "POST" if "create" in method or method.endswith("_gen") or method in [
         "discover", "rediscover", "data_references_refresh", "status_refresh", "timer_interval"] else "DELETE" if (
             "delete" in method or "groom" in method) else "GET"
-    data = None if method not in ["rediscover"] else json.dumps({"resetResources": True})
+    data = data if method not in ["rediscover"] else json.dumps({"resetResources": True})
+    data = data if method not in ["project_create"] else json.dumps({"resources": [{"uri": data}]})
     print(f"Requesting {verb} {url}")
     try:
         response = make_request(verb, url, email, data)
@@ -198,6 +200,7 @@ if __name__ == "__main__":
                                  'project',
                                  'projects_all',
                                  'project_delete',
+                                 'project_create',
 
                                  'search_generators_all',
                                  'search_generators',

@@ -34,7 +34,8 @@
             ],
             "console": "integratedTerminal",
             "justMyCode": true
-        },        {
+        },
+        {
             "name": "Upload User Project Data",
             "type": "python",
             "request": "launch",
@@ -44,6 +45,25 @@
                 "--email",
                 "aaron@polyverse.com",
                 "--github_uri",
+                "https://github.com/polyverse-appsec/sara"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Create User Project",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/sara_rest_cli.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--email",
+                "stephen@polyverse.com",
+                "--project",
+                "nextsaraMANUALTHREE",
+                "--method",
+                "project_create",
+                "--data",
                 "https://github.com/polyverse-appsec/sara"
             ],
             "console": "integratedTerminal",
