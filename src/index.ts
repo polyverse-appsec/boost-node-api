@@ -1,6 +1,9 @@
 import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 
+import { AuthType } from './auth';
+import { getUser } from './users';
+
 import serverless from 'serverless-http';
 import {
     getProjectData,
