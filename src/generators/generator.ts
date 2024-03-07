@@ -105,7 +105,7 @@ export class Generator {
 
     async load() : Promise<void> {
         if (process.env.TRACE_LEVEL) {
-            console.log(`${this.projectData.name}:${this.projectData.org} Generator Loading ${this.dataType} data`);
+            console.log(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Generator Loading data`);
         }
 
         const authHeader = await signedAuthHeader(this.email);
@@ -140,7 +140,7 @@ export class Generator {
         const isJson = dataResponseRaw && (dataResponseRaw[0] === '{' || dataResponseRaw[0] === '[');
         if (isJson) {
             if (process.env.TRACE_LEVEL) {
-                console.log(`${this.projectData.org}:${this.projectData.name} Loaded ${this.dataType} data as JSON to extra body property`);
+                console.log(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Loaded data as JSON to extra body property`);
             }
             const dataResponse = JSON.parse(dataResponseRaw);
             this.data = dataResponse.body?dataResponse.body:dataResponseRaw;
@@ -152,7 +152,7 @@ export class Generator {
 
     async saveScratchData<T>(data: T, stage?: string) : Promise<void> {
         if (process.env.TRACE_LEVEL) {
-            console.log(`Saving Scratch ${this.dataType} data`);
+            console.log(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Saving Scratch data`);
         }
 
         const uri = new URL(this.projectData.resources[0].uri);
@@ -182,7 +182,7 @@ export class Generator {
 
     async loadScratchData<T>(stage?: string) : Promise<T | undefined> {
         if (process.env.TRACE_LEVEL) {
-            console.log(`Saving Scratch ${this.dataType} data`);
+            console.log(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Saving Scratch data`);
         }
         const uri = new URL(this.projectData.resources[0].uri);
         const pathSegments = uri.pathname.split('/').filter(segment => segment);
@@ -201,7 +201,7 @@ export class Generator {
             `${this.dataType}/generators/scratch/${stage?stage:this.currentStage}`);
         if (!data) {
             if (process.env.TRACE_LEVEL) {
-                console.warn(`${this.projectData.org}:${this.projectData.name} No Scratch ${this.dataType} data found in stage ${stage?stage:this.currentStage} via Loads`);
+                console.warn(`${this.projectData.org}:${this.projectData.name}:${this.dataType} No Scratch data found in stage ${stage?stage:this.currentStage} via Loads`);
             }
             return undefined;
         }
@@ -211,7 +211,7 @@ export class Generator {
 
     async save() : Promise<void> {
         if (process.env.TRACE_LEVEL) {
-            console.log(`Saving ${this.dataType} data`);
+            console.log(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Saving data`);
         }
         
         const uri = new URL(this.projectData.resources[0].uri);
@@ -238,7 +238,7 @@ export class Generator {
         }
 
         if (process.env.TRACE_LEVEL) {
-            console.log(`Saved ${this.dataType} data of size ${this.data.length}`);
+            console.log(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Saved data of size ${this.data.length}`);
         }
     }
 
@@ -253,7 +253,7 @@ export class Generator {
             throw new Error('Current Stage not defined');
         }
 
-        console.info(`${this.projectData.org}:${this.projectData.name} Progress Update on Stage ${this.currentStage}: ${JSON.stringify(state)}`);
+        console.info(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Progress Update on Stage ${this.currentStage}: ${JSON.stringify(state)}`);
 
         const authHeader = await signedAuthHeader(this.email);
         const response = await fetch(this.resourceUri + `/generator`, {
@@ -267,21 +267,21 @@ export class Generator {
         if (!response.ok) {
             if (response.status === HTTP_FAILURE_NOT_FOUND) {
                 if (process.env.TRACE_LEVEL) {
-                    console.warn(`${this.projectData.org}:${this.projectData.name} Generator not found - ignoring progress update: ${JSON.stringify(state)}`);
+                    console.warn(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Generator not found - ignoring progress update: ${JSON.stringify(state)}`);
                 }
                 if (!this.forceProcessing) {
-                throw new Error(`Generator not found - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
+                    throw new Error(`Generator not found - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
                 }
             } else if (response.status === HTTP_LOCKED) {
                 if (process.env.TRACE_LEVEL) {
-                    console.warn(`${this.projectData.org}:${this.projectData.name} Generator locked in Error state - ignoring progress update: ${JSON.stringify(state)}`);
+                    console.warn(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Generator locked in Error state - ignoring progress update: ${JSON.stringify(state)}`);
                 }
                 if (!this.forceProcessing) {
-                    throw new Error(`${this.projectData.org}:${this.projectData.name} Generator in Error - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
+                    throw new Error(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Generator in Error - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
                 }
             } else {
                 const errorText = await response.text() || 'Unknown Error';
-                console.error(`${this.projectData.org}:${this.projectData.name} Unable to update ${this.dataType} resource generator progress: ${JSON.stringify(state)} - ${response.status} - ${errorText}`);
+                console.error(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Unable to update resource generator progress: ${JSON.stringify(state)} - ${response.status} - ${errorText}`);
             }
         }
     }
@@ -302,7 +302,7 @@ export class Generator {
         // if we can't load the project file, just return an empty string - caller can decide if that's a fatal issue
         if (!response.ok) {
             const errorText = await response.text() || 'Unknown Error';
-            console.warn(`${this.projectData.org}:${this.projectData.name} Unable to load project file: ${filename} from ${this.projectData.resources[0].uri} - ${response.status} - ${errorText}`);
+            console.warn(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Unable to load project file: ${filename} from ${this.projectData.resources[0].uri} - ${response.status} - ${errorText}`);
             return '';
         }
 
@@ -315,7 +315,7 @@ export class Generator {
         const isJson = dataResponseRaw && (dataResponseRaw[0] === '{' || dataResponseRaw[0] === '[');
         if (isJson) {
             if (process.env.TRACE_LEVEL) {
-                console.log(`${this.projectData.org}:${this.projectData.name} Loaded ${this.dataType} data as JSON to extra body property`);
+                console.log(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Loaded data as JSON to extra body property`);
             }
             const dataResponse = JSON.parse(dataResponseRaw);
             return dataResponse.body?dataResponse.body:dataResponseRaw;
@@ -355,12 +355,12 @@ export class Generator {
             const fileContentList : FileContent[] = await localSelfDispatch<FileContent[]>(
                 this.email, '', this.serviceEndpoint, fullSourcePath, 'GET', undefined, secondsBeforeRestRequestMaximumTimeout * 1000, true);
 
-            console.info(`${this.projectData.org}:${this.projectData.name} Got project source: ${fileContentList.length} files`);
+            console.info(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Got project source: ${fileContentList.length} files`);
             
             return fileContentList;
 
         } catch (err) {
-            console.error(`${this.projectData.org}:${this.projectData.name} Unable to get project source: ${err}`);
+            console.error(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Unable to get project source: ${err}`);
             if (axios.isAxiosError(err) && err.response) {
                 const errorMsg = err.response.data || err.message;
                 throw new axios.AxiosError(`Unable to get project source: ${errorMsg}`, err.code);
@@ -383,7 +383,7 @@ export class Generator {
         }
 
         const errorText = await response.text() || 'Unknown Error';
-        console.error(`${this.projectData.org}:${this.projectData.name} Unable to get boostignore file specs: ${response.status} - ${errorText}`);
+        console.error(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Unable to get boostignore file specs: ${response.status} - ${errorText}`);
 
         // for now - if we fail to get the boostignore specs, just return an empty list since its only
         //      used to build a basic blueprint
@@ -400,7 +400,7 @@ export class Generator {
 
             if (process.env.TRACE_TIMECHECKS) {
                 const getFileListTime = Date.now() - startTime;
-                console.info(`${this.projectData.org}:${this.projectData.name} TIMECHECK: getFileListTime: ` + getFileListTime + "ms");
+                console.info(`${this.projectData.org}:${this.projectData.name}:${this.dataType} TIMECHECK: getFileListTime: ` + getFileListTime + "ms");
             }
 
             // need to filter the fileList based on the boostignore (similar to gitignore)
@@ -417,21 +417,21 @@ export class Generator {
 
             if (process.env.TRACE_TIMECHECKS) {
                 const filterFileListTime = Date.now() - ignoreFileSpecsTime;
-                console.info(`${this.projectData.org}:${this.projectData.name} TIMECHECK: filterFileListTime: ` + filterFileListTime + "ms");
+                console.info(`${this.projectData.org}:${this.projectData.name}:${this.dataType} TIMECHECK: filterFileListTime: ` + filterFileListTime + "ms");
 
                 const totalTime = Date.now() - startTime;
-                console.info(`${this.projectData.org}:${this.projectData.name} TIMECHECK: Total Time: ` + totalTime + "ms");
+                console.info(`${this.projectData.org}:${this.projectData.name}:${this.dataType} TIMECHECK: Total Time: ` + totalTime + "ms");
             }
 
             // for now we don't want to process projects > 1000 files as the github pull will be too large
             if (filteredFileList.length >= 1000) {
-                console.warn(`${this.projectData.org}:${this.projectData.name} Filtered File List is large: ${filteredFileList.length} files`);
+                console.warn(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Filtered File List is large: ${filteredFileList.length} files`);
                 throw new GeneratorProcessingError(`Filtered File List is large: ${filteredFileList.length} files`, this.currentStage);
             }
 
             return filteredFileList;
         } catch (err) {
-            console.error(`${this.projectData.org}:${this.projectData.name} Unable to get filtered file list for ${this.resourceUri}: ${err}`);
+            console.error(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Unable to get filtered file list for ${this.resourceUri}: ${err}`);
             throw err;
         }
     }

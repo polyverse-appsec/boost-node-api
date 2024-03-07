@@ -1356,6 +1356,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
         // if the user wants to reset the resources, then we'll ask each generator to restart
         if (initializeResourcesToStart) {
             startProcessing.stage = Stages.Reset;
+            console.info(`Resetting resources for ${req.originalUrl}`);
         }
 
         // kickoff project processing now, by creating the project resources in parallel
@@ -2794,6 +2795,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         let currentGeneratorState : GeneratorState =
             await getProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`);
         if (!currentGeneratorState) {
+            console.warn(`${req.originalUrl}: not found to patch`);
             return res
                 .status(HTTP_FAILURE_NOT_FOUND)
                 .send('Generator not found');
@@ -3010,6 +3012,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs, false);
             } catch (error: any) {
                 if (!error.response || error.response.status !== HTTP_FAILURE_NOT_FOUND) {
+                    console.error(`${req.originalUrl} Unable to refresh project status for ${org}/${project} - due to error: ${error.stack || error}`);
                     throw error;
                 }
             }
@@ -3098,7 +3101,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
                     await updateGeneratorState(currentGeneratorState);
                 } catch (error: any) {
-                    console.error(`Error processing stage ${currentGeneratorState.stage?currentGeneratorState.stage:"[Initializing]"}:`, error);
+                    console.error(`${req.originalUrl} Error processing stage ${currentGeneratorState.stage?currentGeneratorState.stage:"[Initializing]"}:`, error);
 
                     if (error instanceof GeneratorProcessingError) {
                         const processingError = error as GeneratorProcessingError;
@@ -3111,9 +3114,9 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         }
                     } else {
                         if (axios.isAxiosError(error)) {
-                            currentGeneratorState.status_details = `${error.response?.status}:${error.response?.statusText} due to error:${error}, Stack: ${error.stack}`;
+                            currentGeneratorState.status_details = `${error.response?.status}:${error.response?.statusText} due to error:${error.stack || error}`;
                         } else {
-                            currentGeneratorState.status_details = `${error}, Stack: ${error.stack}`;
+                            currentGeneratorState.status_details = `${error}, Stack: ${error || error.stack}`;
                         }
                     }
 
@@ -3146,49 +3149,8 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     //      lifetime of the current call. Additionally, we need to wait a couple seconds to make sure
                     //      the new call is created before we return a response to the caller and the host of this call
                     //      terminates
-
-                    let selfEndpoint = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-                    // if we're running locally, then we'll use http:// no matter what
-                    if (req.get('host')!.includes('localhost')) {
-                        selfEndpoint = `http://${req.get('host')}${req.originalUrl}`;
-                    }
-
-                    const authHeader = await signedAuthHeader(email);
-                    if (process.env.TRACE_LEVEL) {
-                        console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} starting async processing`);
-                    }
-                    // we're going to wait for completion or 1 second to pass
-                    await axios.put(selfEndpoint, newProcessingRequest, {
-                            headers: {
-                                'Content-Type': 'application/json',
-                                ...authHeader,
-                            },
-                            timeout: 1000 })
-                        .then(response => {
-                            // if the new task stage completes in 1 seconds, we'll wait...
-                            if (process.env.TRACE_LEVEL) {
-                                console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} completed async processing`);
-                            }
-                        })
-                            // otherwise, we'll move on
-                        .catch(error => {
-                            if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
-                                if (process.env.TRACE_LEVEL) {
-                                    console.log(`TIMECHECK: TIMEOUT: ${org}:${project}:${resource}:${currentGeneratorState.stage} async processing timed out after 1 seconds`);
-                                }
-                            } else {
-                                // This block is for handling errors, including HTTP_FAILURE_NOT_FOUND and HTTP_FAILURE_INTERNAL_SERVER_ERROR status codes
-                                if (axios.isAxiosError(error) && error.response) {
-                                    console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} async processing failed due to error: ${error.response.status}:${error.response.statusText} due to error:${error}`);
-                                } else {
-                                    // Handle other errors (e.g., network errors)
-                                    console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} failed async processing ${error}`);
-                                }
-                            }
-                        });
-                    if (process.env.TRACE_LEVEL) {
-                        console.log(`TIMECHECK: ${org}:${project}:${resource}:${currentGeneratorState.stage} After async processing`);
-                    }
+                    const thisEndpointPath = req.originalUrl.substring(req.originalUrl.indexOf('user_project'));
+                    await localSelfDispatch<void>(email, getSignedIdentityFromHeader(req)!, req, thisEndpointPath, "PUT", newProcessingRequest, 1000, false);
 
                     // Return a response immediately without waiting for the async process
                     return res
@@ -3376,7 +3338,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
                 }
             }
 
-            console.error(`Error processing stage ${currentStage}:`, error);
+            console.error(`${req.originalUrl} Error processing stage ${currentStage}:`, error);
 
             throw error;
         }
@@ -3518,7 +3480,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
                     if (lastUploaded) {
                         console.debug(`${req.originalUrl}: Uploading ${projectDataTypes[i]} (${projectData.length} bytes) from ${usFormatter.format(resourceStatusDate)}: ${timeDifferenceInSeconds} seconds out of sync; last uploaded at ${usFormatter.format(lastUploadedDate)}`);
                     } else {
-                        console.debug(`${req.originalUrl}: Uploading ${projectDataTypes[i]} (${projectData.length} bytes) from ${usFormatter.format(resourceStatusDate)}: never uploaded"}`);
+                        console.debug(`${req.originalUrl}: Uploading ${projectDataTypes[i]} (${projectData.length} bytes) from ${usFormatter.format(resourceStatusDate)}: never uploaded`);
                     }
                 } catch (error) {
                     console.error(`${req.originalUrl} Uploading ${projectDataTypes[i]} (${projectData.length} bytes) due to error checking last upload time: `, error);
