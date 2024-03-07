@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.12.6: March 7th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Tweaked naming of Generator and Project Discovery Groomer field to statusDetails (from status_details)
+
+### Bug Fixes
+- N/A
+
 ## Version 0.12.5: March 7th, 2024
 
 ### New Features

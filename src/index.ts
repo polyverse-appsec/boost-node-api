@@ -1722,15 +1722,21 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         let firstResourceGeneratingTime: number | undefined = undefined;
 
         const incompleteResources : string[] = [];
+        interface ResourceStatus {
+            status: TaskStatus;
+            statusDetails: string;
+        }
         const currentResourceStatus : TaskStatus[] = [];
+        const resourceErrorMessages : string[] = [];
         for (const resource of possibleResources) {
             let generatorStatus : GeneratorState;
             try {
                 generatorStatus = await localSelfDispatch<GeneratorState>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data/${resource}/generator`, 'GET');                console.debug
-            } catch (error) {
+            } catch (error: any) {
                 // if generator fails, we'll assume the resource isn't available either
                 missingResources.push(resource);
                 currentResourceStatus.push(TaskStatus.Error);
+                resourceErrorMessages.push(`Unable to get generator status for: ${resource}: ${error.stack || error}`);
 
                 continue;
             }
@@ -1966,7 +1972,7 @@ enum GroomingStatus {
 
 interface ProjectGroomState {
     status: GroomingStatus;
-    status_details?: string;
+    statusDetails?: string;
     consecutiveErrors: number;
     lastDiscoveryStart?: number;
     lastUpdated: number;
@@ -2065,7 +2071,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 const nextOpeningDate = new Date((currentGroomingState.lastUpdated + ((1 - cycleBusyWindowPercentage) * DefaultGroomingIntervalInMinutes * 60)) * 1000);
                 const groomerBusy : ProjectGroomState = {
                     status: GroomingStatus.Skipping,
-                    status_details: `Last Grooming cycle still active - next opening at ${usFormatter.format(nextOpeningDate)}`,
+                    statusDetails: `Last Grooming cycle still active - next opening at ${usFormatter.format(nextOpeningDate)}`,
                     consecutiveErrors: 0, // we're skipping so we don't know the error status
                     lastDiscoveryStart: currentGroomingState.lastDiscoveryStart,
                     lastUpdated: Math.floor(Date.now() / 1000)
@@ -2087,7 +2093,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                     // return http busy request
                     const groomerBusy : ProjectGroomState = {
                         status: GroomingStatus.Skipping,
-                        status_details: 'Grooming already in progress at ' + currentGroomingState.lastUpdated,
+                        statusDetails: 'Grooming already in progress at ' + currentGroomingState.lastUpdated,
                         consecutiveErrors: 0, // we're skipping so we don't know the error status
                         lastDiscoveryStart: currentGroomingState.lastDiscoveryStart,
                         lastUpdated: Math.floor(Date.now() / 1000)
@@ -2103,7 +2109,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 // if we're in a pending state, then we'll just skip this run
                 const groomingState = {
                     status: GroomingStatus.Skipping,
-                    status_details: 'Grooming Launch Pending',
+                    statusDetails: 'Grooming Launch Pending',
                     consecutiveErrors: currentGroomingState.consecutiveErrors,
                     lastDiscoveryStart: currentGroomingState.lastDiscoveryStart,
                     lastUpdated: Math.floor(Date.now() / 1000)
@@ -2132,7 +2138,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         if (projectStatus.activelyUpdating) {
             const groomingState = {
                 status: GroomingStatus.Skipping,
-                status_details: 'Project is actively updating',
+                statusDetails: 'Project is actively updating',
                 consecutiveErrors: currentGroomingState?currentGroomingState.consecutiveErrors:0,
                 lastDiscoveryStart: currentGroomingState?currentGroomingState.lastDiscoveryStart:undefined,
                 lastUpdated: Math.floor(Date.now() / 1000)
@@ -2151,7 +2157,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             const synchronizedDate = new Date(projectStatus.lastSynchronized! * 1000);
             const groomingState = {
                 status: GroomingStatus.Idle,
-                status_details: `Project is synchronized as of ${usFormatter.format(synchronizedDate)} - Idling Groomer`,
+                statusDetails: `Project is synchronized as of ${usFormatter.format(synchronizedDate)} - Idling Groomer`,
                 consecutiveErrors: 0, // since the project synchronized, assume groomer did or could work, so reset the error counter
                 lastDiscoveryStart: currentGroomingState?currentGroomingState.lastDiscoveryStart:undefined,
                 lastUpdated: Math.floor(Date.now() / 1000)
@@ -2167,7 +2173,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         if (timeRemainingToDiscoverInSeconds <= 1) {
             const groomingState = {
                 status: GroomingStatus.Skipping,
-                status_details: `Insufficient time to rediscover: ${timeRemainingToDiscoverInSeconds} seconds remaining`,
+                statusDetails: `Insufficient time to rediscover: ${timeRemainingToDiscoverInSeconds} seconds remaining`,
                 consecutiveErrors: currentGroomingState?currentGroomingState.consecutiveErrors:0,
                 lastDiscoveryStart: currentGroomingState?currentGroomingState.lastDiscoveryStart:undefined,
                 lastUpdated: Math.floor(Date.now() / 1000)
@@ -2199,7 +2205,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             if (currentGroomingState.consecutiveErrors >= MaxGroomingErrorsBeforeManualDiscovery) {
                 const groomingState = {
                     status: GroomingStatus.Error,
-                    status_details: `Groomer has reached maximum errors (${MaxGroomingErrorsBeforeManualDiscovery}) - Manual Discovery Required`,
+                    statusDetails: `Groomer has reached maximum errors (${MaxGroomingErrorsBeforeManualDiscovery}) - Manual Discovery Required`,
                     lastDiscoveryStart: currentGroomingState.lastDiscoveryStart,
                     consecutiveErrors: currentGroomingState.consecutiveErrors,
                     lastUpdated: Math.floor(Date.now() / 1000)
@@ -2235,7 +2241,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
 
         try {
             if (!process.env.DISCOVERY_GROOMER || process.env.DISCOVERY_GROOMER.toLocaleLowerCase() === 'whatif') {
-                launchedGroomingState.status_details = `Launched WhatIf Discovery at ${discoveryTime} for ${projectPath} with status ${JSON.stringify(projectStatus)}`;
+                launchedGroomingState.statusDetails = `Launched WhatIf Discovery at ${discoveryTime} for ${projectPath} with status ${JSON.stringify(projectStatus)}`;
             } else {
                 launchedGroomingState.status = GroomingStatus.Grooming;
                 if (process.env.DISCOVERY_GROOMER.toLocaleLowerCase() === 'automatic') {
@@ -2252,11 +2258,11 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
 
                     // if discovery result is an empty object (i.e. {}), then we launched discovery but don't know if it finished (e.g. timeout waiting)
                 if (!discoveryResult || !Object.keys(discoveryResult).length) {
-                    launchedGroomingState.status_details = `Launched Async Discovery at ${usFormatter.format(discoveryTime)}, but no result yet`;
+                    launchedGroomingState.statusDetails = `Launched Async Discovery at ${usFormatter.format(discoveryTime)}, but no result yet`;
                 } else {
                     // even though discovery launched, and didn't timeout... we don't know if it finished or not
                     //      only that the async launch didn't timeout/fail
-                    launchedGroomingState.status_details = `Launched Discovery at ${usFormatter.format(discoveryTime)} ${JSON.stringify(discoveryResult)}`;
+                    launchedGroomingState.statusDetails = `Launched Discovery at ${usFormatter.format(discoveryTime)} ${JSON.stringify(discoveryResult)}`;
                 }
             }
 
@@ -2270,7 +2276,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             console.error(`Groomer unable to launch discovery for ${projectPath}`, error);
 
             launchedGroomingState.status = GroomingStatus.Error;
-            launchedGroomingState.status_details = `Error launching discovery: ${error}`;
+            launchedGroomingState.statusDetails = `Error launching discovery: ${error}`;
             launchedGroomingState.consecutiveErrors++;
 
             await storeGroomingState(launchedGroomingState);
@@ -2740,6 +2746,12 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
         if (!currentInput) {
             console.log(`${user_project_org_project_data_resource_generator}: simulated idle data`);
 
+            // for backward compatibility (old field name)
+            if ((currentInput as any)?.status_details) {
+                currentInput.statusDetails = (currentInput as any).status_details;
+                delete (currentInput as any).status_details;
+            }
+
             return res
                 .status(HTTP_SUCCESS)
                 .contentType('application/json')
@@ -2841,8 +2853,11 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         if (input.lastUpdated) {
             currentGeneratorState.lastUpdated = input.lastUpdated;
         }
-        if (input.status_details) {
-            currentGeneratorState.status_details = input.status_details;
+        if (input.statusDetails) {
+            currentGeneratorState.statusDetails = input.statusDetails;
+        } else if ((currentGeneratorState as any).status_details) {
+            currentGeneratorState.statusDetails = (currentGeneratorState as any).status_details;
+            delete (currentGeneratorState as any).status_details;
         }
         if (input.stage) {
             currentGeneratorState.stage = input.stage;
@@ -2920,7 +2935,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     status: TaskStatus.Idle,
                     stage: Stages.Complete,
                     lastUpdated: Math.floor(Date.now() / 1000),
-                    status_details: `No resources to generate data from`,
+                    statusDetails: `No resources to generate data from`,
                 } as GeneratorState);
         }
 
@@ -3000,7 +3015,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             if (generatorState.status === TaskStatus.Idle && generatorState.stage === Stages.Complete) {
                 console.debug(`${req.originalUrl}: Completed all stages`);
             } else if (generatorState.status === TaskStatus.Error) {
-                console.debug(`${req.originalUrl}: Generator errored out: ${generatorState.status_details}`);
+                console.debug(`${req.originalUrl}: Generator errored out: ${generatorState.statusDetails}`);
             }
 
             const projectStatusRefreshDelayInMs = 250;
@@ -3102,7 +3117,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     if (currentGeneratorState.stage === Stages.Complete) {
                         currentGeneratorState.status = TaskStatus.Idle;
                         const currentDateTime = usFormatter.format(new Date(Date.now()));
-                        currentGeneratorState.status_details = `Completed all stages (${currentGeneratorState.processedStages}) at ${currentDateTime}`;
+                        currentGeneratorState.statusDetails = `Completed all stages (${currentGeneratorState.processedStages}) at ${currentDateTime}`;
                     }
 
                     await updateGeneratorState(currentGeneratorState);
@@ -3114,15 +3129,15 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         if (processingError.stage != currentGeneratorState.stage) {
                             console.error(`${req.originalUrl}: Resetting to ${processingError.stage} due to error in ${resource} stage ${currentGeneratorState.stage}:`, processingError);
 
-                            currentGeneratorState.status_details = `Resetting to earlier stage ${processingError.stage} due to error: ${processingError}`;
+                            currentGeneratorState.statusDetails = `Resetting to earlier stage ${processingError.stage} due to error: ${processingError}`;
                         } else {
-                            currentGeneratorState.status_details = `Rerun current stage due to error: ${processingError}`;
+                            currentGeneratorState.statusDetails = `Rerun current stage due to error: ${processingError}`;
                         }
                     } else {
                         if (axios.isAxiosError(error)) {
-                            currentGeneratorState.status_details = `${error.response?.status}:${error.response?.statusText} due to error:${error.stack || error}`;
+                            currentGeneratorState.statusDetails = `${error.response?.status}:${error.response?.statusText} due to error:${error.stack || error}`;
                         } else {
-                            currentGeneratorState.status_details = `${error.stack || error}`;
+                            currentGeneratorState.statusDetails = `${error.stack || error}`;
                         }
                     }
 
@@ -3185,7 +3200,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         // if we have been processing for more than 15 minutes, then we'll return idle HTTP status code
                         //      and we'll reset the status to idle
                         currentGeneratorState.status = TaskStatus.Idle;
-                        currentGeneratorState.status_details = `Idle due to inactivity for ${MinutesToWaitBeforeGeneratorConsideredStalled} minutes`;
+                        currentGeneratorState.statusDetails = `Idle due to inactivity for ${MinutesToWaitBeforeGeneratorConsideredStalled} minutes`;
                         await updateGeneratorState(currentGeneratorState);
                     }
                 }

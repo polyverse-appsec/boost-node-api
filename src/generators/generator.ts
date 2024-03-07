@@ -246,7 +246,7 @@ export class Generator {
         const state: GeneratorState = {
             lastUpdated: Math.floor(Date.now() / 1000),
             status: TaskStatus.Processing,
-            status_details: statusUpdate
+            statusDetails: statusUpdate
         }
 
         if (!this.currentStage) {
