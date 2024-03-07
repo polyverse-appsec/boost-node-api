@@ -13,6 +13,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Bug Fixes
 - Fix guidelines being lost during Project creation
+- Fix Project Status reporting synchronized when Generators are in Complete stage but Error'ed
 
 ## Version 0.12.4: March 5th, 2024
 

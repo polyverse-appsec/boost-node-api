@@ -1730,10 +1730,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 Math.min(firstResourceGeneratingTime, generatorStatus.lastUpdated?generatorStatus.lastUpdated:firstResourceGeneratingTime):
                 generatorStatus.lastUpdated;
 
-            if (generatorStatus.stage !== Stages.Complete) {
+            if (generatorStatus.status !== TaskStatus.Idle || generatorStatus.stage !== Stages.Complete) {
                 currentResourceStatus.push(generatorStatus.status);
 
-                // we nede to determine if the generator is still processing, and if so, what the last updated time
+                // we need to determine if the generator is still processing, and if so, what the last updated time
                 if (generatorStatus.status === TaskStatus.Processing) {
                     if (!lastResourceGeneratingTime) {
                         lastResourceGeneratingTime =  generatorStatus.lastUpdated;
