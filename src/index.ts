@@ -3097,7 +3097,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     }
 
                     await updateGeneratorState(currentGeneratorState);
-                } catch (error) {
+                } catch (error: any) {
                     console.error(`Error processing stage ${currentGeneratorState.stage?currentGeneratorState.stage:"[Initializing]"}:`, error);
 
                     if (error instanceof GeneratorProcessingError) {
@@ -3110,7 +3110,11 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                             currentGeneratorState.status_details = `Rerun current stage due to error: ${processingError}`;
                         }
                     } else {
-                        currentGeneratorState.status_details = `${error}`;
+                        if (axios.isAxiosError(error)) {
+                            currentGeneratorState.status_details = `${error.response?.status}:${error.response?.statusText} due to error:${error}, Stack: ${error.stack}`;
+                        } else {
+                            currentGeneratorState.status_details = `${error}, Stack: ${error.stack}`;
+                        }
                     }
 
                     // In case of error, set status to error
