@@ -9,7 +9,7 @@ Polyverse Boost ReST API (Backend)
 - N/A
 
 ### Enhancements
-- N/A
+- Set the Generator Status details on Completion and Forced Idling after no activity for 15 mins.
 
 ### Bug Fixes
 - Fix guidelines being lost during Project creation

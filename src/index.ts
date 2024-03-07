@@ -3092,6 +3092,8 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     // if we've finished all stages, then we'll set the status to complete and idle
                     if (currentGeneratorState.stage === Stages.Complete) {
                         currentGeneratorState.status = TaskStatus.Idle;
+                        const currentDateTime = usFormatter.format(new Date(Date.now()));
+                        currentGeneratorState.status_details = `Completed all stages (${currentGeneratorState.processedStages}) at ${currentDateTime}`;
                     }
 
                     await updateGeneratorState(currentGeneratorState);
@@ -3211,6 +3213,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         // if we have been processing for more than 15 minutes, then we'll return idle HTTP status code
                         //      and we'll reset the status to idle
                         currentGeneratorState.status = TaskStatus.Idle;
+                        currentGeneratorState.status_details = `Idle due to inactivity for ${MinutesToWaitBeforeGeneratorConsideredStalled} minutes`;
                         await updateGeneratorState(currentGeneratorState);
                     }
                 }
