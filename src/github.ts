@@ -40,7 +40,7 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
     // Check if owner, repo, and pathParts are valid
     if (!owner || !repo || pathParts.length === 0 || !pathParts[0]) {
         console.error(`Error: Invalid GitHub.com resource URI: ${fullFileUri || repoUri}`);
-        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
+        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid URI: owner:${owner}, repo:${repo}, path:${pathParts.join('/')}`);
     }
 
     // Convert pathParts array back to a string path if necessary
@@ -162,7 +162,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
 
     if (!owner || !repo) {
         console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
-        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
+        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid URI: owner:${owner}, repo:${repo}`);
     }
     
     const getFolderPaths = async (octokit: Octokit, owner: string, repo: string): Promise<string[]> => {
@@ -288,7 +288,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
 
     if (!owner || !repo) {
         console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
-        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
+        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid URI: owner:${owner}, repo:${repo}`);
     }
     const getFilePathsGitTree = async (octokit : Octokit, owner: string, repo: string) : Promise<string[]> => {
         const response = await octokit.rest.git.getTree({
@@ -415,7 +415,7 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
 
     if (!owner || !repo) {
         console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
-        return { errorResponse: res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI') };
+        return { errorResponse: res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid URI: owner:${owner}, repo:${repo}`) };
     }
 
     const octokit = new Octokit();
@@ -579,7 +579,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
 
     if (!owner || !repo) {
         console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
-        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
+        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid URI: owner:${owner}, repo:${repo}`
     }
 
     const downloadAndExtractRepo = async (url: string, authToken: string): Promise<FileContent[]> => {

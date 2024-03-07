@@ -583,6 +583,10 @@ async function validateProjectRepositories(email: string, org: string, resources
 
     // validate every resource is a valid Uri
     for (const resource of resources) {
+        if (!resource.uri) {
+            console.error(`Resource Uri is required`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Resource Uri is required');
+        }
         let resourceUri;
         try {
             resourceUri = new URL(resource.uri);
