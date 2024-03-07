@@ -3092,7 +3092,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
                     await updateGeneratorState(currentGeneratorState);
                 } catch (error) {
-                    console.error(`Error processing stage ${currentGeneratorState.stage}:`, error);
+                    console.error(`Error processing stage ${currentGeneratorState.stage?currentGeneratorState.stage:"[Initializing]"}:`, error);
 
                     if (error instanceof GeneratorProcessingError) {
                         const processingError = error as GeneratorProcessingError;
