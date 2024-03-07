@@ -1383,8 +1383,12 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
                         console.log(`${req.originalUrl} New Generator State: ${JSON.stringify(newGeneratorState)}`);
                     }
                 }
-            } catch (error) {
-                console.error(`Discovery unable to launch generator (continuing) for ${generatorPath}`, error);
+            } catch (error: any) {
+                if (axios.isAxiosError(error) && error.response) {
+                    console.error(`${req.originalUrl} Discovery unable to launch generator (continuing) for ${generatorPath} - due to error: ${error.response.status}:${error.response.data}`);
+                } else {
+                    console.error(`${req.originalUrl} Discovery unable to launch generator (continuing) for ${generatorPath}`, (error.stack || error));
+                }
             }
         });
 
@@ -3021,8 +3025,8 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             try {
                 await localSelfDispatch<ProjectDataReference[]>(email, getSignedIdentityFromHeader(req)!, req,
                     `user_project/${org}/${project}/data_references`, 'PUT', undefined, projectStatusRefreshDelayInMs, false);
-            } catch (error) {
-                console.error(`Error uploading data references to AI Servers:`, error);
+            } catch (error: any) {
+                console.error(`Error uploading data references to AI Servers: `, (error.stack || error));
             }
         };
 

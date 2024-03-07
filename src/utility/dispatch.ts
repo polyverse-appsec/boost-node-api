@@ -161,21 +161,23 @@ export async function localSelfDispatch<T>(
             return response.data as T;
         } catch (error : any) {
             if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
-
+                if (process.env.TRACE_LEVEL || throwOnTimeout) {
+                    console.warn(`TIMECHECK: TIMEOUT: ${httpVerb} ${selfEndpoint} timed out after ${timeoutMs / 1000} seconds`);
+                }
+                
                 // if caller is launching an async process, and doesn't care about response, don't throw on timeout
                 if (!throwOnTimeout) {
                     return {} as T;
                 }
-
-                console.warn(`TIMECHECK: TIMEOUT: ${httpVerb} ${selfEndpoint} timed out after ${timeoutMs / 1000} seconds`);
             } else {
                 if (process.env.TRACE_LEVEL) {
                     // This block is for handling errors, including HTTP_FAILURE_NOT_FOUND and HTTP_FAILURE_INTERNAL_SERVER_ERROR status codes
                     if (axios.isAxiosError(error) && error.response) {
-                        console.error(`${httpVerb} ${selfEndpoint} failed with status ${error.response.status}:${error.response.statusText} due to error:${error}`);
+                        console.error(`${httpVerb} ${selfEndpoint} failed with status ${error.response.status}:${error.response.statusText} due to error:
+                        ${error.response.data}`);
                     } else {
                         // Handle other errors (e.g., network errors)
-                        console.error(`${httpVerb} ${selfEndpoint} failed ${error}`);
+                        console.error(`${httpVerb} ${selfEndpoint} failed ${error.stack || error}`);
                     }
                 }
                 if (axios.isAxiosError(error) && error.response) {
