@@ -38,16 +38,31 @@ export const handleErrorResponse = (error: any, req: Request, res: Response, sup
     const errorCodeText = status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'Internal Server Error' : 'Error';
 
     const currentDate = usFormatter.format(new Date(Date.now()));
+
+    if (axios.isAxiosError(error) && error.response) {
+
+        const errorMessage = error.response.data.body || error.response.data;
+        console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage} - ${errorMessage}`);
+
+        return res
+            .status(status_code)
+            .send(`${errorCodeText}: ${supplementalErrorMessage} - ${errorMessage}`);
+    }
+
     // Check if we're in the development environment
     if (process.env.DEPLOYMENT_STAGE === 'dev' || process.env.DEPLOYMENT_STAGE === 'test' || process.env.DEPLOYMENT_STAGE === 'local'
         || process.env.DEPLOYMENT_STAGE === 'prod') {
+
         // In development, print the full error stack if available, or the error message otherwise
         console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage} - ${errorMessage}`, error.stack || error);
+
         // Respond with the detailed error message for debugging purposes
         return res
             .status(status_code)
             .send(`${errorCodeText}: ${supplementalErrorMessage} - ` + (error.stack || error));
+
     } else { // we'll use this for 'prod' and 'test' Stages in the future
+
         // In non-development environments, log the error message for privacy/security reasons
         console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage} - ${errorMessage}`, error.message || error);
         // Respond with a generic error message to avoid exposing sensitive error details

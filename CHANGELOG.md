@@ -10,6 +10,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Tweaked naming of Generator and Project Discovery Groomer field to statusDetails (from status_details)
+- Improved error logging for Axios network errors
 
 ### Bug Fixes
 - N/A
