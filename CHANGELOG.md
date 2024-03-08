@@ -12,6 +12,7 @@ Polyverse Boost ReST API (Backend)
 - Log all Authentication or Authorization Failures (including requested URI)
 - Log all usernames/emails in every REST HTTP API call
 - Project Status will report the detailed status of each resource (e.g. error message)
+- Project Status will report the status (Idle, Error, Processing, Complete) of all resources in an array
 
 ### Bug Fixes
 - N/A

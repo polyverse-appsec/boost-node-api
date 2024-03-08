@@ -1396,6 +1396,7 @@ interface ProjectStatusState {
     synchronized?: boolean;
     lastSynchronized?: number;
     activelyUpdating?: boolean;
+    resourcesState?: any[];
     details?: string;
     lastUpdated: number;
 }
@@ -1571,6 +1572,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
         const { org, project } = req.params;
 
+        let resourcesState : Map<string, string> = new Map<string, string>(
+            [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification]
+            .map((resource) => [resource, TaskStatus.Idle]));
+
         const projectStatus : ProjectStatusState = {
             status: ProjectStatus.Unknown,
             lastSynchronized: undefined,
@@ -1613,15 +1618,15 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         } catch (error: any) {
             if ((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
                 (error.code === HTTP_FAILURE_NOT_FOUND.toString())) {
-                console.error(`Project not found: ${projectDataUri}`);
+                console.error(`${req.originalUrl} Project not found: ${projectDataUri}`);
                 return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
             } else if ((error.response && error.response.status === HTTP_FAILURE_UNAUTHORIZED) ||
                           (error.code === HTTP_FAILURE_UNAUTHORIZED.toString())) {
-                console.error(`Unauthorized: ${projectDataUri}`);
+                console.error(`${req.originalUrl} Unauthorized: ${projectDataUri}`);
                 return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             }
 
-            console.error(`Unable to get project data: ${projectDataUri}`, error);
+            console.error(`${req.originalUrl} Unable to get project data: `, error);
             return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
         }
 
@@ -1630,11 +1635,12 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             try {
                 // set current timestamp
                 projectStatus.lastUpdated = Date.now() / 1000;
+                projectStatus.resourcesState = Array.from(resourcesState.entries());
 
                 await storeProjectData(email, SourceType.General, org, project, '', 'status', JSON.stringify(projectStatus));
 
             } catch (error) {
-                console.error(`Unable to persist project status`, error);
+                console.error(`${req.originalUrl} Unable to persist project status`, error);
             }
         }
 
@@ -1642,7 +1648,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         if (projectData.resources.length === 0) {
             projectStatus.status = ProjectStatus.Synchronized;
             projectStatus.details = `No GitHub resources found - nothing to synchronize`;
-            console.log(`Project Status OK: ${JSON.stringify(projectStatus)}`);
+            console.log(`${req.originalUrl}: NO-OP : ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -1677,10 +1683,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         let firstResourceGeneratingTime: number | undefined = undefined;
 
         const incompleteResources : Map<ProjectDataType, string> = new Map<ProjectDataType, string>();
-        interface ResourceStatus {
-            status: TaskStatus;
-            statusDetails: string;
-        }
+
         const currentResourceStatus : TaskStatus[] = [];
         const resourceErrorMessages : Map<ProjectDataType,string> = new Map<ProjectDataType,string>();
         for (const resource of possibleResources) {
@@ -1692,9 +1695,12 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 missingResources.push(resource);
                 currentResourceStatus.push(TaskStatus.Error);
                 resourceErrorMessages.set(resource, `Unable to get generator status for: ${resource}: ${error.stack || error}`);
+                resourcesState.set(resource, TaskStatus.Error);
 
                 continue;
             }
+
+            resourcesState.set(resource, generatorStatus.status);
 
             // if this generator was last updated before the current known first generating time, then we'll assume it was the first
             firstResourceGeneratingTime = firstResourceGeneratingTime?
@@ -1720,6 +1726,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 // if the generator is not completed, then we're not using the best resource data
                 //      so even if we've synchronized, its only partial resource data (e.g. partial source, or incomplete blueprint)
                 incompleteResources.set(resource, generatorStatus.statusDetails?generatorStatus.statusDetails:`Incomplete ${resource} data`);
+                
                 continue;
             }
             // if we've gotten here, then the generator is complete, so we'll use the last completed time
@@ -1728,6 +1735,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                     // store the latest completion time
                 lastResourceCompletedGenerationTime = generatorStatus.lastUpdated;
             }
+            resourcesState.set(resource, Stages.Complete);
         }
         // check if we're actively processing
         if (lastResourceGeneratingTime) {
@@ -1753,7 +1761,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 const messageWithErrorsByResourceName = Array.from(resourceErrorMessages.keys()).map((resource) => `${resource}: ${resourceErrorMessages.get(resource)}`);
                 projectStatus.details += `\tErrors encountered:\n\t\t${messageWithErrorsByResourceName.join('\n\t\t')}.`;
             }
-            console.warn(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+            console.warn(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -1772,7 +1780,17 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             projectStatus.status = ProjectStatus.OutOfDateProjectData;
             projectStatus.details = `Project was updated ${usFormatter.format(projectLastUpdatedDate)} since resources were last generated at ${usFormatter.format(firstResourceGeneratingDate)}`;
 
-            console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+            // mark any resource that is complete as processing, since we are out of sync, and will need to refresh/update anyway
+            Array.from(resourcesState.keys()).forEach((resource) => {
+                // Check if the current value for the resource is Stages.Complete
+                if (resourcesState.get(resource) === Stages.Complete) {
+                    // Update the value to TaskStatus.Processing only if it was Stages.Complete
+                    resourcesState.set(resource, TaskStatus.Processing);
+                }
+                // If the value is not Stages.Complete, no action is taken and the original value remains unchanged
+            });
+
+            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -1792,7 +1810,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             } else {
                 projectStatus.details += `\nIncomplete Resources: ` + missingResources.concat(Array.from(incompleteResources.keys())).join('\n\t');
             }
-            console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -1805,7 +1823,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         if (missingResources.length > 0) {
             projectStatus.status = ProjectStatus.ResourcesMissing;
             projectStatus.details = `Missing Resources: ${missingResources.join(', ')}`;
-            console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -1818,7 +1836,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         if (incompleteResources.size > 0) {
             projectStatus.status = ProjectStatus.ResourcesIncomplete;
             projectStatus.details = `Incomplete Resources: ${Array.from(incompleteResources.values()).join(', ')}`;
-            console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -1833,7 +1851,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             projectStatus.status = ProjectStatus.ResourcesIncomplete;
             projectStatus.details = `Resources Completed Generation, but no Timestamp`;
 
-            console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -1860,6 +1878,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             // if the upload doesn't exist or the file is missing from OpenAI, then we're out of date
             if (!thisDataReference || !thisDataReference.id) {
                 outOfDateResources.push(resource);
+
+                // if we're out of sync on this resource, mark it as processing since groomer will pick it up later
+                resourcesState.set(resource, TaskStatus.Processing);
                 continue;
             }
             const startTimeOfOpenAICall = Date.now();
@@ -1874,11 +1895,18 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             // if the openai file doesn't exist, then report it missing and continue
             if (!existingFile) {
                 outOfDateResources.push(resource);
+
+                // if we're out of sync on this resource, mark it as processing since groomer will pick it up later
+                resourcesState.set(resource, TaskStatus.Processing);
                 continue;
             }
 
             if (thisDataReference.lastUpdated < lastResourceUpdatedTimeStamp.get(resource)!) {
+
                 outOfDateResources.push(resource);
+
+                // if we're out of sync on this resource, mark it as processing since groomer will pick it up later
+                resourcesState.set(resource, TaskStatus.Processing);
             }
 
         }
@@ -1891,7 +1919,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             // if we've never synchronized the data, then report not synchronized
             projectStatus.status = ProjectStatus.ResourcesNotSynchronized;
             projectStatus.details = `Resources Completed Generation at ${usFormatter.format(lastResourceCompletedDate)} but never Synchronized to AI Servers`;
-            console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -1907,7 +1935,17 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             const lastSynchronizedDate = new Date(projectStatus.lastSynchronized * 1000);
             projectStatus.details = `${outOfDateResources.join(", ")} Resources Completed Generation at ${usFormatter.format(lastResourceCompletedDate)} is newer than last Synchronized AI Server at ${usFormatter.format(lastSynchronizedDate)}`;
 
-            console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
+            // mark any resource that is complete as processing, since we are out of date, and will need to refresh/update anyway
+            Array.from(resourcesState.keys()).forEach((resource) => {
+                // Check if the current value for the resource is Stages.Complete
+                if (resourcesState.get(resource) === Stages.Complete) {
+                    // Update the value to TaskStatus.Processing only if it was Stages.Complete
+                    resourcesState.set(resource, TaskStatus.Processing);
+                }
+                // If the value is not Stages.Complete, no action is taken and the original value remains unchanged
+            });
+
+            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -1922,7 +1960,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         projectStatus.synchronized = true;
         projectStatus.details = `All Resources Completely Generated and Uploaded to AI Servers`;
 
-        console.log(`Project Status SYNCHRONIZED: ${JSON.stringify(projectStatus)}`);
+        console.log(`${req.originalUrl}: SYNCHRONIZED: ${JSON.stringify(projectStatus)}`);
 
         await saveProjectStatusUpdate();
 
