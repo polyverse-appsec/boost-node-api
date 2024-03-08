@@ -3120,7 +3120,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
                     const processStartTime = Math.floor(Date.now() / 1000);
 
-                    const newGeneratorState = await localSelfDispatch<ResourceGeneratorProcessState>(email, getSignedIdentityFromHeader(req)!, req, pathToProcess, "POST", processNextStageState.stage?processNextStageState:undefined,
+                    const newGeneratorState = await localSelfDispatch<ResourceGeneratorProcessState>(email, "", req, pathToProcess, "POST", processNextStageState.stage?processNextStageState:undefined,
                         secondsBeforeRestRequestMaximumTimeout * 1000, false);
                     const processEndTime = Math.floor(Date.now() / 1000);
 
@@ -3194,7 +3194,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
                     try {
                         const nextGeneratorStageCallState : GeneratorState =
-                            await localSelfDispatch<GeneratorState>(email, getSignedIdentityFromHeader(req)!, req, thisEndpointPath,
+                            await localSelfDispatch<GeneratorState>(email, "", req, thisEndpointPath,
                                 "PUT", newProcessingRequest, 1000, false);
                         if (Object.keys(nextGeneratorStageCallState).length === 0) {
                             // if we timed out waiting for the response, then we'll just keep going assuming the async call will update
@@ -3203,12 +3203,10 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     } catch (error: any) {
                         let errorMessage = `${error.stack || error}`;
                         if (axios.isAxiosError(error) && error.response) {
-                            errorMessage = `${error.response.status}:${error.response.statusText} due to error:${error.response.data.body || error.response.data}`;
+                            errorMessage = `${error.response.status}:${error.response.statusText} due to error: ${error.response.data.body || error.response.data}`;
                         }
                         currentGeneratorState.status = TaskStatus.Error;
                         currentGeneratorState.statusDetails = `Error starting next stage to process: ${errorMessage}`;
-
-                        console.error(`${req.originalUrl} Error starting next stage to process:`, error);
 
                         updateGeneratorState(currentGeneratorState);
 

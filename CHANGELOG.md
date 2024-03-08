@@ -17,7 +17,8 @@ Polyverse Boost ReST API (Backend)
 - Improve logging and error messages for checking Generator state ( e.g. /api/user_project/{org}/{project}/data/{resource}/generator (GET) )
 
 ### Bug Fixes
-- N/A
+- Fix Authorization failure when reusing a JWT Token for long-lived cascading Generator stages
+    - Refresh token on each new stage to avoid token expiration
 
 ## Version 0.12.5: March 7th, 2024
 
