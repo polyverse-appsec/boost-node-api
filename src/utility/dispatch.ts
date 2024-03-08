@@ -33,7 +33,7 @@ export const logRequest = (req: Request) => {
 
 export const handleErrorResponse = (error: any, req: Request, res: Response, supplementalErrorMessage: string = 'Error', status_code: number = HTTP_FAILURE_INTERNAL_SERVER_ERROR) : Response => {
     // Base error message with the request details
-    const errorMessage = `UNHANDLED_ERROR(Response): ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
+    const errorMessage = `${status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'UN' : ''}HANDLED_ERROR(Response): ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
     const errorCodeText = status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'Internal Server Error' : 'Error';
 
@@ -41,12 +41,11 @@ export const handleErrorResponse = (error: any, req: Request, res: Response, sup
 
     if (axios.isAxiosError(error) && error.response) {
 
-        const errorMessage = error.response.data.body || error.response.data;
-        console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage} - ${errorMessage}`);
+        console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage} - ${errorMessage}`, error.response.data.body || error.response.data);
 
         return res
             .status(status_code)
-            .send(`${errorCodeText}: ${supplementalErrorMessage} - ${errorMessage}`);
+            .send(`${errorCodeText}: ${supplementalErrorMessage} - ${errorMessage} - ${error.response.data.body || error.response.data}`);
     }
 
     // Check if we're in the development environment

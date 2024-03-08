@@ -13,6 +13,7 @@ Polyverse Boost ReST API (Backend)
 - Improved error logging for Axios network errors
 - Better resiliency and handling of Generator error paths
 - Improved logging for GitHub Auth Errors during Project creation
+- Log HANDLED vs UNHANDLED errors in logs - UNHANDLED are unexpected server errors, while HANDLED are invalid input or handled error paths
 
 ### Bug Fixes
 - N/A
