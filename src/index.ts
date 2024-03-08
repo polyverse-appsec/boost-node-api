@@ -584,15 +584,14 @@ async function validateProjectRepositories(email: string, org: string, resources
     // validate every resource is a valid Uri
     for (const resource of resources) {
         if (!resource.uri) {
-            console.error(`Resource Uri is required`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Resource Uri is required');
+            return handleErrorResponse(new Error("Resource Uri is required"), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
         let resourceUri;
         try {
             resourceUri = new URL(resource.uri);
         } catch (error) {
             console.error(`Invalid URI: ${resource.uri}`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
+            return handleErrorResponse(new Error(`Invalid URI: ${resource.uri}`), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         // for now, we'll validate that the resource is a valid GitHub resource
@@ -604,16 +603,13 @@ async function validateProjectRepositories(email: string, org: string, resources
 
         // Validate that the resource is from github.com
         if (!(secondLevelDomain === 'github' && topLevelDomain === 'com')) {
-            console.error(`Invalid URI: ${resource.uri}`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid Resource - must be Github');
+            return handleErrorResponse(new Error("Invalid Resource - must be Github"), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
         // get the account status
         const signedIdentity = getSignedIdentityFromHeader(req);
         if (!signedIdentity) {
-            console.error(`Missing signed identity - after User Validation passed`);
-            return res
-                .status(HTTP_FAILURE_UNAUTHORIZED)
-                .send('Unauthorized');
+            return handleErrorResponse(
+                new Error("Unauthorized"), req, res, `Missing signed identity - after User Validation passed`, HTTP_FAILURE_UNAUTHORIZED);
         }
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
 
@@ -624,8 +620,7 @@ async function validateProjectRepositories(email: string, org: string, resources
         if (repoDetails.errorResponse) {
             return repoDetails.errorResponse;
         } else if (!repoDetails.data) {
-            console.error(`Unable to get Repo Details and no Error found: ${resource.uri}`);
-            return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
+            return handleErrorResponse(new Error(`Unable to get Repo Details and no Error found: ${resource.uri}`), req, res);
         }
     }
     return undefined;
