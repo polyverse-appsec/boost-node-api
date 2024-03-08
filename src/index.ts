@@ -3972,7 +3972,7 @@ app.get(`${api_root_endpoint}/${org_org_account}`, async (req, res) => {
         const org = req.params.org;
         const orgId = await getUser(org);
 
-        const userAccountStatus = await localSelfDispatch<UserAccountState>(email, getSignedIdentityFromHeader(req)!, req, 'user/:org/account', 'GET');
+        const userAccountStatus = await localSelfDispatch<UserAccountState>(email, getSignedIdentityFromHeader(req)!, req, `user/${org}/account`, 'GET');
 
         const orgAccountState : OrgAccountState = {
             enabled: orgId?.username !== undefined,
