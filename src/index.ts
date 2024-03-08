@@ -1676,13 +1676,13 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         let lastResourceGeneratingTime: number | undefined = undefined;
         let firstResourceGeneratingTime: number | undefined = undefined;
 
-        const incompleteResources : string[] = [];
+        const incompleteResources : Map<ProjectDataType, string> = new Map<ProjectDataType, string>();
         interface ResourceStatus {
             status: TaskStatus;
             statusDetails: string;
         }
         const currentResourceStatus : TaskStatus[] = [];
-        const resourceErrorMessages : string[] = [];
+        const resourceErrorMessages : Map<ProjectDataType,string> = new Map<ProjectDataType,string>();
         for (const resource of possibleResources) {
             let generatorStatus : GeneratorState;
             try {
@@ -1691,7 +1691,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 // if generator fails, we'll assume the resource isn't available either
                 missingResources.push(resource);
                 currentResourceStatus.push(TaskStatus.Error);
-                resourceErrorMessages.push(`Unable to get generator status for: ${resource}: ${error.stack || error}`);
+                resourceErrorMessages.set(resource, `Unable to get generator status for: ${resource}: ${error.stack || error}`);
 
                 continue;
             }
@@ -1713,11 +1713,13 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                     } else if (lastResourceGeneratingTime < generatorStatus.lastUpdated) {
                         lastResourceGeneratingTime = generatorStatus.lastUpdated;
                     }
+                } else if (generatorStatus.status === TaskStatus.Error) {
+                    resourceErrorMessages.set(resource, generatorStatus.statusDetails?generatorStatus.statusDetails:`Unknown error generating ${resource}`);
                 }
 
                 // if the generator is not completed, then we're not using the best resource data
                 //      so even if we've synchronized, its only partial resource data (e.g. partial source, or incomplete blueprint)
-                incompleteResources.push(resource);
+                incompleteResources.set(resource, generatorStatus.statusDetails?generatorStatus.statusDetails:`Incomplete ${resource} data`);
                 continue;
             }
             // if we've gotten here, then the generator is complete, so we'll use the last completed time
@@ -1739,8 +1741,18 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         // if we have missing or incomplete resources, but they are still being generated, then we're still generating
         if (projectStatus?.activelyUpdating) {
             projectStatus.status = ProjectStatus.ResourcesGenerating;
-            missingResources.push(...incompleteResources);
-            projectStatus.details = `Generating Resources: ${missingResources.join(', ')}`;
+            projectStatus.details = `Generating Resources:\n`;
+            if (missingResources.length > 0) {
+                projectStatus.details += `\tNeeded: ${missingResources.join(', ')}`;
+            }
+            if (incompleteResources.size > 0) {
+                const incompleteResourcesByName = Array.from(incompleteResources.keys()).map((resource) => `${resource}: ${incompleteResources.get(resource)}`);
+                projectStatus.details += `\tGenerating:\n\t\t${incompleteResourcesByName.join('\n\t\t')}`;
+            }
+            if (resourceErrorMessages.size > 0) {
+                const messageWithErrorsByResourceName = Array.from(resourceErrorMessages.keys()).map((resource) => `${resource}: ${resourceErrorMessages.get(resource)}`);
+                projectStatus.details += `\tErrors encountered:\n\t\t${messageWithErrorsByResourceName.join('\n\t\t')}.`;
+            }
             console.warn(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
@@ -1773,8 +1785,13 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         const inErrorState : boolean = currentResourceStatus.filter(status => status === TaskStatus.Error).length > 0;
         if (inErrorState) {
             projectStatus.status = ProjectStatus.ResourcesInError;
-            const errorResources = missingResources.concat(incompleteResources);
-            projectStatus.details = `Resources in Error: ${errorResources.join(', ')}`;
+            projectStatus.details = `Some resource errors encountered:\n\t`;
+            if (resourceErrorMessages.size > 0) {
+                const messageWithErrorsByResourceName = Array.from(resourceErrorMessages.keys()).map((resource) => `${resource}: ${resourceErrorMessages.get(resource)}`);
+                projectStatus.details += ` \n\t${messageWithErrorsByResourceName.join('\n\t')}.`;
+            } else {
+                projectStatus.details = missingResources.concat(incompleteResources).join(', ');
+            }
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
@@ -1888,7 +1905,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             // if the last resource completed generation time is newer than the last synchronized time, then we're out of date
             projectStatus.status = ProjectStatus.AIResourcesOutOfDate;
             const lastSynchronizedDate = new Date(projectStatus.lastSynchronized * 1000);
-            projectStatus.details = `Resources Completed Generation at ${usFormatter.format(lastResourceCompletedDate)} is newer than last Synchronized AI Server at ${usFormatter.format(lastSynchronizedDate)}`;
+            projectStatus.details = `${outOfDateResources.join(", ")} Resources Completed Generation at ${usFormatter.format(lastResourceCompletedDate)} is newer than last Synchronized AI Server at ${usFormatter.format(lastSynchronizedDate)}`;
 
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
