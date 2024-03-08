@@ -2892,7 +2892,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         } else {
             // patch is only supported for processing tasks
             console.error(`Invalid PATCH status: ${currentGeneratorState.status}`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid PATCH status: ${currentGeneratorState.status}`)
+            return res.status(HTTP_CONFLICT).send(`Invalid PATCH status: ${currentGeneratorState.status}`)
         }
     } catch (error) {
         return handleErrorResponse(error, req, res);
@@ -3031,9 +3031,16 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     email, getSignedIdentityFromHeader(req)!, req,
                     `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs, false);
             } catch (error: any) {
-                if (!error.response || error.response.status !== HTTP_FAILURE_NOT_FOUND) {
-                    console.error(`${req.originalUrl} Unable to refresh project status for ${org}/${project} - due to error: ${error.stack || error}`);
-                    throw error;
+                if (error.response) {
+                    switch (error.response.status) {
+                        case HTTP_FAILURE_NOT_FOUND:
+                            console.debug(`${req.originalUrl} Unable to refresh project status for ${org}/${project} - Project Not Found`);
+                            break;
+                        default:
+                            console.warn(`${req.originalUrl} Unable to refresh project status for ${org}/${project} - due to error: ${error.response.data.body || error.response.data}`);
+                        }
+                } else {
+                    console.warn(`${req.originalUrl} Unable to refresh project status for ${org}/${project} - due to error: ${error.stack || error}`);
                 }
             }
             // upload what resources we have to the AI servers
@@ -3042,7 +3049,17 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 await localSelfDispatch<ProjectDataReference[]>(email, getSignedIdentityFromHeader(req)!, req,
                     `user_project/${org}/${project}/data_references`, 'PUT', undefined, projectStatusRefreshDelayInMs, false);
             } catch (error: any) {
-                console.error(`Error uploading data references to AI Servers: `, (error.stack || error));
+                if (axios.isAxiosError(error) && error.response) {
+                    switch (error.response?.status) {
+                        case HTTP_FAILURE_NOT_FOUND:
+                            console.debug(`${req.originalUrl} Unable to upload data references to AI Servers for ${org}/${project} - Project Not Found`);
+                            break;
+                        default:
+                            console.error(`${req.originalUrl} Unable to upload data references to AI Servers for ${org}/${project} - due to error: ${error.response.data.body || error.response.data}`);
+                    }
+                } else {
+                    console.error(`Error uploading data references to AI Servers: `, (error.stack || error));
+                }
             }
         };
 
@@ -3171,7 +3188,30 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     //      the new call is created before we return a response to the caller and the host of this call
                     //      terminates
                     const thisEndpointPath = req.originalUrl.substring(req.originalUrl.indexOf('user_project'));
-                    await localSelfDispatch<void>(email, getSignedIdentityFromHeader(req)!, req, thisEndpointPath, "PUT", newProcessingRequest, 1000, false);
+
+                    try {
+                        const nextGeneratorStageCallState : GeneratorState =
+                            await localSelfDispatch<GeneratorState>(email, getSignedIdentityFromHeader(req)!, req, thisEndpointPath,
+                                "PUT", newProcessingRequest, 1000, false);
+                        if (Object.keys(nextGeneratorStageCallState).length === 0) {
+                            // if we timed out waiting for the response, then we'll just keep going assuming the async call will update
+                            //      the generator state as needed
+                        }
+                    } catch (error: any) {
+                        let errorMessage = `${error.stack || error}`;
+                        if (axios.isAxiosError(error) && error.response) {
+                            errorMessage = `${error.response.status}:${error.response.statusText} due to error:${error.response.data.body || error.response.data}`;
+                        }
+                        currentGeneratorState.status = TaskStatus.Error;
+                        currentGeneratorState.statusDetails = `Error starting next stage to process: ${errorMessage}`;
+
+                        console.error(`${req.originalUrl} Error starting next stage to process:`, error);
+
+                        updateGeneratorState(currentGeneratorState);
+
+                        // we errored out, so we'll return an error HTTP status code for operation failed, may need to retry
+                        return handleErrorResponse(error, req, res, `Error starting next stage to process`);
+                    }
 
                     // Return a response immediately without waiting for the async process
                     return res
