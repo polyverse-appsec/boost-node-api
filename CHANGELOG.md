@@ -3,10 +3,10 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.12.7: March 8th, 2024
+## Version 0.13.0: March 8th, 2024
 
 ### New Features
-- N/A
+- Added REST API to check a Billing Org or GitHub Org/Owner account (GET) - /api/org/{org}/account
 
 ### Enhancements
 - Log all Authentication or Authorization Failures (including requested URI)

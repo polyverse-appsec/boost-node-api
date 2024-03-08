@@ -1790,7 +1790,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 const messageWithErrorsByResourceName = Array.from(resourceErrorMessages.keys()).map((resource) => `${resource}: ${resourceErrorMessages.get(resource)}`);
                 projectStatus.details += ` \n\t${messageWithErrorsByResourceName.join('\n\t')}.`;
             } else {
-                projectStatus.details = missingResources.concat(incompleteResources).join(', ');
+                projectStatus.details += `\nIncomplete Resources: ` + missingResources.concat(Array.from(incompleteResources.keys())).join('\n\t');
             }
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
@@ -1815,9 +1815,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 .send(projectStatus);
         }
         // or if we have incomplete resources, we're stalled
-        if (incompleteResources.length > 0) {
+        if (incompleteResources.size > 0) {
             projectStatus.status = ProjectStatus.ResourcesIncomplete;
-            projectStatus.details = `Incomplete Resources: ${incompleteResources.join(', ')}`;
+            projectStatus.details = `Incomplete Resources: ${Array.from(incompleteResources.values()).join(', ')}`;
             console.error(`Project Status ISSUE: ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
@@ -3945,6 +3945,48 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
             .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(accountStatus);
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
+interface OrgAccountState {
+    enabled: boolean,
+    status: string,
+    plan: string,
+    saas_client: boolean,
+    portal_url: string,
+    github_username: string,
+};
+
+const org_org_account = `org/:org/account`;
+app.get(`${api_root_endpoint}/${org_org_account}`, async (req, res) => {
+
+    try {
+
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const org = req.params.org;
+        const orgId = await getUser(org);
+
+        const userAccountStatus = await localSelfDispatch<UserAccountState>(email, getSignedIdentityFromHeader(req)!, req, 'user/:org/account', 'GET');
+
+        const orgAccountState : OrgAccountState = {
+            enabled: orgId?.username !== undefined,
+            status: userAccountStatus.status,
+            plan: userAccountStatus.plan,
+            saas_client: true,
+            portal_url: userAccountStatus.portal_url,
+            github_username: orgId !== undefined?orgId.username:'',
+        }
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType('application/json')
+            .send(orgAccountState);
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }

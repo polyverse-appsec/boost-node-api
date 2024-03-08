@@ -50,6 +50,7 @@ def main(email, org, project, method, stage, data):
         'status_refresh': f"{URL}/api/user_project/{org}/{project}/status",
 
         'account': f"{URL}/api/user/{org}/account",
+        'org_status': f"{URL}/api/org/{org}/account",
 
         "data_references": f"{URL}/api/user_project/{org}/{project}/data_references",
         "data_references_refresh": f"{URL}/api/user_project/{org}/{project}/data_references",
@@ -195,6 +196,7 @@ if __name__ == "__main__":
                                  'status_refresh',
 
                                  'account',
+                                 'org_status',
 
                                  'projects',
                                  'project',
@@ -204,8 +206,6 @@ if __name__ == "__main__":
 
                                  'search_generators_all',
                                  'search_generators',
-
-                                 'account',
 
                                  'discover',
                                  'rediscover',
@@ -240,6 +240,7 @@ if __name__ == "__main__":
 
     if (args.project is None and args.method not in [
         "account",
+        "org_status",
         "data_references",
         "aifiles",
         "aifiles_groom",
