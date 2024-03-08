@@ -548,8 +548,8 @@ export async function verifyUserAccessToPrivateRepo(email: string, uri: URL) : P
             if (process.env.TRACE_LEVEL) {
                 console.warn(`${owner}/${repo} is Private - but user ${user.username} has access it`);
             }
-        } catch (error) {
-            console.warn(`Error checking access Repo Access for ${user.username} to ${owner}:${repo}:`, error);
+        } catch (error: any) {
+            console.warn(`Error checking access Repo Access for ${user.username} to ${owner}:${repo}: `, error?.response?.data);
         }
     }
 
@@ -559,14 +559,25 @@ export async function verifyUserAccessToPrivateRepo(email: string, uri: URL) : P
         username: user.username
     };
     try {
+        const collaboratorResponse = await octokit.rest.repos.listCollaborators({owner, repo});
+        if (collaboratorResponse.status === HTTP_SUCCESS) {
+            console.debug(`${owner}/${repo} Collaborators are ${collaboratorResponse.data.map((c: any) => c.login).join(', ')}`);
+        } else {
+            console.warn(`Error accessing Collaborators for ${owner}:${repo}: status:`, collaboratorResponse.status);
+        }
+    } catch (error: any) {
+        console.warn(`Error accessing Collaborators for ${owner}:${repo}:`, error?.response?.data);
+    }
+    
+    try {
         const response = await octokit.rest.repos.getCollaboratorPermissionLevel(collaboratorCheckInput);
         // check if the username has access to this repo
         if (response.status !== HTTP_SUCCESS || !response.data.permission) {
             console.warn(`User ${user.username} does not have access to ${owner}:${repo}`);
             return false;
         }
-    } catch (error) {
-        console.error(`Error checking Collaborator Permission access for ${user.username} to ${owner}:${repo}:`, error);
+    } catch (error: any) {
+        console.error(`Error checking Collaborator Permission access for ${user.username} to ${owner}:${repo}:`, error?.response?.data);
         return false;
     }
     console.debug(`User ${user.username} has access to ${owner}:${repo}`);
