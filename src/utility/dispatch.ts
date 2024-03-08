@@ -31,21 +31,21 @@ export const logRequest = (req: Request) => {
     console.log(process.env.IS_OFFLINE?`${currentDate}: ${logLine}`:logLine);
 }
 
-export const handleErrorResponse = (error: any, req: Request, res: Response, supplementalErrorMessage: string = 'Error', status_code: number = HTTP_FAILURE_INTERNAL_SERVER_ERROR) : Response => {
+export const handleErrorResponse = (error: any, req: Request, res: Response, supplementalErrorMessage: string = '', status_code: number = HTTP_FAILURE_INTERNAL_SERVER_ERROR) : Response => {
     // Base error message with the request details
     const errorMessage = `${status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'UN' : ''}HANDLED_ERROR(Response): ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
-    const errorCodeText = status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'Internal Server Error' : 'Error';
+    const errorCodeText = status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'Internal Server Error':"";
 
     const currentDate = usFormatter.format(new Date(Date.now()));
 
     if (axios.isAxiosError(error) && error.response) {
 
-        console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage} - ${errorMessage}`, error.response.data.body || error.response.data);
+        console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage?`${supplementalErrorMessage} - `:''}${errorMessage}`, error.response.data.body || error.response.data);
 
         return res
             .status(status_code)
-            .send(`${errorCodeText}: ${supplementalErrorMessage} - ${errorMessage} - ${error.response.data.body || error.response.data}`);
+            .send(`${errorCodeText}: ${supplementalErrorMessage?`${supplementalErrorMessage} - `:''}${errorMessage} - ${error.response.data.body || error.response.data}`);
     }
 
     // Check if we're in the development environment
@@ -53,21 +53,21 @@ export const handleErrorResponse = (error: any, req: Request, res: Response, sup
         || process.env.DEPLOYMENT_STAGE === 'prod') {
 
         // In development, print the full error stack if available, or the error message otherwise
-        console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage} - ${errorMessage}`, error.stack || error);
+        console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage?`${supplementalErrorMessage} - `:''}${errorMessage}`, error.stack || error);
 
         // Respond with the detailed error message for debugging purposes
         return res
             .status(status_code)
-            .send(`${errorCodeText}: ${supplementalErrorMessage} - ` + (error.stack || error));
+            .send(`${errorCodeText}: ${supplementalErrorMessage?`${supplementalErrorMessage} - `:''}` + (error.stack || error));
 
     } else { // we'll use this for 'prod' and 'test' Stages in the future
 
         // In non-development environments, log the error message for privacy/security reasons
-        console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage} - ${errorMessage}`, error.message || error);
+        console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage?`${supplementalErrorMessage} - `:''}${errorMessage} `, error.message || error);
         // Respond with a generic error message to avoid exposing sensitive error details
         return res
             .status(status_code)
-            .send(`${errorCodeText}: ${supplementalErrorMessage} - ${errorMessage}` + (error.message || error));
+            .send(`${errorCodeText}:${supplementalErrorMessage?`${supplementalErrorMessage} - `:''}` + (error.message || error));
     }
 }
 
