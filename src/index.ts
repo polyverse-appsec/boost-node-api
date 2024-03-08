@@ -2713,16 +2713,15 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
+                return handleErrorResponse(new Error(`Org is required`), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(new Error(`Project is required`), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const projectData = await loadProjectData(email, org, project) as UserProjectData;
         if (!projectData) {
-            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
+            return handleErrorResponse(new Error(`Project not found`), req, res, undefined, HTTP_FAILURE_NOT_FOUND);
         }
 
         const uri = new URL(projectData.resources[0].uri);
@@ -2733,13 +2732,19 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
         const repoName = pathSegments.pop();
         const ownerName = pathSegments.pop();
         if (!repoName || !ownerName) {
-            throw new Error(`Invalid URI: ${uri}`);
+            return handleErrorResponse(new Error(`Invalid URI: ${uri}`), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const { _, __, resource } = req.params;
         const currentInput = await getProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`);
         if (!currentInput) {
-            console.log(`${user_project_org_project_data_resource_generator}: simulated idle data`);
+            console.log(`${req.originalUrl}: simulated idle data`);
+
+            return res
+                .status(HTTP_SUCCESS)
+                .contentType('application/json')
+                .send({status: TaskStatus.Idle} as GeneratorState);
+        } else {
 
             // for backward compatibility (old field name)
             if ((currentInput as any)?.status_details) {
@@ -2747,20 +2752,23 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
                 delete (currentInput as any).status_details;
             }
 
-            return res
-                .status(HTTP_SUCCESS)
-                .contentType('application/json')
-                .send({
-                    status: TaskStatus.Idle,
-                } as GeneratorState);
-        } else {
+            // Ensure parsing safety with a try-catch around JSON.parse
+            try {
+                const generatorData = JSON.parse(currentInput) as GeneratorState;
 
-            const generatorData = JSON.parse(currentInput) as GeneratorState;
+                // Additional checks can be placed here to ensure generatorData contains expected properties
+                return res
+                    .status(HTTP_SUCCESS)
+                    .contentType('application/json')
+                    .send(generatorData);
+            } catch (parseError: any) {
+                console.error(`Parsing error for generator data: ${parseError}`);
 
-            return res
-                .status(HTTP_SUCCESS)
-                .contentType('application/json')
-                .send(generatorData);
+                return res
+                    .status(HTTP_SUCCESS)
+                    .contentType('application/json')
+                    .send({status: TaskStatus.Error, statusDetails: `Parsing error for generator data: ${parseError.stack || parseError}`} as GeneratorState);
+            }
         }
     } catch (error) {
         return handleErrorResponse(error, req, res);

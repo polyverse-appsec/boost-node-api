@@ -14,6 +14,7 @@ Polyverse Boost ReST API (Backend)
 - Better resiliency and handling of Generator error paths
 - Improved logging for GitHub Auth Errors during Project creation
 - Log HANDLED vs UNHANDLED errors in logs - UNHANDLED are unexpected server errors, while HANDLED are invalid input or handled error paths
+- Improve logging and error messages for checking Generator state ( e.g. /api/user_project/{org}/{project}/data/{resource}/generator (GET) )
 
 ### Bug Fixes
 - N/A
