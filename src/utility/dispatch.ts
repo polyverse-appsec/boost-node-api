@@ -24,8 +24,8 @@ export const HTTP_FAILURE_BUSY = 429;
 
 export const HTTP_FAILURE_INTERNAL_SERVER_ERROR = 500;
 
-export const logRequest = (req: Request) => {
-    const logLine = `Request: ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
+export const logRequest = (req: Request, user: string) => {
+    const logLine = `Request: ${user?user:"UNKNOWN"} ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
     const currentDate = usFormatter.format(new Date(Date.now()));
     console.log(process.env.IS_OFFLINE?`${currentDate}: ${logLine}`:logLine);

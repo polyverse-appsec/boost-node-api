@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
 import { getSingleSecret } from './secrets';
-import { HTTP_FAILURE_UNAUTHORIZED } from './utility/dispatch';
+import { HTTP_FAILURE_UNAUTHORIZED, logRequest } from './utility/dispatch';
 
 export const header_X_Signed_Identity = 'X-Signed-Identity';
 export const header_X_Signing_Algorithm = 'X-Signing-Algorithm';
@@ -114,6 +114,8 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
         }
         console.log(`${req.method} ${req.originalUrl} Admin access granted: ${email}`);
     }
+
+    logRequest(req, email);
 
     return email;
 }

@@ -10,6 +10,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Log all Authentication or Authorization Failures (including requested URI)
+- Log all usernames/emails in every REST HTTP API call
 
 ### Bug Fixes
 - N/A

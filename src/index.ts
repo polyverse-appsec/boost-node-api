@@ -149,9 +149,12 @@ export async function loadProjectDataResource(
 
 const postOrPutUserProjectDataResource = async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
         const { org, project } = req.params;
 
         if (!org || !project) {
@@ -162,11 +165,6 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
             }
 
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
-        }
-
-        const email = await validateUser(req, res);
-        if (!email) {
-            return;
         }
 
         const projectData = await loadProjectData(email, org, project) as UserProjectData;
@@ -282,8 +280,6 @@ function checkPrivateAccessAllowed(accountStatus: UserAccountState): boolean {
 const user_org_connectors_github_file = `user/:org/connectors/github/file`;
 app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -367,8 +363,6 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: R
 
 const user_org_connectors_github_folders = `user/:org/connectors/github/folders`;
 app.get(`${api_root_endpoint}/${user_org_connectors_github_folders}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
     
     try {
         const email = await validateUser(req, res);
@@ -421,8 +415,6 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_folders}`, async (req
 
 const user_org_connectors_github_files = `user/:org/connectors/github/files`;
 app.get(`${api_root_endpoint}/${user_org_connectors_github_files}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -479,8 +471,6 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
     express.json({ limit: '10mb' }),
     async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -533,8 +523,6 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
 const user_org_connectors_github_permission = `user/:org/connectors/github/access`;
 app.get(`${api_root_endpoint}/${user_org_connectors_github_permission}`,
     async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -629,8 +617,6 @@ async function validateProjectRepositories(email: string, org: string, resources
 const user_project_org_projects = `user_project/:org/projects`;
 app.get(`${api_root_endpoint}/${user_project_org_projects}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -667,8 +653,6 @@ app.get(`${api_root_endpoint}/${user_project_org_projects}`, async (req: Request
 
 const user_project_org_project = `user_project/:org/:project`;
 app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -752,8 +736,6 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
 });
 
 const postOrPutUserProject = async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -916,8 +898,6 @@ app.route(`${api_root_endpoint}/${user_project_org_project}`)
 
 app.get(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -955,8 +935,6 @@ app.get(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request,
 });
 
 app.delete(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1020,8 +998,6 @@ app.delete(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reque
 // Services to search the entire system for any project
 const search_projects = `search/projects`;
 app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         // since project search is system wide by default, we're going to require admin access to
@@ -1104,8 +1080,6 @@ interface ProjectSearchData {
 const search_projects_groom = `search/projects/groom`;
 app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
         // since project search is system wide by default, we're going to require admin access to
         //      run a search
@@ -1165,8 +1139,6 @@ app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, re
 const search_projects_generators_groom = `search/projects/generators`;
 app.get(`${api_root_endpoint}/${search_projects_generators_groom}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
         // since project search is system wide by default, we're going to require admin access to
         //      run a search
@@ -1224,8 +1196,6 @@ app.get(`${api_root_endpoint}/${search_projects_generators_groom}`, async (req: 
 
 const groom_projects = `groom/projects`;
 app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1308,8 +1278,6 @@ interface DiscoverState {
 
 const user_project_org_project_discover = `user_project/:org/:project/discover`;
 app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -1438,8 +1406,6 @@ const user_project_org_project_status = `user_project/:org/:project/status`;
 
 app.delete(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -1468,8 +1434,6 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_status}`, async (req
 });
 
 app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
 
@@ -1540,8 +1504,6 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req:
 
 app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
 
         const email = await validateUser(req, res);
@@ -1599,8 +1561,6 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
 });
 
 app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
 
@@ -1976,8 +1936,6 @@ interface ProjectGroomState {
 const user_project_org_project_groom = `user_project/:org/:project/groom`;
 app.get(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
 
         const email = await validateUser(req, res);
@@ -2034,8 +1992,6 @@ const didLastDiscoverySucceedOrFail = (groomStatus: ProjectGroomState, projectSt
 const MaxGroomingErrorsBeforeManualDiscovery = 3;
 
 app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
 
@@ -2290,8 +2246,6 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
 const user_project_org_project_goals = `user_project/:org/:project/goals`;
 app.delete(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -2320,8 +2274,6 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req:
 });
 
 app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -2381,8 +2333,6 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
 
 app.get(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -2420,8 +2370,6 @@ app.get(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Re
 const user_project_org_project_config_boostignore = `user_project/:org/:project/config/.boostignore`;
 app.get(`${api_root_endpoint}/${user_project_org_project_config_boostignore}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -2451,8 +2399,6 @@ app.get(`${api_root_endpoint}/${user_project_org_project_config_boostignore}`, a
 
 const user_project_org_project_data_resource = `user_project/:org/:project/data/:resource`;
 app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -2509,8 +2455,6 @@ interface ResourceStatusState {
 
 const user_project_org_project_data_resource_status = `user_project/:org/:project/data/:resource/status`;
 app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -2578,8 +2522,6 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
 });
 
 app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -2654,8 +2596,6 @@ app.route(`${api_root_endpoint}/${user_project_org_project_data_resource}`)
 const user_project_org_project_data_resource_generator = `user_project/:org/:project/data/:resource/generator`;
 app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -2701,8 +2641,6 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource_genera
 });
 
 app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -2777,8 +2715,6 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
 
 // for updating the generator task status
 app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -2903,8 +2839,6 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
 });
 
 const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -3302,8 +3236,6 @@ interface ResourceGeneratorProcessState {
 const user_project_org_project_data_resource_generator_process = `user_project/:org/:project/data/:resource/generator/process`;
 app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generator_process}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -3416,8 +3348,6 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const user_project_org_project_data_references = `user_project/:org/:project/data_references`;
 const postUserProjectDataReferences = async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -3662,8 +3592,6 @@ app.route(`${api_root_endpoint}/${user_project_org_project_data_references}`)
 
 app.get(`${api_root_endpoint}/${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -3709,8 +3637,6 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_references}`, asyn
 });
 
 app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -3762,8 +3688,6 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, a
 const files_source_owner_project_path_analysisType = `files/:source/:owner/:project/:pathBase64/:analysisType`;
 app.delete(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, async (req, res) => {
 
-    logRequest(req);
-
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -3809,8 +3733,6 @@ app.delete(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}
 });
 
 app.get(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, async (req, res) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -3859,8 +3781,6 @@ app.get(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, 
 
 app.post(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, async (req, res) => {
 
-    logRequest(req);
-
     try {
         const email = await validateUser(req, res);
         if (!email) {
@@ -3897,7 +3817,6 @@ app.post(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`,
 
 const proxy_ai_endpoint = "proxy/ai/:org/:endpoint";
 const handleProxyRequest = async (req: Request, res: Response) => {
-    logRequest(req);
 
     try {
         const org = req.params.org;
@@ -3983,11 +3902,7 @@ interface UserAccountState {
 const user_org_account = `user/:org/account`;
 app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
 
-    logRequest(req);
-
     try {
-
-        const org = req.params.org;
 
         const email = await validateUser(req, res);
         if (!email) {
@@ -4001,6 +3916,9 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
                 .status(HTTP_FAILURE_UNAUTHORIZED)
                 .send('Unauthorized');
         }
+
+        const org = req.params.org;
+
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
 
         const user = await getUser(email);
@@ -4017,8 +3935,6 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
 
 const user_profile = `user/profile`;
 app.delete(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
 
@@ -4045,8 +3961,6 @@ interface UserProfile {
 };
 
 app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Response) => {
-
-    logRequest(req);
 
     try {
 
@@ -4097,8 +4011,6 @@ app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
 
 app.get(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
-
     try {
 
         const email = await validateUser(req, res);
@@ -4130,7 +4042,7 @@ interface ServiceStatusState {
 const api_status = `status`;
 app.get(`${api_root_endpoint}/${api_status}`, async (req: Request, res: Response) => {
 
-    logRequest(req);
+    logRequest(req, "");
 
     try {
         // get the version from the environment variable APP_VERSION
@@ -4165,8 +4077,6 @@ const DefaultGroomingIntervalInMinutes = 5;
 let existingInterval : NodeJS.Timeout | undefined = undefined;
 const api_timer_config = `timer/config`;
 app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: Response, next) => {
-
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res, AuthType.Admin);
@@ -4253,7 +4163,6 @@ app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: R
 const api_timer_interval = `timer/interval`;
 app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res: Response, next) => {
 
-    logRequest(req);
     try {
         const email = await validateUser(req, res, AuthType.Admin);
         if (!email) {
@@ -4289,7 +4198,6 @@ app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res:
 
 const user_org_connectors_openai_files = `user/:org/connectors/openai/files`;
 app.get(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (req: Request, res: Response, next) => {
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -4330,7 +4238,6 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (req: 
 
 const user_org_connectors_openai_assistants = `user/:org/connectors/openai/assistants`;
 app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, async (req: Request, res: Response, next) => {
-    logRequest(req);
 
     try {
         let email = undefined;
@@ -4371,7 +4278,6 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, async (
 });
 
 app.delete(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, async (req: Request, res: Response, next) => {
-    logRequest(req);
 
     try {
         let email = undefined;
@@ -4466,7 +4372,6 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, asyn
 
 const user_org_connectors_openai_files_id = `user/:org/connectors/openai/files/:id`;
 app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files_id}`, async (req: Request, res: Response, next) => {
-    logRequest(req);
 
     try {
         const email = await validateUser(req, res);
@@ -4499,7 +4404,6 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files_id}`, async 
 });
 
 app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (req: Request, res: Response, next) => {
-    logRequest(req);
 
     try {
         let admin = false;
@@ -4634,7 +4538,7 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
 app.get("/test", (req: Request, res: Response, next) => {
 
     try {
-        logRequest(req);
+        logRequest(req, "");
 
         return res
             .status(HTTP_SUCCESS)
@@ -4648,7 +4552,7 @@ app.get("/test", (req: Request, res: Response, next) => {
 app.post("/test", (req: Request, res: Response, next) => {
 
     try {
-        logRequest(req);
+        logRequest(req, "");
 
         const data = req.body;
 
