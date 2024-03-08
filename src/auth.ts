@@ -34,7 +34,7 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
     if (identityJWT) {
         let signingKey = process.env.JWT_SIGNING_KEY || await getSingleSecret('boost-sara/sara-client-public-key');
         if (!signingKey) {
-            console.error(`Unauthorized: Signing key is required`);
+            console.error(`${req.method} ${req.originalUrl} Unauthorized: Signing key is required`);
             if (throwIfNotAuthorized) {
                 throw new Error(`Unauthorized`);
             }
@@ -51,7 +51,7 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
     
             // Check the expiration
             if (identity.expires && identity.expires < (Date.now() / 1000)) {
-                console.error(`Unauthorized: Signed identity expired`);
+                console.error(`${req.method} ${req.originalUrl} Unauthorized: Signed identity expired`);
                 if (throwIfNotAuthorized) {
                     throw new Error(`Unauthorized`);
                 }
@@ -61,7 +61,7 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
 
             email = normalizeEmail(identity.email);
         } catch (err) {
-            console.error(`Unauthorized: Invalid signed identity: ${err} - Identity Header: ${identityJWT}`);
+            console.error(`${req.method} ${req.originalUrl} Unauthorized: Invalid signed identity: ${err} - Identity Header: ${identityJWT}`);
             if (throwIfNotAuthorized) {
                 throw new Error(`Unauthorized`);
             }
@@ -74,7 +74,7 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
     if (!email) {
         const userAccountHeader = Object.keys(req.headers).find(key => key.toLowerCase() === 'x-user-account');
         if (!userAccountHeader || !req.headers[userAccountHeader]) {
-            console.error(`Unauthorized: Email is required`);
+            console.error(`${req.method} ${req.originalUrl} Unauthorized: Email is required`);
             if (throwIfNotAuthorized) {
                 throw new Error(`Unauthorized`);
             }
@@ -83,14 +83,14 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
         }
         // only support this header if we are running locally and not in AWS / Cloud
         if (!process.env.ENABLE_UNSIGNED_AUTHN) {
-            console.error(`Unauthorized: UNSIGNED_AUTHN is not enabled; set ENABLE_UNSIGNED_AUTHN=true to enable`);
+            console.error(`${req.method} ${req.originalUrl} Unauthorized: UNSIGNED_AUTHN is not enabled; set ENABLE_UNSIGNED_AUTHN=true to enable`);
             if (throwIfNotAuthorized) {
                 throw new Error(`Unauthorized`);
             }
             res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             return undefined;
         } else {
-            console.warn(`ENABLE_UNSIGNED_AUTHN is enabled; BUT MOST APIs will NOT work with this user authentication model, since most APIs use identity delegation`);
+            console.warn(`${req.method} ${req.originalUrl} ENABLE_UNSIGNED_AUTHN is enabled; BUT MOST APIs will NOT work with this user authentication model, since most APIs use identity delegation`);
         }
         
         email = req.headers[userAccountHeader] as string;
@@ -100,19 +100,19 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
     email = normalizeEmail(email);
 
     if (process.env.TRACE_LEVEL) {
-        console.log(`User authenticated: ${email}`);
+        console.log(`${req.method} ${req.originalUrl} User authenticated: ${email}`);
     }
     
     if (accessType === AuthType.Admin) {
         if (email !== local_sys_admin_email) {
-            console.error(`Unauthorized: Admin access is required`);
+            console.error(`${req.method} ${req.originalUrl} Unauthorized: Admin access is required`);
             if (throwIfNotAuthorized) {
                 throw new Error(`Unauthorized`);
             }
             res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             return undefined;
         }
-        console.log(`Admin access granted: ${email}`);
+        console.log(`${req.method} ${req.originalUrl} Admin access granted: ${email}`);
     }
 
     return email;
