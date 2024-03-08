@@ -579,7 +579,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
 
     if (!owner || !repo) {
         console.error(`Error: Invalid GitHub.com resource URI: ${uri}`);
-        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid URI: owner:${owner}, repo:${repo}`
+        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid URI: owner:${owner}, repo:${repo}`);
     }
 
     const downloadAndExtractRepo = async (url: string, authToken: string): Promise<FileContent[]> => {
