@@ -1538,6 +1538,8 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
 
+        const msToWaitBeforeSkippingProjectStatus = 100;
+
         // if there's no project status yet - let's try and build one
         if (!projectStatus) {
             // if we have a real project, and we have no status, then let's try and generate it now
@@ -1548,14 +1550,27 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
             // project uri starts at 'user_project/'
             const project_subpath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
             // this will be a blocking call (when GET is normally very fast), but only to ensure we have an initial status
-            projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, project_subpath, 'POST');
+            projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, project_subpath, 'POST',
+                undefined, msToWaitBeforeSkippingProjectStatus, false);
 
         // if we have already cached project status, but its marked Unknown - then try and refresh it
         } else if (projectStatus.status === ProjectStatus.Unknown) {
             // project uri starts at 'user_project/'
             const project_subpath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
             // this will be a blocking call (when GET is normally very fast), but only to ensure we have an initial status
-            projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, project_subpath, 'POST');
+            projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, project_subpath, 'POST',
+                undefined, msToWaitBeforeSkippingProjectStatus, false);
+        }
+
+        if (!projectStatus?.status) {
+            const unknownStatus : ProjectStatusState = {
+                status: ProjectStatus.Unknown,
+                lastUpdated : Math.floor(Date.now() / 1000)
+            };
+            return res
+                .status(HTTP_SUCCESS_ACCEPTED)
+                .contentType('application/json')
+                .send(unknownStatus);
         }
 
         if (process.env.TRACE_LEVEL) {
@@ -1605,6 +1620,12 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         try {
             dataReferences = await localSelfDispatch<ProjectDataReference[]>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data_references`, 'GET');
         } catch (error) {
+            if (axios.isAxiosError(error) && error.response && error.response.status === HTTP_FAILURE_UNAUTHORIZED) {
+                const errorMessage = error.response.data.body || error.response.data;
+                console.error(`${req.originalUrl} Unable to get data references for ${projectDataUri} - due to error: ${error.response.status}:${errorMessage}`);
+                return handleErrorResponse(error, req, res);
+            }
+
             // if we get an error, then we'll assume the project doesn't exist
             console.error(`${req.originalUrl}: Project Data References not found; Project may not exist or hasn't been discovered yet: ${error}`);
 
@@ -2189,6 +2210,21 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
             }
             return handleErrorResponse(error, req, res, `Unable to query Project Status`);
+        }
+
+        if (projectStatus.status === ProjectStatus.Unknown) {
+            // if we're in an unknown project state, then we'll just skip this run - try looking up status again next time
+            const groomingState : ProjectGroomState = {
+                status: GroomingStatus.Skipping,
+                statusDetails: 'Grooming check skipped while Project Status refreshing',
+                consecutiveErrors: 0,
+                lastDiscoveryStart: 0,
+                lastUpdated: Math.floor(Date.now() / 1000)
+            };
+            return res
+                .status(HTTP_SUCCESS)
+                .contentType('application/json')
+                .send(groomingState);
         }
 
         // if the project is actively updating/discovery, then groomer will be idle

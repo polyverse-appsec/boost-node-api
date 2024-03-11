@@ -112,8 +112,8 @@ export async function localSelfDispatch<T>(
         
         try {
             response = await fetch(selfEndpoint, fetchOptions);
-        } catch (error) {
-            console.error(`Request ${httpVerb} ${selfEndpoint} failed with error ${error}`);
+        } catch (error: any) {
+            console.error(`Request ${httpVerb} ${selfEndpoint} failed with error ${error.stack || error}`);
             throw error;
         }
 
@@ -125,8 +125,8 @@ export async function localSelfDispatch<T>(
                 let objectResponse;
                 try {
                     objectResponse = await response.json();
-                } catch (error) {
-                    console.error(`Request ${httpVerb} ${selfEndpoint} failed with error ${error}`);
+                } catch (error: any) {
+                    console.error(`Request ${httpVerb} ${selfEndpoint} failed with error ${error.stack || error}`);
                     return {} as T;
                 }
                 return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
