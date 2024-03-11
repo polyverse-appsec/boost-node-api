@@ -2027,6 +2027,35 @@ app.get(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Re
     }
 });
 
+app.delete(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Request, res: Response) => {
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const { org, project } = req.params;
+
+        if (!org || !project) {
+            if (!org) {
+                console.error(`${req.method} ${req.originalUrl} Org is required`);
+            } else if (!project) {
+                console.error(`${req.method} ${req.originalUrl} Project is required`);
+            }
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+        }
+
+        await deleteProjectData(email, SourceType.General, org, project, '', 'groom');
+
+        return res
+            .status(HTTP_SUCCESS)
+            .send();
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }    
+});
+
 const didLastDiscoverySucceedOrFail = (groomStatus: ProjectGroomState, projectStatus: ProjectStatusState) : boolean | undefined => {
     // if we didn't launch a discovery, then assume it would have succeeded
     if (!groomStatus.lastDiscoveryStart) {
@@ -2073,6 +2102,18 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
 
         const storeGroomingState = async (groomingState: ProjectGroomState) => {
             await storeProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom', JSON.stringify(groomingState));
+        }
+
+        // if the project doesn't exist, then we shouldn't be grooming it - so delete any groom data we created and return not found
+        const projectData = await loadProjectData(email, req.params.org, req.params.project) as UserProjectData;
+        if (!projectData) {
+            try {
+                await deleteProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom');
+                console.info(`${req.method} ${req.originalUrl} Deleted project groom data - since project not found`);
+            } catch (error) {
+                console.error(`${req.method} ${req.originalUrl} Unable to delete project groom data: ${error}`);
+            }
+            return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
 
         const currentGroomingStateRaw = await getProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom');
