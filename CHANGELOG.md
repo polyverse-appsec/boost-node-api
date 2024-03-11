@@ -13,7 +13,7 @@ Polyverse Boost ReST API (Backend)
 - Improved logging for Project Grooming and Discovery Grooming - to include more details on the grooming process
 
 ### Bug Fixes
-- N/A
+- Regenerate signed authentication headers for Grooming operations to avoid expiration issues
 
 ## Version 0.13.0: March 8th, 2024
 

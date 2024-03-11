@@ -2181,7 +2181,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         // we'll check the status of the project data
         let projectStatus : ProjectStatusState;
         try {
-            projectStatus = await localSelfDispatch<ProjectStatusState>(email, getSignedIdentityFromHeader(req)!, req, `${projectPath}/status`, 'GET');
+            projectStatus = await localSelfDispatch<ProjectStatusState>(email, "", req, `${projectPath}/status`, 'GET');
         } catch (error: any) {
             if ((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
                 (error.code === HTTP_FAILURE_NOT_FOUND.toString())) {
@@ -2308,7 +2308,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 }
 
                 const discoveryResult = await localSelfDispatch<ProjectDataReference[]>(
-                    email, originalIdentityHeader!, req,
+                    email, "", req,
                     `${projectPath}/discover`, 'POST',
                     projectStatus.status === ProjectStatus.OutOfDateProjectData?discoveryWithResetState:undefined,
                     timeRemainingToDiscoverInSeconds * 1000);
