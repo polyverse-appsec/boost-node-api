@@ -79,8 +79,8 @@ def main(email, org, project, method, stage, data):
         "gen_resource_process": f"{URL}/api/user_project/{org}/{project}/data/{data}/generator/process",
 
         "aifiles": f"{URL}/api/user/{org}/connectors/openai/files",
-        "aifiles_groom": f"{URL}/api/user/{org}/connectors/openai/files?groom&afterDate={data}",
-        "aifiles_groom_at": f"{URL}/api/user/{org}/connectors/openai/files?groom&startAtFile={data}",
+        "aifiles_purge": f"{URL}/api/user/{org}/connectors/openai/files?groom&afterDate={data}",
+        "aifiles_purge_at": f"{URL}/api/user/{org}/connectors/openai/files?groom&startAtFile={data}",
         "aifile_delete": f"{URL}/api/user/{org}/connectors/openai/files/{data}",
 
         "assistants": f"{URL}/api/user/{org}/connectors/openai/assistants",
@@ -89,7 +89,8 @@ def main(email, org, project, method, stage, data):
         "github_access": f"{URL}/api/user/{org}/connectors/github/access?uri={data}",
 
         "timer_interval": f"{URL}/api/timer/interval",
-        "list_pending_discoveries": f"{URL}/api/search/projects/groom?status=Pending",
+        "groom_discoveries_list": f"{URL}/api/search/projects/groom?status=Pending",
+        "groom_discoveries": f"{URL}/api/groom/projects",
     }
 
     if method not in endpoints:
@@ -133,9 +134,21 @@ def main(email, org, project, method, stage, data):
 
     url = endpoints[method]
     # if method starts with "create_" or is "discover", then it's a POST request
-    verb = "POST" if "create" in method or method.endswith("_gen") or method in [
-        "discover", "rediscover", "data_references_refresh", "status_refresh", "timer_interval"] else "DELETE" if (
-            "delete" in method or "groom" in method) else "GET"
+    verb = "POST" if (
+        "create" in method or  # noqa: W504
+        method.endswith("_gen") or  # noqa: W504
+        method in [
+            "discover",
+            "rediscover",
+            "data_references_refresh",
+            "status_refresh",
+            "timer_interval",
+            "groom_discoveries"
+        ]
+    ) else "DELETE" if (
+        "delete" in method or  # noqa: W504
+        "purge" in method
+    ) else "GET"
     data = data if method not in ["rediscover"] else json.dumps({"resetResources": True})
     data = data if method not in ["project_create"] else json.dumps({"resources": [{"uri": data}]})
     print(f"Requesting {verb} {url}")
@@ -221,8 +234,8 @@ if __name__ == "__main__":
                                  'resource_status',
 
                                  'aifiles',
-                                 'aifiles_groom',
-                                 'aifiles_groom_at',
+                                 'aifiles_purge',
+                                 'aifiles_purge_at',
                                  'aifile_delete',
 
                                  'assistants',
@@ -231,7 +244,8 @@ if __name__ == "__main__":
                                  'github_access',
 
                                  'timer_interval',
-                                 'list_pending_discoveries'
+                                 'groom_discoveries_list',
+                                 'groom_discoveries'
                                  ], help="The method to run")
     parser.add_argument("--stage", default="local", choices=['local', 'dev', 'test', 'prod'], help="The Service to target (default: local)")
     parser.add_argument("--data", default=None, help="Data to pass to the method")
@@ -243,8 +257,8 @@ if __name__ == "__main__":
         "org_account",
         "data_references",
         "aifiles",
-        "aifiles_groom",
-        "aifiles_groom_at",
+        "aifiles_purge",
+        "aifiles_purge_at",
         "aifile_delete",
         "assistants",
         "github_access",
@@ -253,7 +267,8 @@ if __name__ == "__main__":
         "search_generators_all",
         "search_generators",
         "timer_interval",
-        "list_pending_discoveries",
+        "groom_discoveries_list",
+        "groom_discoveries",
         "delete_assistants"
     ]):
         parser.error("The --project argument is required for the method"
@@ -263,7 +278,13 @@ if __name__ == "__main__":
         parser.error("The --email argument is required for the method"
                      f" {args.method}.")
     if args.org is None:
-        if args.method not in ["aifiles_groom", "aifiles_groom_at", "aifile_delete", "delete_assistants", "assistants"]:
+        if args.method not in [
+            "aifiles_purge",
+            "aifiles_purge_at",
+            "aifile_delete",
+            "delete_assistants",
+            "assistants"
+        ]:
             args.org = "polyverse-appsec"
         else:
             args.org = "localhost"  # default org to make connector calls, even though it will be ignored

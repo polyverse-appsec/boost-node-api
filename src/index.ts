@@ -1198,20 +1198,21 @@ const groom_projects = `groom/projects`;
 app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Response) => {
 
     try {
-        const email = await validateUser(req, res);
+        // need to elevate to admin since we search all projects for grooming action
+        const email = await validateUser(req, res, AuthType.Admin);
         if (!email) {
             return;
         }
 
         const originalIdentityHeader = getSignedIdentityFromHeader(req);
         if (!originalIdentityHeader) {
-            console.error(`Unauthorized: Signed Header missing`);
+            console.error(`${req.method} ${req.originalUrl} Unauthorized: Signed Header missing`);
             return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
         }
 
         // get all the projects
         const projects : UserProjectData[] =
-            await localSelfDispatch<UserProjectData[]>(email, originalIdentityHeader, req, `search/projects`, 'GET');
+            await localSelfDispatch<UserProjectData[]>(email, originalIdentityHeader, req, search_projects, 'GET');
 
             // we'll look for projects with resources, and then make sure they are up to date
         const projectsWithResources = projects.filter(project => project.resources.length > 0);
@@ -1222,39 +1223,48 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
             const projectDataPath = user_project_org_project.replace(":org", project.org).replace(":project", project.name);
 
             if (!project.owner) {
-                console.error(`Unable to groom; Project ${projectDataPath} has no owner`);
+                console.error(`${req.method} ${req.originalUrl} Unable to groom; Project ${projectDataPath} has no owner`);
                 continue;
             }
 
-            const thisProjectIdentityHeader = (await signedAuthHeader(project.owner!))[header_X_Signed_Identity];
-            // we'll fork/async the grooming process for each project (NOTE NO use of 'await' here)
-            try {
-                const groomingState : ProjectGroomState = await localSelfDispatch<ProjectGroomState>(
-                    project.owner!, thisProjectIdentityHeader, req, `${projectDataPath}/groom`, 'POST',
-                    undefined, 50, false);
-                if (groomingState?.status === undefined) {
-                    if (process.env.TRACE_LEVEL) {
-                        console.warn(`Timeout starting Project ${projectDataPath} grooming; unclear result`);
+            const asyncProcessThisProject = async (project: UserProjectData) => {
+                const thisProjectIdentityHeader = (await signedAuthHeader(project.owner!))[header_X_Signed_Identity];
+                const millisecondsToLaunchGrooming = 50;
+                // we'll fork/async the grooming process for each project (providing just a few ms to capture launch errors)
+                try {
+                    const groomingState : ProjectGroomState = await localSelfDispatch<ProjectGroomState>(
+                        project.owner!, thisProjectIdentityHeader, req, `${projectDataPath}/groom`, 'POST',
+                        undefined, millisecondsToLaunchGrooming, false);
+                    if (groomingState?.status === undefined) {
+                        if (process.env.TRACE_LEVEL) {
+                            console.warn(`${req.method} ${req.originalUrl} Timeout starting Project ${projectDataPath} grooming; unclear result`);
+                        }
+                    } else if (groomingState.status === GroomingStatus.Grooming) {
+                        projectsGroomed.push(project);
+                    } else {
+                        if (process.env.TRACE_LEVEL) {
+                            console.log(`${req.method} ${req.originalUrl} Project ${projectDataPath} is not grooming - status: ${groomingState.status}`);
+                        }
                     }
-                } else if (groomingState.status === GroomingStatus.Grooming) {
-                    projectsGroomed.push(project);
-                } else {
-                    if (process.env.TRACE_LEVEL) {
-                        console.log(`Project ${projectDataPath} is not grooming - status: ${groomingState.status}`);
+                } catch (error: any) {
+                    switch (error?.response?.status) {
+                    case HTTP_FAILURE_NOT_FOUND:
+                        if (process.env.TRACE_LEVEL) {
+                            console.log(`${req.method} ${req.originalUrl} Project ${projectDataPath} not found`);
+                        }
+                        break;
+                    default:
+                        if (axios.isAxiosError(error) && error.response) {
+                            const errorMessage = error.response.data.body || error.response.data;
+                            console.error(`${req.method} ${req.originalUrl} Unable to launch async grooming for ${projectDataPath} - due to error: ${error.response.status}:${errorMessage}`);
+                        } else {
+                            console.error(`${req.method} ${req.originalUrl} Unable to launch async grooming for ${projectDataPath}`, (error.stack || error));
+                        }
+                        break;
                     }
                 }
-            } catch (error: any) {
-                switch (error?.response?.status) {
-                case HTTP_FAILURE_NOT_FOUND:
-                    if (process.env.TRACE_LEVEL) {
-                        console.log(`Project ${projectDataPath} not found`);
-                    }
-                    break;
-                default:
-                    console.error(`Unable to launch async grooming for ${projectDataPath}`, error);
-                    break;
-                }
-            }
+            };
+            await asyncProcessThisProject(project);
         }
 
         return res
@@ -2134,7 +2144,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         } catch (error: any) {
             if ((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
                 (error.code === HTTP_FAILURE_NOT_FOUND.toString())) {
-                console.error(`Project Status not found; Project may not exist or hasn't been discovered yet`);
+                console.error(`${req.method} ${req.originalUrl} Project Status not found; Project may not exist or hasn't been discovered yet`);
                 return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
             }
             return handleErrorResponse(error, req, res, `Unable to query Project Status`);
@@ -2279,7 +2289,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 .contentType('application/json')
                 .send(launchedGroomingState);
         } catch (error) {
-            console.error(`Groomer unable to launch discovery for ${projectPath}`, error);
+            console.error(`${req.method} ${req.originalUrl} Groomer unable to launch discovery for ${projectPath}`, error);
 
             launchedGroomingState.status = GroomingStatus.Error;
             launchedGroomingState.statusDetails = `Error launching discovery: ${error}`;
@@ -2311,9 +2321,9 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req:
 
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
+                console.error(`${req.method} ${req.originalUrl} Org is required`);
             } else if (!project) {
-                console.error(`Project is required`);
+                console.error(`${req.method} ${req.originalUrl} Project is required`);
             }
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
@@ -2340,9 +2350,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
 
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
+                console.error(`${req.method} ${req.originalUrl} Org is required`);
             } else if (!project) {
-                console.error(`Project is required`);
+                console.error(`${req.method} ${req.originalUrl} Project is required`);
             }
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
@@ -2361,7 +2371,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
         }
 
         if (body === '') {
-            console.error(`${user_profile}: empty body`);
+            console.error(`${req.method} ${req.originalUrl} ${user_profile}: empty body`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
 
@@ -2370,7 +2380,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
         try {
             updatedGoals = JSON.parse(body);
         } catch (error) {
-            console.error('Error parsing JSON:', error);
+            console.error(`${req.method} ${req.originalUrl} Error parsing JSON: `, error);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
         }
 
@@ -4279,7 +4289,7 @@ app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res:
 
         try {
             // async launch of groom projects process
-            await localSelfDispatch<void>("", originalIdentity, req, `groom/projects`, "POST", undefined, 0, false);
+            await localSelfDispatch<void>("", originalIdentity, req, groom_projects, "POST", undefined, 0, false);
         } catch (error) {
             console.error(`Timer Triggered: Error starting async groom projects process:`, error);
         }
