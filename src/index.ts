@@ -1194,6 +1194,14 @@ app.get(`${api_root_endpoint}/${search_projects_generators_groom}`, async (req: 
     }
 });
 
+interface GroomProjectsState {
+    projectsToGroom: UserProjectData[]
+}
+
+// to make this more efficient - it could store the state (instead of pipelining the data in a call chain)
+//      in which case the groomer interval could be shorter, knowing it would only take a smaller slice
+// Currently, the grooming interval needs to be large enough to groom all projects once, but not shorter
+//      since it could cause overlapping grooming cycles (not destructive, but wasteful)
 const groom_projects = `groom/projects`;
 app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Response) => {
 
@@ -1210,42 +1218,93 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
             return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
         }
 
-        // get all the projects
-        const projects : UserProjectData[] =
-            await localSelfDispatch<UserProjectData[]>(email, originalIdentityHeader, req, search_projects, 'GET');
+        let body = req.body;
+        let projectsToGroom : UserProjectData[] = [];
+        if (body) {
+            if (typeof body !== 'string') {
+                // Check if body is a Buffer
+                if (Buffer.isBuffer(body)) {
+                    body = body.toString('utf8');
+                } else if (Array.isArray(body)) {
+                    body = Buffer.from(body).toString('utf8');
+                } else {
+                    body = JSON.stringify(body);
+                }
+            }
+            if (body !== '') {
+                try {
+                    const groomProjectsState : GroomProjectsState = JSON.parse(body);
+                    // if we encounter a JSON error here, we'll return a bad input error
+                    // for everything else, we'll throw the error
+                    
+                    projectsToGroom = groomProjectsState.projectsToGroom;
+                } catch (parseError: any) {
+                    if (parseError instanceof SyntaxError) {
+                        console.error(`${req.method} ${req.originalUrl} Invalid JSON: ${parseError.stack || parseError}`);
+                        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid JSON in body - ${parseError.stack || parseError}`);
+                    } else {
+                        throw parseError;
+                    }
+                }
+            }
+        }
 
-            // we'll look for projects with resources, and then make sure they are up to date
-        const projectsWithResources = projects.filter(project => project.resources.length > 0);
+        if (!projectsToGroom || projectsToGroom.length === 0) {
+            // get all the projects
+            const projects : UserProjectData[] =
+                await localSelfDispatch<UserProjectData[]>(email, originalIdentityHeader, req, search_projects, 'GET');
 
-        const projectsGroomed : UserProjectData[] = [];
+                // we'll look for projects with resources, and then make sure they are up to date
+            const projectsWithResources = projects.filter(project => project.resources.length > 0);
+
+            projectsToGroom = projectsWithResources;
+        }
+
+        function shuffleArray(array: any) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+            }
+        }
+        shuffleArray(projectsToGroom);
+
+        // Take the first 25 projects after shuffling, or fewer if there aren't 25 projects
+        const selectedProjects = projectsToGroom.slice(0, Math.min(25, projectsToGroom.length));
+
+        const millisecondsToLaunchGrooming = 200;
+
         // for each project, we'll check the status of the resources
-        for (const project of projectsWithResources) {
+        // Transform each project into a promise of grooming state or error
+        const groomingPromises = selectedProjects.map(project => {
             const projectDataPath = user_project_org_project.replace(":org", project.org).replace(":project", project.name);
 
             if (!project.owner) {
                 console.error(`${req.method} ${req.originalUrl} Unable to groom; Project ${projectDataPath} has no owner`);
-                continue;
+                return Promise.resolve(null); // Resolve to null to easily filter out later
             }
 
-            const asyncProcessThisProject = async (project: UserProjectData) => {
+            return (async () => {
                 const thisProjectIdentityHeader = (await signedAuthHeader(project.owner!))[header_X_Signed_Identity];
-                const millisecondsToLaunchGrooming = 50;
-                // we'll fork/async the grooming process for each project (providing just a few ms to capture launch errors)
                 try {
-                    const groomingState : ProjectGroomState = await localSelfDispatch<ProjectGroomState>(
+                    const groomingState: ProjectGroomState = await localSelfDispatch<ProjectGroomState>(
                         project.owner!, thisProjectIdentityHeader, req, `${projectDataPath}/groom`, 'POST',
                         undefined, millisecondsToLaunchGrooming, false);
+
                     if (groomingState?.status === undefined) {
                         if (process.env.TRACE_LEVEL) {
                             console.warn(`${req.method} ${req.originalUrl} Timeout starting Project ${projectDataPath} grooming; unclear result`);
                         }
+                        return { project, groomingState: undefined };
                     } else if (groomingState.status === GroomingStatus.Grooming) {
-                        projectsGroomed.push(project);
+                        // grooming in progress
                     } else {
                         if (process.env.TRACE_LEVEL) {
                             console.log(`${req.method} ${req.originalUrl} Project ${projectDataPath} is not grooming - status: ${groomingState.status}`);
                         }
                     }
+
+                    return { project, groomingState };
+
                 } catch (error: any) {
                     switch (error?.response?.status) {
                     case HTTP_FAILURE_NOT_FOUND:
@@ -1262,9 +1321,55 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
                         }
                         break;
                     }
+
+                    return null; // Return null to filter out failed or skipped projects
                 }
+            })();
+        });
+
+        // Wait for all grooming operations to complete
+        const results = await Promise.all(groomingPromises);
+        
+        const projectsGroomed : UserProjectData[] = []; // projects we successfully started grooming
+        const projectsForRetry : UserProjectData[] = []; // projects we errored trying to groom
+
+        // Filter and extract successfully groomed projects
+        results.forEach(result => {
+            if (!result) {
+                return;
+            }
+            if (result.groomingState) {
+                projectsGroomed.push(result.project);
+            } else {
+                projectsGroomed.push(result.project);
+            }
+        });
+
+        // get the remainder of the projects to groom - minus the first 25 sliced off
+
+        const nextBatch = projectsForRetry.concat(projectsToGroom.slice(25));
+
+        console.info(`${req.method} ${req.originalUrl} Groomed ${projectsGroomed.length} projects; ${nextBatch.length} projects remaining`);
+
+        if (nextBatch.length > 0) {
+            const groomProjectsState : GroomProjectsState = {
+                projectsToGroom: nextBatch
             };
-            await asyncProcessThisProject(project);
+            try {
+                const result = await localSelfDispatch<UserProjectData[]>(email, "", req, groom_projects, 'POST', groomProjectsState, millisecondsToLaunchGrooming, false);
+                if (result?.length === undefined) {
+                    if (process.env.TRACE_LEVEL) {
+                        console.warn(`${req.method} ${req.originalUrl} Timeout starting next batch of grooming; unclear result`);
+                    }
+                }
+            } catch (error: any) {
+                if (axios.isAxiosError(error) && error.response) {
+                    const errorMessage = error.response.data.body || error.response.data;
+                    console.error(`${req.method} ${req.originalUrl} Unable to launch next batch of grooming - due to error: ${error.response.status}:${errorMessage}`);
+                } else {
+                    console.error(`${req.method} ${req.originalUrl} Unable to launch next batch of grooming`, (error.stack || error));
+                }
+            }
         }
 
         return res
@@ -2129,7 +2234,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         const projectData = await loadProjectData(email, req.params.org, req.params.project) as UserProjectData;
         if (!projectData) {
             try {
-                await deleteProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom');
+                await localSelfDispatch(email, getSignedIdentityFromHeader(req)!, req, `${projectPath}/groom`, 'DELETE');
                 console.info(`${req.method} ${req.originalUrl} Deleted project groom data - since project not found`);
             } catch (error) {
                 console.error(`${req.method} ${req.originalUrl} Unable to delete project groom data: ${error}`);

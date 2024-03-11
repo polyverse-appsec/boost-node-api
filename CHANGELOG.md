@@ -12,6 +12,7 @@ Polyverse Boost ReST API (Backend)
 ### Enhancements
 - Improved logging for Project Grooming and Discovery Grooming - to include more details on the grooming process
 - Speed up Project Status refresh when stale by starting refresh and returning 202 / Unknown status
+- Change Discovery Groomer to choose 25 projects to groom every interval (e.g. 5 minutes) - to avoid grooming all projects at once and overloading processing
 
 ### Bug Fixes
 - Regenerate signed authentication headers for Grooming operations to avoid expiration issues
