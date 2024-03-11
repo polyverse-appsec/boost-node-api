@@ -42,6 +42,14 @@ def make_request(method, url, email, data):
 
 
 def main(email, org, project, method, stage, data):
+
+    if method in ["create_auth_token"]:
+        expires = True if data is True else False
+        auth_token = get_signed_headers(email, expires, True)
+        print(f"Auth Token:\n{json.dumps(auth_token, indent=4)}")
+
+        exit(0)
+
     URL = stage_url[stage]
     endpoints = {
         "test": f"{URL}/test",
@@ -208,6 +216,8 @@ if __name__ == "__main__":
                         choices=['status',
                                  'status_refresh',
 
+                                 'create_auth_token',
+
                                  'account',
                                  'org_account',
 
@@ -254,6 +264,7 @@ if __name__ == "__main__":
 
     if (args.project is None and args.method not in [
         "account",
+        "create_auth_token",
         "org_account",
         "data_references",
         "aifiles",
