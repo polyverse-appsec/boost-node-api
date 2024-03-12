@@ -196,7 +196,7 @@ def main(email, org, project, method, stage, data):
                 print_json(responseObj)
 
         if response.headers.get('content-type').startswith('application/json'):
-            responseObj = response.json() if 'body' not in response.json() else json.loads(response.json()['body'])
+            responseObj = response.json() if 'body' not in response.json() else json.loads(response.json()['body']) if response.json()['body'][0] in ['{', '['] else response.json()['body']
 
             print_response(responseObj)
         else:

@@ -2689,7 +2689,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async 
 
         return res
             .status(HTTP_SUCCESS)
-            .contentType('application/json')
+            .contentType('text/plain')
             .send(resourceData);
     } catch (error) {
         return handleErrorResponse(error, req, res);

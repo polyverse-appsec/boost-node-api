@@ -119,16 +119,22 @@
             "justMyCode": true
         },
         {
-            "name": "Count OpenAI Files",
+            "name": "Debug Sara CLI (Custom Parameters)",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/scripts/sara_rest_cli.py",
             "cwd": "${workspaceFolder}",
             "args": [
                 "--email",
-                "stephen@polyverse.com",
+                "airbear109@gmail.com",
+                "--project",
+                "saraTEST",
+                "--stage",
+                "local",
                 "--method",
-                "aifiles",
+                "resource",
+                "--data",
+                "projectsource"
             ],
             "console": "integratedTerminal",
             "justMyCode": true
