@@ -1,7 +1,7 @@
 import { Generator, GeneratorProcessingError } from './generator';
 import { ProjectDataType } from '../types/ProjectData';
 import { UserProjectData } from '../types/UserProjectData';
-import { Stages } from '../types/GeneratorState';
+import { GeneratorState, Stages } from '../types/GeneratorState';
 import { FileContent } from '../github';
 import { AIResponse } from '../boost-python-api/AIResponse';
 import { Services } from '../boost-python-api/endpoints';
@@ -93,6 +93,9 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                 filteredFileContents.push(fileContent);
             }
 
+            await this.updateProgress(`Collected Filtered File Contents for ${filteredFileContents.length} files`,
+                {possibleStagesRemaining: filteredFileContents.length } as GeneratorState);
+
             for (const fileContent of filteredFileContents) {
                 this.data += this.fileArchitecturalSpecificationEntry
                     .replace('{relativeFileName}', fileContent.path)
@@ -170,7 +173,8 @@ export class ArchitecturalSpecificationGenerator extends Generator {
             }
 
             try {
-                await this.updateProgress('Building AI Specification for ' + fileContent.path);
+                await this.updateProgress('Building AI Specification for ' + fileContent.path,
+                    { possibleStagesRemaining: filteredFileContents.length } as GeneratorState);
 
                 const architecturalSpec : string = skipEmptyFile? EmptySourceFile :
                     await this.createArchitecturalSpecification(fileContent.path, fileContent.source);

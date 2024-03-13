@@ -238,11 +238,15 @@ export class Generator {
         console.debug(`${this.projectData.org}:${this.projectData.name}:${this.dataType}:${this.currentStage}: Saved data of size ${this.data.length}`);
     }
 
-    async updateProgress(statusUpdate: string) : Promise<void> {
+    async updateProgress(statusUpdate: string, extraGeneratorUpdates: GeneratorState | undefined = undefined) : Promise<void> {
         const state: GeneratorState = {
             lastUpdated: Math.floor(Date.now() / 1000),
             status: TaskStatus.Processing,
             statusDetails: statusUpdate
+        }
+        // enable projection of how many stages may remain
+        if (extraGeneratorUpdates?.possibleStagesRemaining != undefined) {
+            state.possibleStagesRemaining = extraGeneratorUpdates.possibleStagesRemaining;
         }
 
         if (!this.currentStage) {

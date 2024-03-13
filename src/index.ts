@@ -1461,6 +1461,7 @@ interface ProjectStatusState {
     lastSynchronized?: number;
     activelyUpdating?: boolean;
     resourcesState?: any[];
+    possibleStagesRemaining?: number;
     details?: string;
     lastUpdated: number;
 }
@@ -1783,6 +1784,15 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 resourcesState.set(resource, TaskStatus.Error);
 
                 continue;
+            }
+
+            // set the possible stages remaining based on the most stages remaining of the generators
+            if (generatorStatus.possibleStagesRemaining && generatorStatus.possibleStagesRemaining > 0) {
+                if (projectStatus.possibleStagesRemaining === undefined) {
+                    projectStatus.possibleStagesRemaining = generatorStatus.possibleStagesRemaining;
+                } else if (projectStatus.possibleStagesRemaining > generatorStatus.possibleStagesRemaining) {
+                    projectStatus.possibleStagesRemaining = generatorStatus.possibleStagesRemaining;
+                }
             }
 
             resourcesState.set(resource, generatorStatus.status);
@@ -2985,6 +2995,9 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         if (input.lastUpdated) {
             currentGeneratorState.lastUpdated = input.lastUpdated;
         }
+        if (input.possibleStagesRemaining) {
+            currentGeneratorState.possibleStagesRemaining = input.possibleStagesRemaining;
+        }
         if (input.statusDetails) {
             currentGeneratorState.statusDetails = input.statusDetails;
         } else if ((currentGeneratorState as any).status_details) {
@@ -3121,6 +3134,11 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             if (!generatorState.lastUpdated) {
                 generatorState.lastUpdated = Date.now() / 1000;
             }
+
+            if (generatorState.status === TaskStatus.Idle && generatorState.stage === Stages.Complete) {
+                generatorState.possibleStagesRemaining = 0;
+            }
+
             // need to delete the current state property 'last_updated' if it exists
             // it's a legacy property on the object, so it isn't in the GeneratorState definition
             delete (currentGeneratorState as any).last_updated;

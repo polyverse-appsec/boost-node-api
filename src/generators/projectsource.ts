@@ -1,6 +1,6 @@
 import { ProjectDataType } from '../types/ProjectData';
 import { UserProjectData } from '../types/UserProjectData';
-import { Stages } from '../types/GeneratorState';
+import { Stages, GeneratorState } from '../types/GeneratorState';
 import { FileContent } from '../github';
 import { Generator } from './generator';
 const ignore = require('ignore');
@@ -44,7 +44,8 @@ readonly fileSourceEntry =
             {
                 const filteredFilepathList : string[] = await this.getFilteredFileList();
 
-                await this.updateProgress('Importing File Paths');
+                await this.updateProgress(`Importing File Paths for ${filteredFilepathList.length} files`,
+                    { possibleStagesRemaining: filteredFilepathList.length } as GeneratorState);
 
                 // build the combined file entries from all the file paths
                 for (const filepath of filteredFilepathList) {
