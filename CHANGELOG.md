@@ -13,6 +13,9 @@ Polyverse Boost ReST API (Backend)
 
 ### Bug Fixes
 - Fix content-type for /api/user_project/{org}/{project}/data/{resource} (GET) - was returning application/json instead of text/plain (raw data)
+- Fix failure to write state on generator in error path
+- Fix stale or earlier versions of a resource being returned
+    - /api/user_project/{org}/{project}/data/{resource} (GET)
 
 ## Version 0.13.1: March 11th, 2024
 

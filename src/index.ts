@@ -12,7 +12,9 @@ import {
     SourceType,
     convertToSourceType,
     deleteProjectData,
-    searchWildcard
+    searchWildcard,
+    getCachedProjectData,
+    splitAndStoreData,
 } from './storage';
 import { validateUser, signedAuthHeader, getSignedIdentityFromHeader, local_sys_admin_email, header_X_Signed_Identity } from './auth';
 import {
@@ -96,36 +98,6 @@ if (process.env.IS_OFFLINE) {
 //    process.env.ONE_AI_SPEC = 'true';
 }
 
-async function splitAndStoreData(
-    email: string,
-    sourceType: SourceType,
-    ownerName: string,
-    repoName: string,
-    resourcePath: string,
-    analysisType: string,
-    body: any
-    ): Promise<void> {
-
-    const MAX_SIZE = 300 * 1024; // 300 KB
-    const dataString = JSON.stringify(body);
-    const dataSize = Buffer.byteLength(dataString, 'utf-8');
-
-    if (dataSize <= MAX_SIZE) {
-        // If data is smaller than MAX_SIZE, store it directly
-        await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, analysisType, body);
-    } else {
-        // If data is larger, split and store in parts
-        let partNumber = 0;
-        for (let offset = 0; offset < dataString.length; offset += MAX_SIZE) {
-            partNumber++;
-            const endOffset = offset + MAX_SIZE < dataString.length ? offset + MAX_SIZE : dataString.length;
-            const partData = dataString.substring(offset, endOffset);
-
-            // Call the store function for the part
-            await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, `${analysisType}:part-${partNumber}`, partData);
-        }
-    }
-}
 
 export async function saveProjectDataResource(
     email: string,
@@ -204,11 +176,16 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
 
         const resourceStatus : ResourceStatusState = {
             lastUpdated: Math.floor(Date.now() / 1000)
-        }
+        }            
 
         await storeProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status", JSON.stringify(resourceStatus));
 
-        return res.status(HTTP_SUCCESS).send();
+        console.debug(`${email} ${req.method} ${req.originalUrl} Saved Resource ${resource}:${body.length} bytes`);
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType('application/json')
+            .send(resourceStatus);
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }
@@ -243,34 +220,6 @@ async function loadProjectData(email: string, org: string, project: string): Pro
     }
 
     return projectData;
-}
-
-async function getCachedProjectData(email: string, sourceType: SourceType, ownerName: string, repoName: string, resourcePath: string, projectDataType: string): Promise<string | undefined> {
-    let partNumber = 1;
-    let projectData = await getProjectData(email, sourceType, ownerName, repoName, resourcePath, projectDataType);
-    
-    if (projectData) {
-        return projectData;
-    }
-
-    if (await doesPartExist(email, ownerName, repoName, resourcePath, projectDataType, 1)) {
-        let allData = '';
-        while (true) {
-            const partData = await getProjectData(email, sourceType, ownerName, repoName, resourcePath, `${projectDataType}:part-${partNumber}`);
-            if (!partData) break;
-            allData += partData;
-            partNumber++;
-        }
-        projectData = allData;
-    }
-
-    return projectData;
-}
-
-// Helper function to check if a specific part exists
-async function doesPartExist(email: string, ownerName: string, repoName: string, resourcePath: string, projectDataType: string, partNumber: number): Promise<boolean> {
-    const partData = await getProjectData(email, SourceType.GitHub, ownerName, repoName, resourcePath, `${projectDataType}:part-${partNumber}`);
-    return partData !== undefined;
 }
 
 function checkPrivateAccessAllowed(accountStatus: UserAccountState): boolean {
@@ -3389,7 +3338,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         currentGeneratorState.status = TaskStatus.Error;
                         currentGeneratorState.statusDetails = `Error starting next stage to process: ${errorMessage}`;
 
-                        updateGeneratorState(currentGeneratorState);
+                        await updateGeneratorState(currentGeneratorState);
 
                         // we errored out, so we'll return an error HTTP status code for operation failed, may need to retry
                         return handleErrorResponse(error, req, res, `Error starting next stage to process`);

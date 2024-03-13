@@ -207,6 +207,72 @@ export async function storeProjectData(email: string | null, sourceType: SourceT
     throw new Error('Maximum retries exceeded');
 }
 
+export async function splitAndStoreData(
+    email: string,
+    sourceType: SourceType,
+    ownerName: string,
+    repoName: string,
+    resourcePath: string,
+    analysisType: string,
+    body: any
+    ): Promise<void> {
+
+    const MAX_SIZE = 300 * 1024; // 300 KB
+    const dataString = JSON.stringify(body);
+    const dataSize = Buffer.byteLength(dataString, 'utf-8');
+
+    if (dataSize <= MAX_SIZE) {
+        // If data is smaller than MAX_SIZE, store it directly
+        await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, analysisType, body);
+    } else {
+        // If data is larger, split and store in parts
+        let partNumber = 0;
+        for (let offset = 0; offset < dataString.length; offset += MAX_SIZE) {
+            partNumber++;
+            const endOffset = offset + MAX_SIZE < dataString.length ? offset + MAX_SIZE : dataString.length;
+            const partData = dataString.substring(offset, endOffset);
+
+            // Call the store function for the part
+            await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, `${analysisType}:part-${partNumber}`, partData);
+        }
+        // add the null terminator (part) to ensure future writes don't reuse the multi-part base
+        await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, `${analysisType}:part-${partNumber + 1}`, '');
+    }
+}
+
+export async function getCachedProjectData(email: string, sourceType: SourceType, ownerName: string, repoName: string, resourcePath: string, projectDataType: string): Promise<string | undefined> {
+    let partNumber = 1;
+
+    if (await doesPartExist(email, ownerName, repoName, resourcePath, projectDataType, 1)) {
+        let allData = '';
+        while (true) {
+            const partData = await getProjectData(email, sourceType, ownerName, repoName, resourcePath, `${projectDataType}:part-${partNumber}`);
+            // if we have no more parts, break
+            if (!partData) break;
+
+            // if we have an empty (e.g. "null-termination" part), break
+            if (partData === '') break;
+
+            allData += partData;
+            partNumber++;
+        }
+        if (process.env.TRACE_LEVEL) {
+            console.debug(`${email}:${ownerName}:${repoName}:${resourcePath}:${projectDataType}:getCachedProjectData: has ${partNumber} parts - ${allData.length} bytes`);
+        }
+        return allData;
+    }
+
+    const projectData = await getProjectData(email, sourceType, ownerName, repoName, resourcePath, projectDataType);
+
+    return projectData;
+}
+
+// Helper function to check if a specific part exists
+async function doesPartExist(email: string, ownerName: string, repoName: string, resourcePath: string, projectDataType: string, partNumber: number): Promise<boolean> {
+    const partData = await getProjectData(email, SourceType.GitHub, ownerName, repoName, resourcePath, `${projectDataType}:part-${partNumber}`);
+    return partData !== undefined;
+}
+
 export async function deleteProjectData(email: string | null, sourceType: SourceType, owner: string, project: string, resourcePath: string, analysisType: string): Promise<void> {
     const projectPath = `${email ? email : "public"}/${sourceType}/${owner}/${project}`;
     const dataPath = `${resourcePath}/${analysisType}`;
