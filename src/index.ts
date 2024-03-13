@@ -3134,7 +3134,15 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             if (generatorState.status === TaskStatus.Processing) {
                 // if we're still processing, then we'll skip a full project refresh and resource upload
                 //  and wait for a terminal state - complete/idle or error
-                return;
+
+                // unless we have processed a significant batch of updates (stages) - meaning the stages processed is a multiple of the batch size
+                const refreshAIFileOnBatchSizeProcessed = 25;
+                if (generatorState.processedStages && generatorState.processedStages >= refreshAIFileOnBatchSizeProcessed &&
+                    generatorState.processedStages % refreshAIFileOnBatchSizeProcessed === 0) {
+                    console.info(`${req.originalUrl}: Refreshing AI File on Batch Size (${refreshAIFileOnBatchSizeProcessed}) Processed: ${generatorState.processedStages} already processed`);
+                } else {
+                    return;
+                }
             } else if (generatorState.status === TaskStatus.Idle && generatorState.stage !== Stages.Complete) {
                 // if we're idle, but not complete, then we'll skip a full project refresh and resource upload
                 return;
@@ -3145,6 +3153,8 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 console.debug(`${req.originalUrl}: Completed all stages`);
             } else if (generatorState.status === TaskStatus.Error) {
                 console.debug(`${req.originalUrl}: Generator errored out: ${generatorState.statusDetails}`);
+            } else if (generatorState.status === TaskStatus.Processing) {
+                console.debug(`${req.originalUrl}: Incremental File Refresh mid-processing: ${generatorState.statusDetails}`);
             }
 
             const projectStatusRefreshDelayInMs = 250;

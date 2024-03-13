@@ -10,6 +10,8 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Treat empty source files as a valid state for AI Spec Generator (e.g. no source code to analyze) - instead of reporting an error in generating the AI Spec
+- Refresh the AI files during Resource Generation every 25 incremental updates (i.e. batch of AI spec updates) - to more frequently update the AI files
+    - This is to avoid spending many minutes or even hours processing AI file updates that don't get uploaded to OpenAI
 
 ### Bug Fixes
 - Fix content-type for /api/user_project/{org}/{project}/data/{resource} (GET) - was returning application/json instead of text/plain (raw data)
