@@ -71,7 +71,7 @@ readonly fileSourceEntry =
                 const boostIgnoreFileSpecs = await this.getBoostIgnoreFileSpecs();
                 const boostIgnore = ignore().add(boostIgnoreFileSpecs);
 
-                await this.updateProgress('Filtering File Paths for .boostignore');
+                await this.updateProgress('Filtering Project Source Content based on .boostignore');
 
                 let totalSizeImported = 0;
                 let totalSizeSaved = 0;
