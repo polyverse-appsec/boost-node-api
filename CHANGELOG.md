@@ -17,6 +17,7 @@ Polyverse Boost ReST API (Backend)
 - Fix stale or earlier versions of a resource being returned
     - /api/user_project/{org}/{project}/data/{resource} (GET)
 - Fix issue with AI spec not being correctly saved after reaching 64k limit
+- Fix issue with AI spec generation being stuck in a loop due to stale project scratch data <300k being reloaded instead of new project data
 
 ## Version 0.13.1: March 11th, 2024
 

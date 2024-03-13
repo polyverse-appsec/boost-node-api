@@ -129,6 +129,11 @@ export class ArchitecturalSpecificationGenerator extends Generator {
             }
 
             // remove the first file from the file source list - to process
+            if (!Array.isArray(filteredFileContents)) {
+                throw new GeneratorProcessingError(
+                    `Filtered file contents is not an array`,
+                    ArchitecturalSpecificationStage.FileFiltering);
+            }
             const fileContent : FileContent | undefined = filteredFileContents.shift();
             if (!fileContent) {
                 nextStage = Stages.Complete;

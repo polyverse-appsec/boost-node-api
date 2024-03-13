@@ -239,19 +239,34 @@ export async function splitAndStoreData(
     if (dataSize <= MAX_SIZE) {
         // If data is smaller than MAX_SIZE, store it directly
         await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, analysisType, dataString, false);
-    } else {
-        // If data is larger, split and store in parts
-        let partNumber = 0;
-        for (let offset = 0; offset < dataString.length; offset += MAX_SIZE) {
-            partNumber++;
-            const endOffset = offset + MAX_SIZE < dataString.length ? offset + MAX_SIZE : dataString.length;
-            const partData = dataString.substring(offset, endOffset);
 
-            // Call the store function for the part
-            await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, `${analysisType}:part-${partNumber}`, partData, false);
+        // delete the first part if it exists - so ensure we don't have a stale multi-part piece that overrides the new data
+        const canaryPartNumber = 1;
+        await deleteProjectData(email, sourceType, ownerName, repoName, resourcePath, `${analysisType}:part-${canaryPartNumber}`);
+
+    } else {
+        try {
+            // If data is larger, split and store in parts
+            let partNumber = 0;
+            for (let offset = 0; offset < dataString.length; offset += MAX_SIZE) {
+                partNumber++;
+                const endOffset = offset + MAX_SIZE < dataString.length ? offset + MAX_SIZE : dataString.length;
+                const partData = dataString.substring(offset, endOffset);
+
+                // Call the store function for the part
+                await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, `${analysisType}:part-${partNumber}`, partData, false);
+            }
+            // add the null terminator (part) to ensure future writes don't reuse the multi-part base
+            await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, `${analysisType}:part-${partNumber + 1}`, '', false);
+        } finally {
+            // ensure we delete the non-multi-part data (stale) if it exists - so ensure we don't have a stale single part that overrides the new data
+            try {
+                await deleteProjectData(email, sourceType, ownerName, repoName, resourcePath, analysisType);
+            // we don't care if this fails, since the multi-part will be read by default anyway - but for debugging, its better to try and delete it, and log a warning if it fails
+            } catch (error: any) {
+                console.warn(`StorageWarning:${email}:${ownerName}:${repoName}:${resourcePath}:${analysisType}:Unable to cleanup single-part data: ${error.stack || error}}`);
+            }
         }
-        // add the null terminator (part) to ensure future writes don't reuse the multi-part base
-        await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, `${analysisType}:part-${partNumber + 1}`, '', false);
     }
 }
 
