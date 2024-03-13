@@ -237,9 +237,7 @@ export class Generator {
             throw new Error(`Unable to Save Generated Resource (size:${this.data.length} bytes): ${response.status} - ${errorText}`);
         }
 
-        if (process.env.TRACE_LEVEL) {
-            console.log(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Saved data of size ${this.data.length}`);
-        }
+        console.debug(`${this.projectData.org}:${this.projectData.name}:${this.dataType}:${this.currentStage}: Saved data of size ${this.data.length}`);
     }
 
     async updateProgress(statusUpdate: string) : Promise<void> {
