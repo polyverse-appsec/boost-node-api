@@ -16,6 +16,7 @@ Polyverse Boost ReST API (Backend)
 - Fix failure to write state on generator in error path
 - Fix stale or earlier versions of a resource being returned
     - /api/user_project/{org}/{project}/data/{resource} (GET)
+- Fix issue with AI spec not being correctly saved after reaching 64k limit
 
 ## Version 0.13.1: March 11th, 2024
 

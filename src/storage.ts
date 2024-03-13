@@ -29,7 +29,11 @@ export function convertToSourceType(source: string): SourceType {
     return Object.values(SourceType).find(type => type === source) || SourceType.General;
 }
 
-export async function getProjectData(email: string | null, sourceType: SourceType, owner: string, project: string, resourcePath: string, analysisType: string): Promise<any | undefined> {
+export async function getProjectData(
+    email: string | null, sourceType: SourceType,
+    owner: string, project: string,
+    resourcePath: string,
+    analysisType: string): Promise<any | undefined> {
     const projectPath = `${email ? email : "public"}/${sourceType}/${owner}/${project}`;
     const dataPath = `${resourcePath}/${analysisType}`;
 
@@ -168,11 +172,22 @@ function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export async function storeProjectData(email: string | null, sourceType: SourceType, owner: string, project: string, resourcePath: string, analysisType: string, data: any): Promise<void> {
+export async function storeProjectData(
+    email: string | null, sourceType: SourceType,
+    owner: string, project: string,
+    resourcePath: string,
+    analysisType: string,
+    data: any,
+    serializeData: boolean = true) : Promise<void> {
     const projectPath = `${email ? email : "public"}/${sourceType}/${owner}/${project}`;
     const dataPath = `${resourcePath}/${analysisType}`;
 
-    const dataSize = Buffer.byteLength(JSON.stringify(data), 'utf8');
+    const serializedProjectData = serializeData?JSON.stringify(data):data;
+
+    if (Array.isArray(serializedProjectData)) {
+        throw new Error('Array data not supported');
+    }
+    const dataSize = Buffer.byteLength(serializedProjectData, 'utf8');
     if (process.env.TRACE_LEVEL) {
         console.log(`storeProjectData for (${dataSize} bytes): ${projectPath}${dataPath}`);
     }
@@ -182,7 +197,7 @@ export async function storeProjectData(email: string | null, sourceType: SourceT
         Item: {
             projectPath,
             dataPath,
-            data
+            data: serializedProjectData
         }
     };
 
@@ -223,7 +238,7 @@ export async function splitAndStoreData(
 
     if (dataSize <= MAX_SIZE) {
         // If data is smaller than MAX_SIZE, store it directly
-        await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, analysisType, body);
+        await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, analysisType, dataString, false);
     } else {
         // If data is larger, split and store in parts
         let partNumber = 0;
@@ -233,16 +248,21 @@ export async function splitAndStoreData(
             const partData = dataString.substring(offset, endOffset);
 
             // Call the store function for the part
-            await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, `${analysisType}:part-${partNumber}`, partData);
+            await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, `${analysisType}:part-${partNumber}`, partData, false);
         }
         // add the null terminator (part) to ensure future writes don't reuse the multi-part base
-        await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, `${analysisType}:part-${partNumber + 1}`, '');
+        await storeProjectData(email, sourceType, ownerName, repoName, resourcePath, `${analysisType}:part-${partNumber + 1}`, '', false);
     }
 }
 
-export async function getCachedProjectData(email: string, sourceType: SourceType, ownerName: string, repoName: string, resourcePath: string, projectDataType: string): Promise<string | undefined> {
+export async function getCachedProjectData<T>(
+    email: string, sourceType: SourceType,
+    ownerName: string, repoName: string,
+    resourcePath: string, projectDataType: string,
+    deserialize: boolean = true): Promise<T | undefined> {
     let partNumber = 1;
 
+    let projectData = undefined;
     if (await doesPartExist(email, ownerName, repoName, resourcePath, projectDataType, 1)) {
         let allData = '';
         while (true) {
@@ -259,12 +279,19 @@ export async function getCachedProjectData(email: string, sourceType: SourceType
         if (process.env.TRACE_LEVEL) {
             console.debug(`${email}:${ownerName}:${repoName}:${resourcePath}:${projectDataType}:getCachedProjectData: has ${partNumber} parts - ${allData.length} bytes`);
         }
-        return allData;
+        projectData = allData;
     }
 
-    const projectData = await getProjectData(email, sourceType, ownerName, repoName, resourcePath, projectDataType);
+    // if we didn't reassemble multi-part data, then look for single part data
+    if (!projectData) {
+        projectData = await getProjectData(email, sourceType, ownerName, repoName, resourcePath, projectDataType);
+    }
+    if (!deserialize) {
+        return projectData as unknown as T;
+    }
+    const deserializedData = projectData ? JSON.parse(projectData) as T : undefined;
 
-    return projectData;
+    return deserializedData;
 }
 
 // Helper function to check if a specific part exists

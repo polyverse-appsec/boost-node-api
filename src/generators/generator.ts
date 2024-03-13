@@ -171,13 +171,11 @@ export class Generator {
             throw new Error('Stage not defined');
         }
 
-        const serializedData = JSON.stringify(data);
-
         // write the scratch data for the current stage
         await saveProjectDataResource(
             this.email, ownerName, repoName, this.dataType,
             `${this.dataType}/generators/scratch/${stage}`,
-            serializedData);
+            data);
     }
 
     async loadScratchData<T>(stage?: string) : Promise<T | undefined> {
@@ -206,7 +204,7 @@ export class Generator {
             return undefined;
         }
 
-        return JSON.parse(data) as T;
+        return data as T;
     }
 
     async save() : Promise<void> {

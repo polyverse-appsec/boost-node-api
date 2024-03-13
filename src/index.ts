@@ -116,7 +116,7 @@ export async function loadProjectDataResource(
     repoName: string,
     resource: string,
     path: string): Promise<string | undefined> {
-    return await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, path, resource);
+    return await getCachedProjectData<string>(email, SourceType.GitHub, ownerName, repoName, path, resource);
 }
 
 const postOrPutUserProjectDataResource = async (req: Request, res: Response) => {
@@ -139,7 +139,7 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
-        const projectData = await loadProjectData(email, org, project) as UserProjectData;
+        const projectData = await loadProjectData(email, org, project);
         if (!projectData) {
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
@@ -178,7 +178,7 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
             lastUpdated: Math.floor(Date.now() / 1000)
         }            
 
-        await storeProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status", JSON.stringify(resourceStatus));
+        await storeProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status", resourceStatus);
 
         console.debug(`${email} ${req.method} ${req.originalUrl} Saved Resource ${resource}:${body.length} bytes`);
 
@@ -192,15 +192,15 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
 };
 
 async function loadProjectData(email: string, org: string, project: string): Promise<UserProjectData | undefined> {
-    let projectData = await getProjectData(email, SourceType.General, org, project, '', 'project');
-    if (!projectData) {
+    let projectDataRaw = await getProjectData(email, SourceType.General, org, project, '', 'project');
+    if (!projectDataRaw) {
         if (process.env.TRACE_LEVEL) {
             console.warn(`loadProjectData: not found: ${org}/${project}`);
         }
         return undefined;
     }
-    projectData = JSON.parse(projectData) as UserProjectData;
 
+    const projectData = JSON.parse(projectDataRaw) as UserProjectData;
     // create an object with the string fields, org, name, guidelines, array of string resources
     const userProjectData : UserProjectData = {
         ...projectData,
@@ -215,7 +215,7 @@ async function loadProjectData(email: string, org: string, project: string): Pro
         const newGuidelineRecord : Record<string, string> = {};
         newGuidelineRecord['default'] = projectData.guidelines;
         userProjectData.guidelines = [newGuidelineRecord];
-    } else if (!projectData.guidelines || projectData.guidelines === '') {
+    } else if (!projectData.guidelines || (projectData as any).guidelines === '') {
         userProjectData.guidelines = [];
     }
 
@@ -653,7 +653,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
             updates.guidelines = body.guidelines;
         }
     
-        const projectData : UserProjectData = await loadProjectData(email, org, project) as UserProjectData;
+        const projectData = await loadProjectData(email, org, project);
         if (!projectData) {
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
@@ -661,7 +661,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
 
         projectData.lastUpdated = Date.now() / 1000;
 
-        await storeProjectData(email, SourceType.General, org, project, '', 'project', JSON.stringify(projectData));
+        await storeProjectData(email, SourceType.General, org, project, '', 'project', projectData);
 
         const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
 
@@ -798,7 +798,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         // refresh the project updated time - since we've finished validation
         storedProject.lastUpdated = Date.now() / 1000;
 
-        await storeProjectData(email, SourceType.General, org, project, '', 'project', JSON.stringify(storedProject));
+        await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProject);
 
         // because the discovery process may take more than 15 seconds, we never want to fail the project creation
         //      no matter how long discovery takes or even if discovery runs
@@ -863,7 +863,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request,
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
-        const projectData = await loadProjectData(email, org, project) as UserProjectData;
+        const projectData = await loadProjectData(email, org, project);
         if (!projectData) {
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
@@ -1551,7 +1551,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req:
             projectStatus = JSON.parse(rawProjectStatusData) as ProjectStatusState;
             projectStatus.status = updatedStatus.status;
 
-            await storeProjectData(email, SourceType.General, org, project, '', 'status', JSON.stringify(projectStatus));
+            await storeProjectData(email, SourceType.General, org, project, '', 'status', projectStatus);
 
             return res
                 .status(HTTP_SUCCESS)
@@ -1586,7 +1586,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
         }
 
         // if we have no status, let's see if there's a real project here...
-        const projectData = await loadProjectData(email, org, project) as UserProjectData;
+        const projectData = await loadProjectData(email, org, project);
         // if no project, then just HTTP_FAILURE_NOT_FOUND so user knows not to ask again
         if (!projectData) {
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
@@ -1722,7 +1722,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 projectStatus.lastUpdated = Date.now() / 1000;
                 projectStatus.resourcesState = Array.from(resourcesState.entries());
 
-                await storeProjectData(email, SourceType.General, org, project, '', 'status', JSON.stringify(projectStatus));
+                await storeProjectData(email, SourceType.General, org, project, '', 'status', projectStatus);
 
             } catch (error) {
                 console.error(`${req.originalUrl} Unable to persist project status`, error);
@@ -2176,11 +2176,11 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         const groomingCyclesToWaitForSettling = DefaultGroomingIntervalInMinutes * 2;
 
         const storeGroomingState = async (groomingState: ProjectGroomState) => {
-            await storeProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom', JSON.stringify(groomingState));
+            await storeProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom', groomingState);
         }
 
         // if the project doesn't exist, then we shouldn't be grooming it - so delete any groom data we created and return not found
-        const projectData = await loadProjectData(email, req.params.org, req.params.project) as UserProjectData;
+        const projectData = await loadProjectData(email, req.params.org, req.params.project);
         if (!projectData) {
             try {
                 await localSelfDispatch(email, getSignedIdentityFromHeader(req)!, req, `${projectPath}/groom`, 'DELETE');
@@ -2515,7 +2515,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
         }
 
-        await storeProjectData(email, SourceType.General, org, project, '', 'goals', JSON.stringify(updatedGoals));
+        await storeProjectData(email, SourceType.General, org, project, '', 'goals', updatedGoals);
 
         return res
             .status(HTTP_SUCCESS)
@@ -2612,7 +2612,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async 
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
-        const projectData = await loadProjectData(email, org, project) as UserProjectData;
+        const projectData = await loadProjectData(email, org, project);
         if (!projectData) {
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
@@ -2630,7 +2630,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async 
         }
 
         const { _, __, resource } = req.params;
-        const resourceData = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, '', resource);
+        const resourceData = await getCachedProjectData<string>(email, SourceType.GitHub, ownerName, repoName, '', resource);
         if (!resourceData) {
             console.error(`${user_project_org_project_data_resource}: not found: ${ownerName}/${repoName}/data/${resource}`);
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Resource not found');
@@ -2668,7 +2668,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
-        const projectData = await loadProjectData(email, org, project) as UserProjectData;
+        const projectData = await loadProjectData(email, org, project);
         if (!projectData) {
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
@@ -2687,13 +2687,12 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
 
         const { _, __, resource } = req.params;
 
-        let resourceStatus : ResourceStatusState | undefined = undefined;
-        let resourceStatusRaw = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status");
-        resourceStatus = resourceStatusRaw?JSON.parse(resourceStatusRaw):undefined;
-        if (!resourceStatusRaw || !resourceStatus?.lastUpdated) {
+        let resourceStatus : ResourceStatusState | undefined =
+            await getCachedProjectData<ResourceStatusState>(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status");
+        if (!resourceStatus?.lastUpdated) {
             // if the resource status was not found, check if the resource exists... we may just be missing the status
             // so we'll regenerate the status
-            const resourceData = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, '', resource);
+            const resourceData = await getCachedProjectData<string>(email, SourceType.GitHub, ownerName, repoName, '', resource, false);
             // resource doesn't exist, so just report missing/Not Found
             if (!resourceData) {
                 console.error(`${user_project_org_project_data_resource_status}: not found: ${ownerName}/${repoName}/data/${resource}`);
@@ -2703,8 +2702,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
             const resourceStatusWithTimestamp : ResourceStatusState = {
                 lastUpdated: Math.floor(Date.now() / 1000)
             };
-            resourceStatusRaw = JSON.stringify(resourceStatusWithTimestamp);
-            await storeProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status", resourceStatusRaw);
+            await storeProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status", resourceStatusWithTimestamp);
             console.warn(`Missing status for resource ${req.originalUrl}: generating with current timestamp`);
         }
 
@@ -2735,7 +2733,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource}`, asy
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
-        const projectData = await loadProjectData(email, org, project) as UserProjectData;
+        const projectData = await loadProjectData(email, org, project);
         if (!projectData) {
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
@@ -2808,7 +2806,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource_genera
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
-        const projectData = await loadProjectData(email, org, project) as UserProjectData;
+        const projectData = await loadProjectData(email, org, project);
         if (!projectData) {
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
@@ -2853,7 +2851,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
             }
         }
 
-        const projectData = await loadProjectData(email, org, project) as UserProjectData;
+        const projectData = await loadProjectData(email, org, project);
         if (!projectData) {
             return handleErrorResponse(new Error(`Project not found`), req, res, undefined, HTTP_FAILURE_NOT_FOUND);
         }
@@ -2929,11 +2927,10 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
-        const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
-        if (!loadedProjectData) {
+        const projectData = await loadProjectData(email, org, project);
+        if (!projectData) {
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
-        const projectData = loadedProjectData as UserProjectData;
 
         const uri = new URL(projectData.resources[0].uri);
         const pathSegments = uri.pathname.split('/').filter(segment => segment);
@@ -3007,7 +3004,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
             }
 
             await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', 
-                `${resource}/generator`, JSON.stringify(generatorState));
+                `${resource}/generator`, generatorState);
 
             if (process.env.TRACE_LEVEL) {
                 console.log(`${req.originalUrl}: Updated Generator: ${JSON.stringify(generatorState)}`);
@@ -3053,11 +3050,10 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
-        const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
-        if (!loadedProjectData) {
+        const projectData = await loadProjectData(email, org, project);
+        if (!projectData) {
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
-        const projectData = loadedProjectData as UserProjectData;
 
         // if we have no resources to generate data from, then we're done
         if (!projectData.resources?.length) {
@@ -3130,7 +3126,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             delete (currentGeneratorState as any).last_updated;
 
             await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', 
-                `${resource}/generator`, JSON.stringify(generatorState));
+                `${resource}/generator`, generatorState);
             if (process.env.TRACE_LEVEL) {
                 console.log(`${user_project_org_project_data_resource_generator}: stored new state: ${JSON.stringify(generatorState)}`);
             }
@@ -3482,11 +3478,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
             }
         }
 
-        const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
-        if (!loadedProjectData) {
+        const projectData = await loadProjectData(email, org, project);
+        if (!projectData) {
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
-        const projectData = loadedProjectData as UserProjectData;
 
         // Launch the processing task
         let selfEndpoint = `${req.protocol}://${req.get('host')}`;
@@ -3562,7 +3557,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
-        const userProjectData = await loadProjectData(email, org, project) as UserProjectData;
+        const userProjectData = await loadProjectData(email, org, project);
         if (!userProjectData) {
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
@@ -3572,7 +3567,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
 
             // we reset the project data references to empty - since we have no resources to upload, and we want to update the cache
             const emptyProjectDataFileIds: ProjectDataReference[] = [];
-            await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', JSON.stringify(emptyProjectDataFileIds));
+            await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', emptyProjectDataFileIds);
 
             // if we have no resources, we won't generate any data files
             // in the future, we should support generating blank or minimal data files so user can chat without Repository data
@@ -3620,8 +3615,8 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
         let refreshedProjectData = false;
         try {
             for (let i = 0; i < projectDataTypes.length; i++) {
-                let projectData = await getCachedProjectData(email, SourceType.GitHub, ownerName, repoName, "", projectDataTypes[i]);
-                if (!projectData) {
+                let resourceData = await getCachedProjectData<string>(email, SourceType.GitHub, ownerName, repoName, "", projectDataTypes[i], false);
+                if (!resourceData) {
                     if (process.env.TRACE_LEVEL) {
                         console.log(`${req.originalUrl}: no data found for ${projectDataTypes[i]}`);
                     }
@@ -3669,12 +3664,12 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
                     }
 
                     if (lastUploaded) {
-                        console.debug(`${req.originalUrl}: Uploading ${projectDataTypes[i]} (${projectData.length} bytes) from ${usFormatter.format(resourceStatusDate)}: ${timeDifferenceInSeconds} seconds out of sync; last uploaded at ${usFormatter.format(lastUploadedDate)}`);
+                        console.debug(`${req.originalUrl}: Uploading ${projectDataTypes[i]} (${resourceData.length} bytes) from ${usFormatter.format(resourceStatusDate)}: ${timeDifferenceInSeconds} seconds out of sync; last uploaded at ${usFormatter.format(lastUploadedDate)}`);
                     } else {
-                        console.debug(`${req.originalUrl}: Uploading ${projectDataTypes[i]} (${projectData.length} bytes) from ${usFormatter.format(resourceStatusDate)}: never uploaded`);
+                        console.debug(`${req.originalUrl}: Uploading ${projectDataTypes[i]} (${resourceData.length} bytes) from ${usFormatter.format(resourceStatusDate)}: never uploaded`);
                     }
                 } catch (error) {
-                    console.error(`${req.originalUrl} Uploading ${projectDataTypes[i]} (${projectData.length} bytes) due to error checking last upload time: `, error);
+                    console.error(`${req.originalUrl} Uploading ${projectDataTypes[i]} (${resourceData.length} bytes) due to error checking last upload time: `, error);
                 }
                 
                 if (process.env.TRACE_LEVEL) {
@@ -3684,11 +3679,11 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
                 try {
 
                     const timeBeforeOpenAICall = Date.now();
-                    const storedProjectDataId = await uploadProjectDataForAIAssistant(email, userProjectData.org, userProjectData.name, repoUri, projectDataTypes[i], projectDataNames[i], projectData);
+                    const storedProjectDataId = await uploadProjectDataForAIAssistant(email, userProjectData.org, userProjectData.name, repoUri, projectDataTypes[i], projectDataNames[i], resourceData);
                     if (process.env.TRACE_LEVEL) {
                         console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${JSON.stringify(storedProjectDataId)}`);
                     }
-                    console.debug(`${req.originalUrl}: Uploaded ${storedProjectDataId.id} - ${projectDataTypes[i]} (${projectData.length} bytes) to AI Servers in ${Date.now() - timeBeforeOpenAICall} ms`);
+                    console.debug(`${req.originalUrl}: Uploaded ${storedProjectDataId.id} - ${projectDataTypes[i]} (${resourceData.length} bytes) to AI Servers in ${Date.now() - timeBeforeOpenAICall} ms`);
                     refreshedProjectData = true;
 
                     // update the existing resources with the newly uploaded info
@@ -3750,7 +3745,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
         const projectDataFileIds = Array.from(existingProjectFileIds.values());
 
         if (refreshedProjectData) {
-            await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', JSON.stringify(projectDataFileIds));
+            await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', projectDataFileIds);
 
             // now refresh project status since we've completed uploads
             const projectStatusRefreshDelayInMs = 250;
@@ -3805,7 +3800,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_references}`, asyn
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
-        const projectData = await loadProjectData(email, org, project) as UserProjectData;
+        const projectData = await loadProjectData(email, org, project);
         if (!projectData) {
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
@@ -4003,7 +3998,7 @@ app.post(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`,
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('No data provided');
         }
 
-        await storeProjectData(email, convertToSourceType(source), owner, project, decodedPath, analysisType, data);
+        await storeProjectData(email, convertToSourceType(source), owner, project, decodedPath, analysisType, data, false);
         res.sendStatus(HTTP_SUCCESS);
 
     } catch (error) {
@@ -4236,7 +4231,7 @@ app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
         profileData.name = newProfileData.name;
         profileData.title = newProfileData.title;
         profileData.details = newProfileData.details;
-        await storeProjectData(email, SourceType.General, 'user', '', '', 'profile', JSON.stringify(profileData));
+        await storeProjectData(email, SourceType.General, 'user', '', '', 'profile', profileData);
 
         return res
             .status(HTTP_SUCCESS)
@@ -4453,12 +4448,12 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (req: 
         const dataType = typeof req.query.dataType === 'string' ? req.query.dataType : undefined;
         let repoUri = undefined;
         if (project) {
-            const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
-            if (!loadedProjectData) {
+            const projectData = await loadProjectData(email, org, project);
+            if (!projectData) {
                 console.warn(`${req.originalUrl} Project not found: ${org}/${project} - cannot filter on repos`);
-            } else if ((loadedProjectData as UserProjectData)?.resources &&
-                (loadedProjectData as UserProjectData).resources.length > 0) {
-                repoUri = new URL((loadedProjectData as UserProjectData).resources[0].uri);
+            } else if (projectData.resources &&
+                projectData.resources.length > 0) {
+                repoUri = new URL(projectData.resources[0].uri);
             }
         }
 
@@ -4679,12 +4674,12 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
                 console.error(`Org is required when deleting files in a project`);
                 return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
             }
-            const loadedProjectData = await loadProjectData(email, org, project) as UserProjectData | Response;
-            if (!loadedProjectData) {
+            const projectData = await loadProjectData(email, org, project);
+            if (!projectData) {
                 console.warn(`${req.originalUrl} Project not found: ${org}/${project} - cannot filter on repos`);
-            } else if ((loadedProjectData as UserProjectData)?.resources &&
-                (loadedProjectData as UserProjectData).resources.length > 0) {
-                repoUri = new URL((loadedProjectData as UserProjectData).resources[0].uri);
+            } else if (projectData.resources &&
+                projectData.resources.length > 0) {
+                repoUri = new URL(projectData.resources[0].uri);
             }
         }
 
