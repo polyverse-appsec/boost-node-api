@@ -48,6 +48,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
     async onGenerate(stage: string) : Promise<string> {
 
         const NoSpecificationAvailable = 'No AI Specification available';
+        const EmptySourceFile = 'No file content to analyze';
         const ErrorGeneratingSpecification = 'Unable to generate AI Specification';
 
         let nextStage : string = "";
@@ -140,14 +141,15 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                 return nextStage;
             }
 
+            let skipEmptyFile = false;
             try {
                 if (!fileContent?.path) {
                     console.warn(`File content missing path - skipping AI spec gen`);
                     return ArchitecturalSpecificationStage.FileSummarization;
                 }
                 if (!fileContent?.source) {
+                    skipEmptyFile = true;
                     console.warn(`File content missing source - skipping AI spec gen for ${fileContent.path}`);
-                    return ArchitecturalSpecificationStage.FileSummarization;
                 }
             } finally {
                     // re-save the filtered file contents (without the newest entry)
@@ -158,7 +160,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
 
             const unavailableSpecForThisFile = this.fileArchitecturalSpecificationEntry
                 .replace('{relativeFileName}', fileContent.path)
-                .replace('{architecturalSpec}', NoSpecificationAvailable)
+                .replace('{architecturalSpec}', NoSpecificationAvailable);
 
             const fileSummarizationStatus = await this.loadScratchData<FileSummarizationStatus>(ArchitecturalSpecificationStage.FileSummarization);
             if (!fileSummarizationStatus) {
@@ -170,7 +172,8 @@ export class ArchitecturalSpecificationGenerator extends Generator {
             try {
                 await this.updateProgress('Building AI Specification for ' + fileContent.path);
 
-                const architecturalSpec : string = await this.createArchitecturalSpecification(fileContent.path, fileContent.source);
+                const architecturalSpec : string = skipEmptyFile? EmptySourceFile :
+                    await this.createArchitecturalSpecification(fileContent.path, fileContent.source);
                 
                 fileSummarizationStatus.filesProcessed++;
 

@@ -9,7 +9,7 @@ Polyverse Boost ReST API (Backend)
 - N/A
 
 ### Enhancements
-- N/A
+- Treat empty source files as a valid state for AI Spec Generator (e.g. no source code to analyze) - instead of reporting an error in generating the AI Spec
 
 ### Bug Fixes
 - Fix content-type for /api/user_project/{org}/{project}/data/{resource} (GET) - was returning application/json instead of text/plain (raw data)
