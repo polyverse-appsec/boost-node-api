@@ -2100,7 +2100,8 @@ enum GroomingStatus {
     LaunchPending = 'Pending',
     Grooming = 'Grooming',
     Skipping = 'Skipping',
-    Error = 'Error'
+    Error = 'Error',
+    Disabled = 'Disabled'
 }
 
 interface ProjectGroomState {
@@ -2233,6 +2234,13 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         const currentGroomingState: ProjectGroomState | undefined = currentGroomingStateRaw?JSON.parse(currentGroomingStateRaw):undefined;
 
         if (currentGroomingState) {
+
+            if (currentGroomingState.status === GroomingStatus.Disabled) {
+                console.warn(`${email} ${req.method} ${req.originalUrl} Grooming is disabled - skipping`);
+                return res
+                    .status(HTTP_SUCCESS)
+                    .send(currentGroomingState);
+            }
 
             const cycleBusyWindowPercentage = 0.75; // don't overlap last 75% of the grooming cycle
             // we only run at most once every grooming cycle - with adjustment for lag (e.g. checking status took part of the last cycle)

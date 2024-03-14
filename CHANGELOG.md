@@ -11,6 +11,7 @@ Polyverse Boost ReST API (Backend)
 ### Enhancements
 - Ensure we update the project status after any discovery attempt - e.g. grooming, default project creation, or upload of any files
     - Also initialize the project status on project creation - avoids PATCH errors during discovery and enables preliminary status for users
+- Enable groomer to be disabled per project by skipping projects that are marked as Grooming status "Disabled"
 - Improve logging of error and callstacks - show full error info instead of just "[object Object]"
 
 ### Bug Fixes
