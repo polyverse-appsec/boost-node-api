@@ -800,6 +800,17 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
 
         await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProject);
 
+        // we're going to initialize an async project status refresh (but only wait 250 ms to ensure it starts)
+        try {
+            const projectStatusRefreshDelayInMs = 250;
+            await localSelfDispatch<ProjectStatusState>(
+                email, "", req,
+                `${projectPath}/status`, 'POST', undefined, projectStatusRefreshDelayInMs, false);
+        } catch (error: any) {
+            // we don't care if the project status refresh fails - it's just a nice to have
+            console.warn(`${req.originalUrl} Unable to initialize the project status: `, error.stack || error);
+        }
+
         // because the discovery process may take more than 15 seconds, we never want to fail the project creation
         //      no matter how long discovery takes or even if discovery runs
         // so we'll use the axios timeout to ensure we don't wait too long for the discovery process
@@ -1487,7 +1498,6 @@ interface ProjectStatusState {
 const MinutesToWaitBeforeGeneratorConsideredStalled = 3;
 
 const user_project_org_project_status = `user_project/:org/:project/status`;
-
 app.delete(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
 
     try {
