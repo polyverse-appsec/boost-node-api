@@ -1798,7 +1798,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 // if generator fails, we'll assume the resource isn't available either
                 missingResources.push(resource);
                 currentResourceStatus.push(TaskStatus.Error);
-                resourceErrorMessages.set(resource, `Unable to get generator status for: ${resource}: ${error.stack || error}`);
+                resourceErrorMessages.set(resource, `Unable to get generator status for: ${resource}: ${JSON.stringify(error.stack || error)}`);
                 resourcesState.set(resource, TaskStatus.Error);
 
                 continue;
@@ -3327,9 +3327,9 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         }
                     } else {
                         if (axios.isAxiosError(error)) {
-                            currentGeneratorState.statusDetails = `${error.response?.status}:${error.response?.statusText} due to error:${error.stack || error}`;
+                            currentGeneratorState.statusDetails = `${error.response?.status}:${error.response?.statusText} due to error: ${JSON.stringify(error.stack || error)}`;
                         } else {
-                            currentGeneratorState.statusDetails = `${error.stack || error}`;
+                            currentGeneratorState.statusDetails = `${JSON.stringify(error.stack || error)}`;
                         }
                     }
 
@@ -3373,9 +3373,9 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                             //      the generator state as needed
                         }
                     } catch (error: any) {
-                        let errorMessage = `${error.stack || error}`;
+                        let errorMessage = `${JSON.stringify(error.stack || error)}`;
                         if (axios.isAxiosError(error) && error.response) {
-                            errorMessage = `${error.response.status}:${error.response.statusText} due to error: ${error.response.data.body || error.response.data}`;
+                            errorMessage = `${error.response.status}:${error.response.statusText} due to error: ${JSON.stringify(error.response.data.body || error.response.data)}`;
                         }
                         currentGeneratorState.status = TaskStatus.Error;
                         currentGeneratorState.statusDetails = `Error starting next stage to process: ${errorMessage}`;

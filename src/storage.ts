@@ -264,7 +264,7 @@ export async function splitAndStoreData(
                 await deleteProjectData(email, sourceType, ownerName, repoName, resourcePath, analysisType);
             // we don't care if this fails, since the multi-part will be read by default anyway - but for debugging, its better to try and delete it, and log a warning if it fails
             } catch (error: any) {
-                console.warn(`StorageWarning:${email}:${ownerName}:${repoName}:${resourcePath}:${analysisType}:Unable to cleanup single-part data: ${error.stack || error}}`);
+                console.warn(`StorageWarning:${email}:${ownerName}:${repoName}:${resourcePath}:${analysisType}:Unable to cleanup single-part data: `, error.stack || error);
             }
         }
     }

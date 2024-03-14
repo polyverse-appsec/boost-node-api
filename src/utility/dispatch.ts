@@ -58,7 +58,7 @@ export const handleErrorResponse = (error: any, req: Request, res: Response, sup
         // Respond with the detailed error message for debugging purposes
         return res
             .status(status_code)
-            .send(`${errorCodeText}: ${supplementalErrorMessage?`${supplementalErrorMessage} - `:''}` + (error.stack || error));
+            .send(`${errorCodeText}: ${supplementalErrorMessage?`${supplementalErrorMessage} - `:''}` + JSON.stringify(error.stack || error));
 
     } else { // we'll use this for 'prod' and 'test' Stages in the future
 
@@ -113,7 +113,7 @@ export async function localSelfDispatch<T>(
         try {
             response = await fetch(selfEndpoint, fetchOptions);
         } catch (error: any) {
-            console.error(`Request ${httpVerb} ${selfEndpoint} failed with error ${error.stack || error}`);
+            console.error(`Request ${httpVerb} ${selfEndpoint} failed with error: `, error.stack || error);
             throw error;
         }
 
@@ -126,7 +126,7 @@ export async function localSelfDispatch<T>(
                 try {
                     objectResponse = await response.json();
                 } catch (error: any) {
-                    console.error(`Request ${httpVerb} ${selfEndpoint} failed with error ${error.stack || error}`);
+                    console.error(`Request ${httpVerb} ${selfEndpoint} failed with error: `, error.stack || error);
                     return {} as T;
                 }
                 return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
@@ -182,7 +182,7 @@ export async function localSelfDispatch<T>(
                 if (process.env.TRACE_LEVEL || throwOnTimeout) {
                     console.warn(`TIMECHECK: TIMEOUT: ${httpVerb} ${selfEndpoint} timed out after ${timeoutMs / 1000} seconds`);
                 }
-                
+
                 // if caller is launching an async process, and doesn't care about response, don't throw on timeout
                 if (!throwOnTimeout) {
                     return {} as T;
@@ -192,10 +192,10 @@ export async function localSelfDispatch<T>(
                     // This block is for handling errors, including HTTP_FAILURE_NOT_FOUND and HTTP_FAILURE_INTERNAL_SERVER_ERROR status codes
                     if (axios.isAxiosError(error) && error.response) {
                         const errorMessage = error.response.data.body || error.response.data;
-                        console.error(`${httpVerb} ${selfEndpoint} failed with status ${error.response.status}:${error.response.statusText} due to error: ${errorMessage}`);
+                        console.error(`${httpVerb} ${selfEndpoint} failed with status ${error.response.status}:${error.response.statusText} due to error: `, errorMessage);
                     } else {
                         // Handle other errors (e.g., network errors)
-                        console.error(`${httpVerb} ${selfEndpoint} failed ${error.stack || error}`);
+                        console.error(`${httpVerb} ${selfEndpoint} failed : `, error.stack || error);
                     }
                 }
                 if (axios.isAxiosError(error) && error.response) {
