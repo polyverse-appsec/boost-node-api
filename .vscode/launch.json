@@ -128,13 +128,11 @@
                 "--email",
                 "airbear109@gmail.com",
                 "--project",
-                "saraTEST",
+                "saraDEMODOGFOOD",
                 "--stage",
-                "local",
+                "prod",
                 "--method",
-                "resource",
-                "--data",
-                "projectsource"
+                "discover"
             ],
             "console": "integratedTerminal",
             "justMyCode": true

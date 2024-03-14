@@ -177,7 +177,10 @@ def main(email, org, project, method, stage, data):
         return
 
     if (response.status_code != 200):
-        print(f"Failed({response.status_code}): {response.text}")
+        if response.status_code == 202:
+            print(f"Warning ({response.status_code}):\n\t{response.text}")
+        else:
+            print(f"Failed ({response.status_code}):\n\t{response.text}")
     else:
         print(f"Success({response.status_code})\n")
 
@@ -202,11 +205,13 @@ def main(email, org, project, method, stage, data):
                     print_json(item)
 
                 print(str(len(responseObj)) + " items")
+            elif responseObj is None or len(responseObj) == 0:
+                print("No data")
             else:
                 print_json(responseObj)
 
         if response.headers.get('content-type').startswith('application/json'):
-            responseObj = response.json() if 'body' not in response.json() else json.loads(response.json()['body']) if response.json()['body'][0] in ['{', '['] else response.json()['body']
+            responseObj = response.json() if 'body' not in response.json() else json.loads(response.json()['body']) if (len(response.json()['body']) > 0 and response.json()['body'][0] in ['{', '[']) else response.json()['body']
 
             print_response(responseObj)
         else:
