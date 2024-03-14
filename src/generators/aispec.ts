@@ -5,7 +5,7 @@ import { GeneratorState, Stages } from '../types/GeneratorState';
 import { FileContent } from '../github';
 import { AIResponse } from '../boost-python-api/AIResponse';
 import { Services } from '../boost-python-api/endpoints';
-import { signedAuthHeader } from '../auth';
+import axios from 'axios';
 import { localSelfDispatch } from '../utility/dispatch';
 const ignore = require('ignore');
 
@@ -49,7 +49,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
 
         const NoSpecificationAvailable = 'No AI Specification available';
         const EmptySourceFile = 'No file content to analyze';
-        const ErrorGeneratingSpecification = 'Unable to generate AI Specification';
+        const ErrorGeneratingSpecification = 'Unable to generate AI Specification due to processing error';
 
         let nextStage : string = "";
         switch (stage) {
@@ -127,32 +127,37 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                     ArchitecturalSpecificationStage.FileFiltering);
             }
 
-            if (filteredFileContents.length === 0) {
-                nextStage = Stages.Complete;
-                return nextStage;
-            }
-
             // remove the first file from the file source list - to process
             if (!Array.isArray(filteredFileContents)) {
                 throw new GeneratorProcessingError(
                     `Filtered file contents is not an array`,
                     ArchitecturalSpecificationStage.FileFiltering);
             }
-            const fileContent : FileContent | undefined = filteredFileContents.shift();
-            if (!fileContent) {
+
+            // if we have no more files to process, we're done
+            if (filteredFileContents.length === 0) {
                 nextStage = Stages.Complete;
                 return nextStage;
             }
 
+            // remove the first file from the file source list - to process
+            const fileContent : FileContent | undefined = filteredFileContents.shift();
+
             let skipEmptyFile = false;
             try {
+                // if we have no more files to process, we're done
+                if (!fileContent) {
+                    console.warn(`${this.email} ${this.projectData.org} ${this.projectData.name} - empty file content in filtered file list - skipping AI spec gen`);
+                    return ArchitecturalSpecificationStage.FileSummarization;
+                }
+
                 if (!fileContent?.path) {
-                    console.warn(`File content missing path - skipping AI spec gen`);
+                    console.warn(`${this.email} ${this.projectData.org} ${this.projectData.name} - File content missing path - skipping AI spec gen`);
                     return ArchitecturalSpecificationStage.FileSummarization;
                 }
                 if (!fileContent?.source) {
                     skipEmptyFile = true;
-                    console.warn(`File content missing source - skipping AI spec gen for ${fileContent.path}`);
+                    console.warn(`${this.email} ${this.projectData.org} ${this.projectData.name} - File content missing source - skipping AI spec gen for ${fileContent.path}`);
                 }
             } finally {
                     // re-save the filtered file contents (without the newest entry)
@@ -188,7 +193,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                 this.data = this.data.replace(unavailableSpecForThisFile, availableSpecForThisFile);
 
             } catch (err: any) {
-                console.log(`Error creating architectural specification for ${fileContent.path}: ${err}`);
+                console.error(`${this.email} ${this.projectData.org} ${this.projectData.name} Error creating architectural specification for ${fileContent.path}: `, err.stack || err);
 
                 fileSummarizationStatus.numberOfErrors++;
                 fileSummarizationStatus.currentErrorStreak++;
@@ -201,7 +206,8 @@ export class ArchitecturalSpecificationGenerator extends Generator {
 
                 this.data = this.data.replace(unavailableSpecForThisFile, errorSpecificationForThisFile);
 
-                await this.updateProgress(`Failed to Build AI Spec for ${fileContent!.path} due to ${err}`);
+                const errorMsg = err.stack || err;
+                await this.updateProgress(`Failed to Build AI Spec for ${fileContent!.path} due to ${errorMsg}`);
             }
 
             await this.saveScratchData<FileSummarizationStatus>(fileSummarizationStatus, ArchitecturalSpecificationStage.FileSummarization);
@@ -211,7 +217,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                 nextStage = Stages.Complete;
             } else {
                 if (process.env.ONE_AI_SPEC) {
-                    console.warn(`Processing ONE AI Spec for testing only`);
+                    console.warn(`${this.email} ${this.projectData.org} ${this.projectData.name} - Processing ONE AI Spec for testing only`);
                     nextStage = Stages.Complete; // short-circuit after one spec for testing
                 } else {
                     nextStage = ArchitecturalSpecificationStage.FileSummarization;
@@ -225,6 +231,8 @@ export class ArchitecturalSpecificationGenerator extends Generator {
     }
 
     async checkAndSetErrorState(fileSummarizationStatus: FileSummarizationStatus, err: Error) : Promise<void> {
+
+        console.error(`${this.email} ${this.projectData.org} ${this.projectData.name} - Updated File Summarization Status: ${JSON.stringify(fileSummarizationStatus)}`);
 
         // if we have 5 errors in a row, we'll abort and retry later - assume major network glitch
         if (fileSummarizationStatus.currentErrorStreak > 5) {
@@ -263,9 +271,13 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                 inputData);
             return summarizerOutput.analysis;
 
-        } catch (err) {
-            console.error(`Unable to build Architectural specification: ${err} - processing input: ${JSON.stringify(inputData)}`);
-            throw new Error(`Unable to build Architetural specification: ${err}`);
+        } catch (err : any) {
+            let errorMsg = JSON.stringify(err.stack || err);
+            if (axios.isAxiosError(err) && err.response) {
+                errorMsg = `${err.response.status}:${err.response.statusText} due to error: ${err.response.data.body || err.response.data}`;
+            }
+            console.error(`${this.email} ${this.projectData.org} ${this.projectData.name} - Unable to build Architectural specification: ${errorMsg} - processing input: ${JSON.stringify(inputData)}`);
+            throw new Error(`Unable to build Architectural specification: ${errorMsg}`);
         }
     }
 }
