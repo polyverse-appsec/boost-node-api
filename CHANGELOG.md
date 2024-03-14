@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.14.1: March 13th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Ensure we update the project status after any discovery attempt - e.g. grooming, default project creation, or upload of any files
+
+### Bug Fixes
+- N/A
+
 ## Version 0.14.0: March 13th, 2024
 
 ### New Features

@@ -1420,21 +1420,39 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
             }
         });
 
-        // Execute all generator creation operations in parallel
-        await Promise.all(generatorPromises);
+        let existingDataReferences = undefined;
+        try {
+            // Execute all generator creation operations in parallel
+            await Promise.all(generatorPromises);
 
-        // due to above resource generation timeout of 25 seconds, we should have about 5 seconds to
-        //      do the upload, which should be adequate time (e.g. 2-3 seconds)
+            // due to above resource generation timeout of 25 seconds, we should have about 5 seconds to
+            //      do the upload, which should be adequate time (e.g. 2-3 seconds)
 
-        // After all generators have been started, proceed with data references
-        const existingDataReferences = await localSelfDispatch<ProjectDataReference[]>(
-            email, 
-            signedIdentity, 
-            req, 
-            `${projectDataPath}/data_references`, 
-            'PUT');
+            // After all generators have been started, proceed with data references
+            const existingDataReferences = await localSelfDispatch<ProjectDataReference[]>(
+                email,
+                signedIdentity, 
+                req, 
+                `${projectDataPath}/data_references`, 
+                'PUT');
 
-        console.log(`Existing Data References: ${JSON.stringify(existingDataReferences)}`);
+            console.log(`Existing Data References: ${JSON.stringify(existingDataReferences)}`);
+        } finally {
+            const projectStatusRefreshRequest : ProjectStatusState = {
+                status: ProjectStatus.Unknown,
+                lastUpdated: Date.now() / 1000
+            };
+            // we're going to start an async project status refresh (but only wait 250 ms to ensure it starts)
+            try {
+                const projectStatusRefreshDelayInMs = 250;
+                await localSelfDispatch<ProjectStatusState>(
+                    email, "", req,
+                    `${projectDataPath}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs, false);
+            } catch (error: any) {
+                // we don't care if the project refresh fails - it's just a nice to have
+                console.warn(`${req.originalUrl} Unable to start post-discovery async project status refresh for due to error: `, error.stack || error);
+            }
+        }
 
         return res.status(HTTP_SUCCESS).send(existingDataReferences);
     } catch (error) {
