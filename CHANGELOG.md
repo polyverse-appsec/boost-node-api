@@ -12,6 +12,9 @@ Polyverse Boost ReST API (Backend)
 - Ensure we update the project status after any discovery attempt - e.g. grooming, default project creation, or upload of any files
     - Also initialize the project status on project creation - avoids PATCH errors during discovery and enables preliminary status for users
 - Enable groomer to be disabled per project by skipping projects that are marked as Grooming status "Disabled"
+    - POST to /api/user_project/{org}/{project}/groom with status=Disabled to disable the groomer for a specific project (e.g. for debugging or testing)
+    - or Sara CLI command "sara_rest_cli --method groom_toggle --project <project>" to disable
+    - or Sara CLI command "sara_rest_cli --method groom_toggle --project <project> --data enable" to re-enable
 - Improve logging of error and callstacks - show full error info instead of just "[object Object]"
 
 ### Bug Fixes

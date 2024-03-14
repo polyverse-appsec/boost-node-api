@@ -722,7 +722,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         }
 
         if (body === '') {
-            console.error(`${user_profile}: empty body`);
+            console.error(`${email} ${req.method} ${req.originalUrl} empty body`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
 
@@ -731,8 +731,8 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         let updatedProject;
         try {
             updatedProject = JSON.parse(body);
-        } catch (error) {
-            console.error('Error parsing JSON:', error);
+        } catch (error: any) {
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON: `, error.stack || error);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
         }
 
@@ -745,7 +745,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
 
         // validate title
         if (body.title !== undefined && (body.title === '' || typeof body.title !== 'string')) {
-            console.error(`Invalid id: ${body.title}`);
+            console.error(`${email} ${req.method} ${req.originalUrl} Invalid id: ${body.title}`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid id ${body.title} - must be a non-empty string`);
         } else if (body.title !== undefined) {
             storedProject.title = updatedProject.title;
@@ -753,7 +753,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
 
         // validate description
         if (body.description !== undefined && typeof body.description !== 'string') {
-            console.error(`Invalid description: ${body.description}`);
+            console.error(`${email} ${req.method} ${req.originalUrl} Invalid description: ${body.description}`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid description ${body.description} - must be a string`);
         } else if (body.description !== undefined) {
             storedProject.description = updatedProject.description;
@@ -762,12 +762,12 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         // validate guidelines
         if (storedProject.guidelines !== undefined) {
             if (typeof storedProject.guidelines === 'string') {
-                console.error(`Invalid guidelines: ${storedProject.guidelines}`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Invalid guidelines: ${storedProject.guidelines}`);
                 return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid guidelines - cannot be a string');
             }
             // must be an array of Record<string, string>
             else if (!Array.isArray(storedProject.guidelines)) {
-                console.error(`Invalid guidelines: ${storedProject.guidelines}`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Invalid guidelines: ${storedProject.guidelines}`);
                 return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid guidelines - must be an array');
             }
         }
@@ -786,7 +786,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         } catch (error: any) {
             // check for HTTP_FAILURE_NOT_FOUND and ignore it - everything else, log and error and then continue
             if (!error.message.includes('failed with status 404')) {
-                console.error(`Unable to retrieve current project data for ${projectPath} - just post the new data - due to ${error}`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Unable to retrieve current project data just post the new data - due to error: `, error.stack || error);
             }
         }
 
@@ -913,33 +913,42 @@ app.delete(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reque
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
+        const projectPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
+
         try { // delete the data_references as well
-            const projectDataReferencesPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project")) + '/data_references';
-            await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, projectDataReferencesPath, 'DELETE');
+            await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, `${projectPath}/data_references`, 'DELETE');
         } catch (error: any) { // ignore 404 errors
             if (!error.code || error.code !== HTTP_FAILURE_NOT_FOUND.toString()) {
-                console.warn(`${req.originalUrl} Unable to delete data references for ${org}/${project} - due to error: ${error}`);
+                console.warn(`${email} ${req.method} ${req.originalUrl} Unable to delete data references due to error: `, error.stack || error);
             }
         }
 
         try { // delete the project status as well
-            const projectStatusPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project")) + '/status';
-            await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, projectStatusPath, 'DELETE');
+            await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, `${projectPath}/status`, 'DELETE');
         } catch (error: any) { // ignore 404 errors
             if (!error.code || error.code !== HTTP_FAILURE_NOT_FOUND.toString()) {
-                console.warn(`${req.originalUrl} Unable to delete project status for ${org}/${project} - due to error: ${error}`);
+                console.warn(`${email} ${req.method} ${req.originalUrl} Unable to delete project status due to error: `, error.stack || error);
             }
         }
 
+        // delete all data resources
         const possibleResources = [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification];
         for (const resourceType of possibleResources) {
             try {
-                const resourcePath = req.originalUrl.substring(req.originalUrl.indexOf("user_project")) + `/data/${resourceType}`;
-                await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, resourcePath, 'DELETE');
+                await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, `${projectPath}/data/${resourceType}`, 'DELETE');
             } catch (error: any) { // ignore 404 errors
                 if (!error.code || error.code !== HTTP_FAILURE_NOT_FOUND.toString()) {
-                    console.warn(`${req.originalUrl} Unable to delete resource for ${org}/${project} - due to error: ${error}`);
+                    console.warn(`${email} ${req.method} ${req.originalUrl} Unable to delete resource ${resourceType} due to error: `, error.stack || error);
                 }
+            }
+        }
+
+        // delete the grooming state
+        try {
+            await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, `${projectPath}/groom`, 'DELETE');
+        } catch (error: any) { // ignore 404 errors
+            if (!error.code || error.code !== HTTP_FAILURE_NOT_FOUND.toString()) {
+                console.warn(`${email} ${req.method} ${req.originalUrl} Unable to delete grooming data due to error: `, error.stack || error);
             }
         }
 
@@ -1566,8 +1575,8 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req:
                     .status(HTTP_FAILURE_BAD_REQUEST_INPUT)
                     .send('Invalid status - only Unknown status can be set');
             }
-        } catch (error) {
-            console.error('Error parsing JSON:', error);
+        } catch (error: any) {
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${body}: `, error.stack || error);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
         }
 
@@ -2230,10 +2239,44 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
 
-        const currentGroomingStateRaw = await getProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom');
-        const currentGroomingState: ProjectGroomState | undefined = currentGroomingStateRaw?JSON.parse(currentGroomingStateRaw):undefined;
+        let body = req.body;
+        if (typeof body !== 'string') {
+            if (Buffer.isBuffer(body) || Array.isArray(body)) {
+                body = Buffer.from(body).toString('utf8');
+            }
+        }
 
-        if (currentGroomingState) {
+        let input : ProjectGroomState | undefined;
+        try {
+            input = body?JSON.parse(body):undefined;
+        } catch (error: any) {
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${body}: `, error.stack || error);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
+        }
+
+        const currentGroomingStateRaw = await getProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom');
+        const currentGroomingState: ProjectGroomState | undefined = currentGroomingStateRaw?JSON.parse(currentGroomingStateRaw):input;
+
+        if (currentGroomingState || input) {
+            if (!currentGroomingState) {
+                throw new Error(`Invalid State - currentGroomingState is undefined with input specified ${JSON.stringify(input)}`);
+            }
+            if (input) {
+                currentGroomingState.status = input.status;
+                if (input.statusDetails) {
+                    currentGroomingState.statusDetails = input.statusDetails;
+                }
+                if (input.consecutiveErrors) {
+                    currentGroomingState.consecutiveErrors = input.consecutiveErrors;
+                }
+                if (input.lastDiscoveryStart) {
+                    currentGroomingState.lastDiscoveryStart = input.lastDiscoveryStart;
+                }
+                currentGroomingState.lastUpdated = Math.floor(Date.now() / 1000);
+
+                await storeGroomingState(currentGroomingState);
+                console.info(`${email} ${req.method} ${req.originalUrl} Stored new grooming state for immediate processing: ${JSON.stringify(input)}`);
+            }
 
             if (currentGroomingState.status === GroomingStatus.Disabled) {
                 console.warn(`${email} ${req.method} ${req.originalUrl} Grooming is disabled - skipping`);
@@ -2556,8 +2599,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
         let updatedGoals;
         try {
             updatedGoals = JSON.parse(body);
-        } catch (error) {
-            console.error(`${req.method} ${req.originalUrl} Error parsing JSON: `, error);
+        } catch (error: any) {
+            console.error(`${req.method} ${req.originalUrl} Error parsing JSON ${body}: `, error.stack);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
         }
 
@@ -3014,8 +3057,8 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         let input : GeneratorState;
         try {
             input = JSON.parse(body);
-        } catch (error) {
-            console.error('Error parsing JSON:', error);
+        } catch (error: any) {
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${body}: `, error.stack || error);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
         }
         if (input.status !== currentGeneratorState.status) {
@@ -3155,8 +3198,8 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
         let input : GeneratorState;
         try {
             input = JSON.parse(body);
-        } catch (error) {
-            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON: `, error);
+        } catch (error: any) {
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${body}: `, error.stack || error);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
         }
         let userGeneratorRequest : GeneratorState = {
@@ -3528,8 +3571,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
             if (body) {
                 try {
                     input = JSON.parse(body);
-                } catch (error) {
-                    console.error('Error parsing JSON:', error);
+                } catch (error: any) {
+                    console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${body}: `, error.stack || error);
                     return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
                 }
 
@@ -4286,8 +4329,8 @@ app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
         let newProfileData : UserProfile;
         try {
             newProfileData = JSON.parse(body) as UserProfile;
-        } catch (error) {
-            console.error(`Error parsing JSON: ${body}`, error);
+        } catch (error: any) {
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${body}: `, error.stack || error);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
         }
 

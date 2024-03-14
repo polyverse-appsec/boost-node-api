@@ -70,6 +70,9 @@ def main(email, org, project, method, stage, data):
         "project_create": f"{URL}/api/user_project/{org}/{project}",
         "project_delete": f"{URL}/api/user_project/{org}/{project}",
 
+        "groom_status": f"{URL}/api/user_project/{org}/{project}/groom",
+        "groom_toggle": f"{URL}/api/user_project/{org}/{project}/groom",
+
         "discover": f"{URL}/api/user_project/{org}/{project}/discover",
         "rediscover": f"{URL}/api/user_project/{org}/{project}/discover",
 
@@ -151,15 +154,22 @@ def main(email, org, project, method, stage, data):
             "data_references_refresh",
             "status_refresh",
             "timer_interval",
-            "groom_discoveries"
+            "groom_discoveries",
+            "groom_toggle"
         ]
     ) else "DELETE" if (
         "delete" in method or  # noqa: W504
         "purge" in method
     ) else "GET"
     data = data if method not in ["rediscover"] else json.dumps({"resetResources": True})
+    data = data if method not in ["groom_toggle"] else json.dumps({"status": "Disabled"}) if data is None else json.dumps({"status": "Idle"})
     data = data if method not in ["project_create"] else json.dumps({"resources": [{"uri": data}]})
-    print(f"Requesting {verb} {url}")
+
+    if data is None:
+        print(f"Requesting {verb} {url}")
+    else:
+        print(f"Requesting {verb} {url} with data: {data}")
+
     try:
         response = make_request(verb, url, email, data)
     except requests.exceptions.RequestException as e:
@@ -226,6 +236,9 @@ if __name__ == "__main__":
                                  'projects_all',
                                  'project_delete',
                                  'project_create',
+
+                                 'groom_status',
+                                 'groom_disable',
 
                                  'search_generators_all',
                                  'search_generators',
