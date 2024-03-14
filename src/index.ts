@@ -3140,7 +3140,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             }
         }
         if (body === '') {
-            console.error(`PUT ${user_project_org_project_data_resource_generator}: empty body`);
+            console.error(`${email} ${req.method} ${req.originalUrl}: empty body`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
 
@@ -3148,7 +3148,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
         try {
             input = JSON.parse(body);
         } catch (error) {
-            console.error('Error parsing JSON:', error);
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON: `, error);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
         }
         let userGeneratorRequest : GeneratorState = {
@@ -3174,7 +3174,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', 
                 `${resource}/generator`, generatorState);
             if (process.env.TRACE_LEVEL) {
-                console.log(`${user_project_org_project_data_resource_generator}: stored new state: ${JSON.stringify(generatorState)}`);
+                console.log(`${email} ${req.method} ${req.originalUrl}: stored new state: ${JSON.stringify(generatorState)}`);
             }
 
             if (generatorState.status === TaskStatus.Processing) {
@@ -3185,7 +3185,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 const refreshAIFileOnBatchSizeProcessed = 25;
                 if (generatorState.processedStages && generatorState.processedStages >= refreshAIFileOnBatchSizeProcessed &&
                     generatorState.processedStages % refreshAIFileOnBatchSizeProcessed === 0) {
-                    console.info(`${req.originalUrl}: Refreshing AI File on Batch Size (${refreshAIFileOnBatchSizeProcessed}) Processed: ${generatorState.processedStages} already processed`);
+                    console.info(`${req.method} ${req.originalUrl}: Refreshing AI File on Batch Size (${refreshAIFileOnBatchSizeProcessed}) Processed: ${generatorState.processedStages} already processed`);
                 } else {
                     return;
                 }
@@ -3316,7 +3316,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     currentGeneratorState.stage = newGeneratorState.stage;
 
                     // if we've finished all stages, then we'll set the status to complete and idle
-                    if (currentGeneratorState.stage === Stages.Complete) {
+                    if (currentGeneratorState.stage === Stages.Complete && currentGeneratorState.status === TaskStatus.Processing) {
                         currentGeneratorState.status = TaskStatus.Idle;
                         const currentDateTime = usFormatter.format(new Date(Date.now()));
                         currentGeneratorState.statusDetails = `Completed all stages (${currentGeneratorState.processedStages}) at ${currentDateTime}`;
