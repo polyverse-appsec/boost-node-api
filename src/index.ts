@@ -3019,9 +3019,9 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl}: Org is required`);
             } else if (!project) {
-                console.error(`Project is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl}: Project is required`);
             }
 
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
@@ -3061,7 +3061,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
             }
         }
         if (body === '' || body === undefined) {
-            console.error(`PATCH ${user_project_org_project_data_resource_generator}: empty body`);
+            console.error(`${email} ${req.method} ${req.originalUrl}: empty body`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
 
@@ -3079,7 +3079,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
                     .status(HTTP_LOCKED)
                     .send('Generator in error state - cannot process more updates');
             }
-            console.error(`Invalid PATCH status: ${input.status}`);
+            console.error(`${email} ${req.method} ${req.originalUrl}: Invalid status: ${input.status}`);
             return res.status(HTTP_CONFLICT).send(`Invalid PATCH status: ${input.status}`)
         }
         if (input.lastUpdated) {
@@ -3110,14 +3110,14 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
                 `${resource}/generator`, generatorState);
 
             if (process.env.TRACE_LEVEL) {
-                console.log(`${req.originalUrl}: Updated Generator: ${JSON.stringify(generatorState)}`);
+                console.log(`${email} ${req.method} ${req.originalUrl}: Updated Generator: ${JSON.stringify(generatorState)}`);
             }
         };
 
         // if we're only updating the timestamp on the processing, then don't kick off any new work
         if (currentGeneratorState.status === TaskStatus.Processing) {
 
-            console.log(`${user_project_org_project_data_resource_generator}: updated processing task: ${JSON.stringify(currentGeneratorState)}`);
+            console.log(`${email} ${req.method} ${req.originalUrl}: updated processing task: ${JSON.stringify(currentGeneratorState)}`);
             await updateGeneratorState(currentGeneratorState);
 
             return res
