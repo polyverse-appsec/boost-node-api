@@ -721,7 +721,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             }
         }
 
-        if (body === '') {
+        if (body === '' || body === undefined) {
             console.error(`${email} ${req.method} ${req.originalUrl} empty body`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
@@ -732,7 +732,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         try {
             updatedProject = JSON.parse(body);
         } catch (error: any) {
-            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON: `, error.stack || error);
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack || error);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
         }
 
@@ -1561,7 +1561,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req:
             }
         }
 
-        if (body === '') {
+        if (body === '' || body === undefined) {
             console.error(`${req.originalUrl}: empty body`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
@@ -1576,7 +1576,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req:
                     .send('Invalid status - only Unknown status can be set');
             }
         } catch (error: any) {
-            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${body}: `, error.stack || error);
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack || error);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
         }
 
@@ -2250,7 +2250,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         try {
             input = body?JSON.parse(body):undefined;
         } catch (error: any) {
-            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${body}: `, error.stack || error);
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack || error);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
         }
 
@@ -2590,7 +2590,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
             }
         }
 
-        if (body === '') {
+        if (body === '' || body === undefined) {
             console.error(`${req.method} ${req.originalUrl} ${user_profile}: empty body`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
@@ -2600,7 +2600,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
         try {
             updatedGoals = JSON.parse(body);
         } catch (error: any) {
-            console.error(`${req.method} ${req.originalUrl} Error parsing JSON ${body}: `, error.stack);
+            console.error(`${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
         }
 
@@ -3049,7 +3049,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
                 body = JSON.stringify(body);
             }
         }
-        if (body === '') {
+        if (body === '' || body === undefined) {
             console.error(`PATCH ${user_project_org_project_data_resource_generator}: empty body`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
@@ -3058,7 +3058,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         try {
             input = JSON.parse(body);
         } catch (error: any) {
-            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${body}: `, error.stack || error);
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack || error);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
         }
         if (input.status !== currentGeneratorState.status) {
@@ -3190,7 +3190,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 body = JSON.stringify(body);
             }
         }
-        if (body === '') {
+        if (body === '' || body === undefined) {
             console.error(`${email} ${req.method} ${req.originalUrl}: empty body`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
@@ -3199,7 +3199,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
         try {
             input = JSON.parse(body);
         } catch (error: any) {
-            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${body}: `, error.stack || error);
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack || error);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
         }
         let userGeneratorRequest : GeneratorState = {
@@ -3572,7 +3572,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
                 try {
                     input = JSON.parse(body);
                 } catch (error: any) {
-                    console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${body}: `, error.stack || error);
+                    console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack || error);
                     return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
                 }
 
@@ -4321,7 +4321,7 @@ app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
                 body = JSON.stringify(body);
             }
         }
-        if (body === '') {
+        if (body === '' || body === undefined) {
             console.error(`${user_profile}: empty body`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
@@ -4330,7 +4330,7 @@ app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
         try {
             newProfileData = JSON.parse(body) as UserProfile;
         } catch (error: any) {
-            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${body}: `, error.stack || error);
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack || error);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
         }
 
