@@ -124,22 +124,34 @@ export async function searchProjectData<T>(email: string | undefined, sourceType
         try {
             const response = await dynamoDB.send(new ScanCommand(params));
             if (response.Items?.length) {
-                items = items.concat(response.Items
+                const tempItems = response.Items    
                     // if we are filtering on the resourcePath, then we need to filter the results
                     .filter(item =>
                         resourcePath !== searchWildcard || item.dataPath.S?.endsWith(dataPathTarget))
                     .map(item => {
                         const thisItem = item as BoostDynamoItem;
-                        const projectPathParts = thisItem.projectPath.S.split('/');
+                        try {
+                            const projectPathParts = thisItem.projectPath.S.split('/');
 
-                        const convertedItem = JSON.parse(thisItem.data.S) as T;
-                        return {
-                            ...convertedItem,
-                            _userName: projectPathParts[0],
-                            _ownerName: projectPathParts[2],
-                            _repoName: projectPathParts[3],
-                        } as T; // Cast to T, if T is the type you're working with
-                    }));
+                            if (!thisItem?.data?.S) {
+                                console.error(`StorageSchemaError: No data field found for ${thisItem.projectPath.S}/${thisItem.dataPath.S}`);
+                                return null;
+                            }
+
+                            const convertedItem = JSON.parse(thisItem.data.S) as T;
+                            return {
+                                ...convertedItem,
+                                _userName: projectPathParts[0],
+                                _ownerName: projectPathParts[2],
+                                _repoName: projectPathParts[3],
+                            } as T; // Cast to T, if T is the type you're working with
+                        } catch (error: any) {
+                            console.error(`StorageSchemaError: Error retrieving ${thisItem?.projectPath?.S}/${thisItem?.dataPath?.S}:`, error.stack || error);
+                            return null;
+                        }
+                    });
+                // Now filter out the null values (or the flag values you used to indicate a failed conversion)
+                items = items.concat(tempItems.filter(item => item !== null) as T[]);
             }
 
             exclusiveStartKey = response.LastEvaluatedKey;

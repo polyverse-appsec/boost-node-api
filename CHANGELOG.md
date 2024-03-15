@@ -3,7 +3,18 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.14.1: March 13th, 2024
+## Version 0.14.2: March 14th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Improve resilience doing a data search against DynamoDB for corrupted project data
+
+### Bug Fixes
+- N/A
+
+## Version 0.14.1: March 14th, 2024
 
 ### New Features
 - N/A
