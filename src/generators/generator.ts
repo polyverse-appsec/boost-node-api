@@ -426,7 +426,7 @@ export class Generator {
             // for now we don't want to process projects > 1000 files as the github pull will be too large
             if (filteredFileList.length >= 1000) {
                 console.warn(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Filtered File List is large: ${filteredFileList.length} files`);
-                throw new GeneratorProcessingError(`Filtered File List is large: ${filteredFileList.length} files`, this.currentStage);
+                throw new GeneratorProcessingError(`Filtered File List is large: ${filteredFileList.length} files with one of these Resources: ${this.projectData.resources.map(resource => resource.uri).join(', ')}`, this.currentStage);
             }
 
             return filteredFileList;

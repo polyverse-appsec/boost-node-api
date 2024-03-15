@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 0.14.3: March 15th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Show which project resource (e.g. github url) is potentially too large to process by a generator
+
+### Bug Fixes
+- N/A
+
 ## Version 0.14.2: March 15th, 2024
 
 ### New Features
