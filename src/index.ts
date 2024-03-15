@@ -1415,7 +1415,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
             try {
                 const newGeneratorState = await localSelfDispatch<GeneratorState>(
                     email,
-                    signedIdentity, 
+                    '', 
                     req,
                     generatorPath,
                     'PUT',
@@ -1451,7 +1451,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
             // After all generators have been started, proceed with data references
             const existingDataReferences = await localSelfDispatch<ProjectDataReference[]>(
                 email,
-                signedIdentity, 
+                '', 
                 req, 
                 `${projectDataPath}/data_references`, 
                 'PUT');
@@ -2240,12 +2240,23 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         }
 
         let body = req.body;
-        if (typeof body !== 'string') {
-            if (Buffer.isBuffer(body) || Array.isArray(body)) {
-                body = Buffer.from(body).toString('utf8');
+        if (typeof body === 'object' && body !== null && !Array.isArray(body)) {
+            if (Object.keys(body).length === 0) {
+                // If it's an empty object
+                body = undefined;
+            } else {
+                // If it's a non-empty object, you might want to handle it differently
+                // For example, convert it to a JSON string
+                body = JSON.stringify(body);
             }
+        } else if (typeof body !== 'string') {
+            if (Buffer.isBuffer(body)) {
+                body = body.toString('utf8');
+            }
+        } else if (body === '') {
+            body = undefined;
         }
-
+        
         let input : ProjectGroomState | undefined;
         try {
             input = body?JSON.parse(body):undefined;

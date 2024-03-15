@@ -12,7 +12,7 @@ Polyverse Boost ReST API (Backend)
 - Improve resilience doing a data search against DynamoDB for corrupted project data
 
 ### Bug Fixes
-- N/A
+- Fix Authorization failure of Generators during discovery under load
 
 ## Version 0.14.1: March 14th, 2024
 
