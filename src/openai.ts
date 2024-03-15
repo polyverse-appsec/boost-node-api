@@ -216,7 +216,9 @@ export const getOpenAIFile = async (fileId: string): Promise<OpenAIFile | undefi
                 if (attempt > maxRetries) {
                     throw new Error(`Failed to fetch ${fileId} after ${maxRetries + 1} attempts due to timeout.`);
                 }
-                console.warn(`getOpenAIFile:RETRY ${attempt} for ${fileId} after Error: ${error.message}`);
+                const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+
+                console.warn(`getOpenAIFile:RETRY ${attempt} for ${fileId} after Error: ${error.message} - ${errorDetails}`);
             } else {
                 console.error(`getOpenAIFile:FAILED: ${fileId} after Error: ${error.message}`);
                 // Handle non-timeout errors
@@ -274,7 +276,10 @@ export const deleteAssistantFile = async (fileId: string): Promise<void> => {
                 if (attempt > maxRetries) {
                     throw new Error(`Failed to delete ${fileId} after ${maxRetries + 1} attempts due to timeout.`);
                 }
-                console.warn(`deleteAssistantFile:RETRY ${attempt} for ${fileId} after Error: ${error.message}`);
+
+                const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+
+                console.warn(`deleteAssistantFile:RETRY ${attempt} for ${fileId} after Error: ${error.message} - ${errorDetails}`);
             } else {
                 console.error(`deleteAssistantFile:FAILED: ${fileId} after Error: ${error.message}`);
                 // Handle non-timeout errors
@@ -510,7 +515,8 @@ export const deleteOpenAIAssistant = async (assistantId: string): Promise<void> 
                 if (attempt > maxRetries) {
                     throw new Error(`Failed to delete ${assistantId} after ${maxRetries + 1} attempts due to timeout.`);
                 }
-                console.warn(`deleteOpenAIAssistant:RETRY ${attempt} for ${assistantId} after Error: ${error.message}`);
+                const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+                console.warn(`deleteOpenAIAssistant:RETRY ${attempt} for ${assistantId} after Error: ${error.message} - ${errorDetails}`);
             } else {
                 console.error(`deleteOpenAIAssistant:FAILED: ${assistantId} after Error: ${error.message}`);
                 // Handle non-timeout errors

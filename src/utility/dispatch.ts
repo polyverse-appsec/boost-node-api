@@ -41,7 +41,9 @@ export const handleErrorResponse = (error: any, req: Request, res: Response, sup
 
     if (axios.isAxiosError(error) && error.response) {
 
-        console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage?`${supplementalErrorMessage} - `:''}${errorMessage}`, error.response.data.body || error.response.data);
+        const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+
+        console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage?`${supplementalErrorMessage} - `:''}${errorMessage} - Error: ${error.message} - Details: ${errorDetails}`, error.response.data.body || error.response.data);
 
         return res
             .status(status_code)

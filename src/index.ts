@@ -832,7 +832,9 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             } else {
                 // This block is for handling errors, including HTTP_FAILURE_NOT_FOUND and HTTP_FAILURE_INTERNAL_SERVER_ERROR status codes
                 if (axios.isAxiosError(error) && error.response) {
-                    console.log(`TIMECHECK: ${org}:${project}:discovery failed ${error.response.status}:${error.response.data} - due to error: ${error}`);
+                    const errorMessage = error.message;
+                    const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+                    console.log(`TIMECHECK: ${org}:${project}:discovery failed ${error.response.status}:${error.response.data} - due to error: ${errorMessage} - ${errorDetails}`);
                 } else if (error.code !== undefined) {
                     console.log(`TIMECHECK: ${org}:${project}:discovery failed ${error.code} - due to error: ${error}`);
                 } else {
@@ -1283,8 +1285,9 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
                         break;
                     default:
                         if (axios.isAxiosError(error) && error.response) {
-                            const errorMessage = error.response.data.body || error.response.data;
-                            console.error(`${req.method} ${req.originalUrl} Unable to launch async grooming for ${projectDataPath} - due to error: ${error.response.status}:${errorMessage}`);
+                            const errorMessage = error.message;
+                            const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+                            console.error(`${req.method} ${req.originalUrl} Unable to launch async grooming for ${projectDataPath} - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
                         } else {
                             console.error(`${req.method} ${req.originalUrl} Unable to launch async grooming for ${projectDataPath}`, (error.stack || error));
                         }
@@ -1333,8 +1336,9 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
                 }
             } catch (error: any) {
                 if (axios.isAxiosError(error) && error.response) {
-                    const errorMessage = error.response.data.body || error.response.data;
-                    console.error(`${req.method} ${req.originalUrl} Unable to launch next batch of grooming - due to error: ${error.response.status}:${errorMessage}`);
+                    const errorMessage = error.message;
+                    const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+                    console.error(`${req.method} ${req.originalUrl} Unable to launch next batch of grooming - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
                 } else {
                     console.error(`${req.method} ${req.originalUrl} Unable to launch next batch of grooming`, (error.stack || error));
                 }
@@ -1432,8 +1436,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
                 }
             } catch (error: any) {
                 if (axios.isAxiosError(error) && error.response) {
-                    const errorMessage = error.response.data.body || error.response.data;
-                    console.error(`${req.originalUrl} Discovery unable to launch generator (continuing) for ${generatorPath} - due to error: ${error.response.status}:${errorMessage}`);
+                    const errorMessage = error.message;
+                    const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+                    console.error(`${req.originalUrl} Discovery unable to launch generator (continuing) for ${generatorPath} - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
                 } else {
                     console.error(`${req.originalUrl} Discovery unable to launch generator (continuing) for ${generatorPath}`, (error.stack || error));
                 }
@@ -1713,8 +1718,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             dataReferences = await localSelfDispatch<ProjectDataReference[]>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data_references`, 'GET');
         } catch (error) {
             if (axios.isAxiosError(error) && error.response && error.response.status === HTTP_FAILURE_UNAUTHORIZED) {
-                const errorMessage = error.response.data.body || error.response.data;
-                console.error(`${req.originalUrl} Unable to get data references for ${projectDataUri} - due to error: ${error.response.status}:${errorMessage}`);
+                const errorMessage = error.message;
+                const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+                console.error(`${req.originalUrl} Unable to get data references for ${projectDataUri} - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
                 return handleErrorResponse(error, req, res);
             }
 
@@ -3302,7 +3308,10 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                             console.debug(`${req.originalUrl} Unable to upload data references to AI Servers for ${org}/${project} - Project Not Found`);
                             break;
                         default:
-                            console.error(`${req.originalUrl} Unable to upload data references to AI Servers for ${org}/${project} - due to error: ${error.response.data.body || error.response.data}`);
+                            const errorMessage = error.message;
+                            const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+        
+                            console.error(`${req.originalUrl} Unable to upload data references to AI Servers for ${org}/${project} - due to error: ${errorMessage} - ${errorDetails}`);
                     }
                 } else {
                     console.error(`Error uploading data references to AI Servers: `, (error.stack || error));
@@ -3399,7 +3408,9 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         }
                     } else {
                         if (axios.isAxiosError(error)) {
-                            currentGeneratorState.statusDetails = `${error.response?.status}:${error.response?.statusText} due to error: ${JSON.stringify(error.stack || error)}`;
+                            const errorMessage = error.message;
+                            const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';                        
+                            currentGeneratorState.statusDetails = `${error.response?.status}:${error.response?.statusText} due to error: ${errorMessage} - Details: ${errorDetails}`;
                         } else {
                             currentGeneratorState.statusDetails = `${JSON.stringify(error.stack || error)}`;
                         }
@@ -3447,7 +3458,8 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     } catch (error: any) {
                         let errorMessage = `${JSON.stringify(error.stack || error)}`;
                         if (axios.isAxiosError(error) && error.response) {
-                            errorMessage = `${error.response.status}:${error.response.statusText} due to error: ${JSON.stringify(error.response.data.body || error.response.data)}`;
+                            const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+                            errorMessage = `${error.response.status}:${error.response.statusText} due to error: ${error.message} - Details: ${errorDetails}`;
                         }
                         currentGeneratorState.status = TaskStatus.Error;
                         currentGeneratorState.statusDetails = `Error starting next stage to process: ${errorMessage}`;
@@ -4176,7 +4188,9 @@ const handleProxyRequest = async (req: Request, res: Response) => {
                 if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
                     console.error(`Error: TIMEOUT: Request to ${externalEndpoint} timed out after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
                 } else if (error.response) {
-                    console.error(`Error: Server responded with status ${error.response.status} ${error.response.statusText} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
+                    const errorMessage = error.message;
+                    const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+                    console.error(`Error: Server responded with status ${error.response.status} ${error.response.statusText} - ${errorMessage} - ${errorDetails} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
                     return res.status(error.response.status).send(error.response.statusText);
                 } else if (error.request) {
                     console.error(`Error: No response received from ${externalEndpoint} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
