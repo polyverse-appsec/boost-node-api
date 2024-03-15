@@ -274,16 +274,28 @@ export class ArchitecturalSpecificationGenerator extends Generator {
             filepath: filepath
         };
 
+        const aiSpecGenerationTimeSliceInSeconds : number = 15;
+
         try {
+            const specGenerationStartTime = new Date().getTime();
             const summarizerOutput : SummarizerOutput = await localSelfDispatch<SummarizerOutput>(
                 this.email, '', this.serviceEndpoint, `proxy/ai/${this.projectData.org}/${Services.Summarizer}`, 'POST',
-                inputData);
+                inputData, aiSpecGenerationTimeSliceInSeconds * 1000, false);
+            const specGenerationEndTime = new Date().getTime();
+
+            // if no data returned, we timed out - throw a timeout error
+            if (!summarizerOutput?.analysis) {
+                throw new Error(`Timeout (${(specGenerationEndTime - specGenerationStartTime) / 1000} sec) generating AI Specification for ${filepath}`);
+            }
             return summarizerOutput.analysis;
 
         } catch (err : any) {
             let errorMsg = JSON.stringify(err.stack || err);
             if (axios.isAxiosError(err) && err.response) {
-                errorMsg = `${err.response.status}:${err.response.statusText} due to error: ${err.response.data.body || err.response.data}`;
+                const errorMessage = err.message;
+                const errorDetails = err.response?.data ? JSON.stringify(err.response.data) : 'No additional error information';
+
+                errorMsg = `${err.response.status}:${err.response.statusText} due to error: ${errorMessage} - ${errorDetails}`;
             }
             console.error(`${this.email} ${this.projectData.org} ${this.projectData.name} - Unable to build Architectural specification: ${errorMsg} - processing input: ${JSON.stringify(inputData)}`);
             throw new Error(`Unable to build Architectural specification: ${errorMsg}`);

@@ -11,6 +11,7 @@ Polyverse Boost ReST API (Backend)
 ### Enhancements
 - Improve resilience doing a data search against DynamoDB for corrupted project data
 - Ensure AI spec generator can continue processing if an error occurs (was aborting under some error conditions)
+- AI Spec Generator will limit to 15 seconds to process
 
 ### Bug Fixes
 - Fix Authorization failure of Generators during discovery under load
