@@ -10,6 +10,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Show which project resource (e.g. github url) is potentially too large to process by a generator
+- Add the size of the project and the file count to the static blueprint
 
 ### Bug Fixes
 - N/A

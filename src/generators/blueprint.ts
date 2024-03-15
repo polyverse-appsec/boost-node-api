@@ -57,6 +57,7 @@ export class BlueprintGenerator extends Generator {
     readonly staticBlueprintWithFilenames =
 `## Architectural Blueprint Summary for: {projectName}
 * The architecture of the software project is defined in the source code summary documents.
+* The project is a {projectSize} project with {fileCount} source files.
 * The majority of the source code is written in Programming Language with file extension {mostCommonFileExtension}`;
 
     readonly sampleBlueprint =
@@ -123,11 +124,31 @@ readonly defaultBlueprint =
                 throw new GeneratorProcessingError('Unable to load file list', BlueprintStage.FileImport);
             }
 
+            const fileCount = filteredFileList.length;
+            let project_size = "software";
+            if (fileCount > 1000) {
+                project_size = "very large";
+            } else if (fileCount > 400) {
+                project_size = "large";
+            } else if (fileCount > 100) {
+                project_size = "medium";
+            } else if (fileCount > 50) {
+                project_size = "small";
+            } else if (fileCount > 10) {
+                project_size = "very small";
+            } else if (fileCount <= 0) {
+                project_size = "seemingly empty";
+            } else {
+                project_size = "tiny";
+            }
+
             const mostCommonFileExtension = this.getMostCommonFileExtension(filteredFileList);
             this.data =
                 this.staticBlueprintWithFilenames
                     .replace('{projectName}', this.projectData.name)
-                    .replace('{mostCommonFileExtension}', mostCommonFileExtension);
+                    .replace('{mostCommonFileExtension}', mostCommonFileExtension)
+                    .replace('{fileCount}', fileCount.toString())
+                    .replace('{projectSize}', 'small');
 
             if (process.env.AI_BLUEPRINT) {
                 nextStage = BlueprintStage.FileScan;
