@@ -207,7 +207,16 @@ export class ArchitecturalSpecificationGenerator extends Generator {
                 this.data = this.data.replace(unavailableSpecForThisFile, errorSpecificationForThisFile);
 
                 const errorMsg = err.stack || err;
-                await this.updateProgress(`Failed to Build AI Spec for ${fileContent!.path} due to ${errorMsg}`);
+
+                let originalForceProcessing = this.forceProcessing;
+                try {
+                    // we're going to ignore the error here - since we're already in an recoverable error state, and we'd like
+                    //    to try and continue processing if possible
+                    this.forceProcessing = true;
+                    await this.updateProgress(`Failed to Build AI Spec for ${fileContent!.path} due to ${errorMsg}`);
+                } finally {
+                    this.forceProcessing = originalForceProcessing;
+                }
             }
 
             await this.saveScratchData<FileSummarizationStatus>(fileSummarizationStatus, ArchitecturalSpecificationStage.FileSummarization);

@@ -3,13 +3,14 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.14.2: March 14th, 2024
+## Version 0.14.2: March 15th, 2024
 
 ### New Features
 - N/A
 
 ### Enhancements
 - Improve resilience doing a data search against DynamoDB for corrupted project data
+- Ensure AI spec generator can continue processing if an error occurs (was aborting under some error conditions)
 
 ### Bug Fixes
 - Fix Authorization failure of Generators during discovery under load
