@@ -50,12 +50,14 @@ export class BlueprintGenerator extends Generator {
         super(serviceEndpoint, email, projectData, ProjectDataType.ArchitecturalBlueprint);
     }
 
+    readonly blueprintId = `"Architectural Blueprint Summary"`;
+
     readonly staticBlueprint =
-`## Architectural Blueprint Summary for: {projectName}
+`## ${this.blueprintId} for: {projectName}
 * The architecture of the software project is defined in the source code summary documents.`;
 
     readonly staticBlueprintWithFilenames =
-`## Architectural Blueprint Summary for: {projectName}
+`## ${this.blueprintId} for: {projectName}
 * The architecture of the software project is defined in the source code summary documents.
 * The project is a {projectSize} project with {fileCount} source files.
 * The majority of the source code is written in Programming Language with file extension {mostCommonFileExtension}`;
@@ -76,7 +78,7 @@ export class BlueprintGenerator extends Generator {
 * Architectural Problems Identified: coarse locks in multi-threaded, global and shared memory in library, UI in a non-interactive server, versioning fragility, etc.`
 
 readonly defaultBlueprint =
-`## Architectural Blueprint Summary for: {projectName}
+`## ${this.blueprintId} for: {projectName}
 * Software Project Type: Unknown
 * High-Level Summary: A software project
 * Programming Languages: Not yet determined

@@ -15,11 +15,14 @@ export class ProjectSourceGenerator extends Generator {
         super(serviceEndpoint, email, projectData, ProjectDataType.ProjectSource);
     }
 
-readonly defaultProjectSource =
-`# Contents of {projectName}:\n{projectRepo}\n\n`
+    readonly projectsourceId = `"Project Source Code"`;
 
-readonly fileSourceEntry =
-`# Contents of {relativeFileName}:\n{fileSource}\n\n`
+    readonly defaultProjectSource =
+        `# ${this.projectsourceId} Contents of {projectName}:\n{projectRepo}\n\n` +
+        `## Project Repositories:\n{projectRepo}\n\n\n`;
+
+    readonly fileSourceEntry =
+        `# Contents of {relativeFileName}:\n{fileSource}\n\n`
 
     get validStages() : string[] {
         return Object.values(ProjectSourceStage);

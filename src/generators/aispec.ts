@@ -39,8 +39,11 @@ export class ArchitecturalSpecificationGenerator extends Generator {
         return Object.values(ArchitecturalSpecificationStage);
     }
 
+    readonly aispecId = `"Code and Function Specifications"`;
+
     readonly defaultArchitecturalSpecification =
-        `# Summary for {projectName}:\n\n\n`
+        `# ${this.aispecId} for {projectName}:\n\n\n` +
+        `## Project Repositories:\n{projectRepo}\n\n\n`;
 
     readonly fileArchitecturalSpecificationEntry =
         `# Summary for {relativeFileName}:\n{architecturalSpec}\n\n`
@@ -57,6 +60,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
             await this.updateProgress('Generating Initial Project Info');
 
             const projectRepos: string = this.projectData.resources.map((resource) => resource.uri).join('\n\n');
+
             this.data = this.defaultArchitecturalSpecification
                 .replace('{projectName}', this.projectData.name)
                 .replace('{projectRepo}', projectRepos);
