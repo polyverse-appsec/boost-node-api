@@ -33,8 +33,11 @@ export class ProjectSourceGenerator extends Generator {
         let nextStage : string = "";
         switch (stage) {
         case Stages.StaticDefault:
-            await this.updateProgress('Generating Initial Project Info');
+            await this.updateProgress('Generating Initial Project Info',
+                { possibleStagesRemaining: 2, childResources: 0 } as GeneratorState);
+
             const projectRepos : string = this.projectData.resources.map((resource) => resource.uri).join('\n\n');
+
             this.data = this.defaultProjectSource
                 .replace('{projectName}', this.projectData.name)
                 .replace('{projectRepo}', projectRepos);
@@ -48,7 +51,7 @@ export class ProjectSourceGenerator extends Generator {
                 const filteredFilepathList : string[] = await this.getFilteredFileList();
 
                 await this.updateProgress(`Importing File Paths for ${filteredFilepathList.length} files`,
-                    { possibleStagesRemaining: filteredFilepathList.length } as GeneratorState);
+                    { possibleStagesRemaining: filteredFilepathList.length, childResources: filteredFilepathList.length } as GeneratorState);
 
                 // build the combined file entries from all the file paths
                 for (const filepath of filteredFilepathList) {

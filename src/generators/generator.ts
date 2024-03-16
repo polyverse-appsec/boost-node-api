@@ -76,8 +76,14 @@ export class Generator {
         } else {
             console.debug(`${this.projectData.org}:${this.projectData.name} ${this.dataType} No Data Generated - Skipping Save`);
         }
-        await this.updateProgress('Finished Stage ' + this.currentStage + ' - Moving to ' + nextStage);
 
+        // we'll mark the generator as complete and clear future stages
+        if (nextStage === Stages.Complete) {
+            await this.updateProgress('Finished Stage ' + this.currentStage + ' - Completing', { possibleStagesRemaining: 0 } as GeneratorState);
+        // or we'll move to the next stage
+        } else {
+            await this.updateProgress('Finished Stage ' + this.currentStage + ' - Moving to ' + nextStage);
+        }
         return nextStage;
     }
 
@@ -248,6 +254,10 @@ export class Generator {
         if (extraGeneratorUpdates?.possibleStagesRemaining != undefined) {
             state.possibleStagesRemaining = extraGeneratorUpdates.possibleStagesRemaining;
         }
+        // set the number of child resources if available (e.g. # of files)
+        if (extraGeneratorUpdates?.childResources != undefined) {
+            state.childResources = extraGeneratorUpdates.childResources;
+        }
 
         if (!this.currentStage) {
             throw new Error('Current Stage not defined');
@@ -408,7 +418,7 @@ export class Generator {
             // file specs in boost ignore look like "**/*.txt" - which should ignore all text files
             //      in all folders. Or "node_modules/" which should ignore all files in the node_modules root folder.
             //      Or ".gitignore" which should ignore file named .gitignore in the root directory
-            await this.updateProgress('Filtered File List for .boostignore');
+            await this.updateProgress(`Filtering File List of ${fileList.length} files using .boostignore`, { childResources: fileList.length } as GeneratorState);
             
             const ignoreFileSpecsTime = Date.now();
             const boostIgnoreFileSpecs = await this.getBoostIgnoreFileSpecs();
@@ -422,6 +432,8 @@ export class Generator {
                 const totalTime = Date.now() - startTime;
                 console.info(`${this.projectData.org}:${this.projectData.name}:${this.dataType} TIMECHECK: Total Time: ` + totalTime + "ms");
             }
+
+            await this.updateProgress(`Identified ${filteredFileList.length} files to process`, { childResources: filteredFileList.length } as GeneratorState);
 
             // for now we don't want to process projects > 1000 files as the github pull will be too large
             if (filteredFileList.length >= 1000) {

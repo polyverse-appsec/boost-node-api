@@ -9,6 +9,7 @@ export const api_root_endpoint : string = '/api';
 export const secondsBeforeRestRequestMaximumTimeout = 25;
 
 export const secondsBeforeRestRequestShortTimeout = 10;
+export const millisecondsPerSecond = 1000;
 
 export const HTTP_SUCCESS = 200;
 export const HTTP_SUCCESS_ACCEPTED = 202;

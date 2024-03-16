@@ -57,7 +57,8 @@ export class ArchitecturalSpecificationGenerator extends Generator {
         let nextStage : string = "";
         switch (stage) {
         case Stages.StaticDefault:
-            await this.updateProgress('Generating Initial Project Info');
+            await this.updateProgress('Generating Initial Project Info',
+                { possibleStagesRemaining: 2, childResources: 0 } as GeneratorState);
 
             const projectRepos: string = this.projectData.resources.map((resource) => resource.uri).join('\n\n');
 
@@ -98,7 +99,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
             }
 
             await this.updateProgress(`Collected Filtered File Contents for ${filteredFileContents.length} files`,
-                {possibleStagesRemaining: filteredFileContents.length } as GeneratorState);
+                { possibleStagesRemaining: filteredFileContents.length, childResources: filteredFileContents.length } as GeneratorState);
 
             for (const fileContent of filteredFileContents) {
                 this.data += this.fileArchitecturalSpecificationEntry

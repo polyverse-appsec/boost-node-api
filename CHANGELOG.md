@@ -12,6 +12,7 @@ Polyverse Boost ReST API (Backend)
 - Show which project resource (e.g. github url) is potentially too large to process by a generator
 - Add the size of the project and the file count to the static blueprint
 - Include special titles on all vector store data - to match models in the frontend Sara model references in the prompt
+- Report the maximum # of resources/files that are expected to be processed by a generator (e.g. 1000 files) in Generators and Project Status
 
 ### Bug Fixes
 - N/A

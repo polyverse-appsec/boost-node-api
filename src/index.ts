@@ -1505,6 +1505,7 @@ interface ProjectStatusState {
     activelyUpdating?: boolean;
     resourcesState?: any[];
     possibleStagesRemaining?: number;
+    childResources?: number;
     details?: string;
     lastUpdated: number;
 }
@@ -1835,6 +1836,14 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                     projectStatus.possibleStagesRemaining = generatorStatus.possibleStagesRemaining;
                 } else if (projectStatus.possibleStagesRemaining > generatorStatus.possibleStagesRemaining) {
                     projectStatus.possibleStagesRemaining = generatorStatus.possibleStagesRemaining;
+                }
+            }
+            // determine the maximum # of child resources
+            if (generatorStatus.childResources && generatorStatus.childResources > 0) {
+                if (projectStatus.childResources === undefined) {
+                    projectStatus.childResources = generatorStatus.childResources;
+                } else if (projectStatus.childResources < generatorStatus.childResources) {
+                    projectStatus.childResources = generatorStatus.childResources;
                 }
             }
 
