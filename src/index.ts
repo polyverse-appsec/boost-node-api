@@ -1495,6 +1495,8 @@ enum ProjectStatus {
     ResourcesGenerating = 'Resources Generating',           // resources missing or incomplete, but still being generated
     ResourcesNotSynchronized = 'Resources Not Synchronized',// resources completely generated, but not synchronized to OpenAI
     AIResourcesOutOfDate = 'AI Data Out of Date',           // resources synchronized to OpenAI, but newer resources available
+    AssistantNotAttached = 'Assistant Not Attached',        // resources synchronized to OpenAI, but no assistant attached
+    AssistantOutOfDate = 'Assistant Out of Date',           // resources synchronized to OpenAI, but assistant does not include all files
     Synchronized = 'Fully Synchronized'                     // All current resources completely synchronized to OpenAI
 }
 
@@ -2145,6 +2147,34 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 }
                 // If the value is not Stages.Complete, no action is taken and the original value remains unchanged
             });
+
+            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
+
+            await saveProjectStatusUpdate();
+
+            return res
+                .status(HTTP_SUCCESS)
+                .contentType('application/json')
+                .send(projectStatus);
+        }
+
+        if (lookupAssistantId && !projectStatus.assistant) {
+            projectStatus.status = ProjectStatus.AssistantNotAttached;
+            projectStatus.details = `Resources Completely Generated, but no Assistant Attached`;
+
+            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
+
+            await saveProjectStatusUpdate();
+
+            return res
+                .status(HTTP_SUCCESS)
+                .contentType('application/json')
+                .send(projectStatus);
+        }
+
+        if (lookupAssistantId && projectStatus.assistant && !projectStatus.assistant.synchronized) {
+            projectStatus.status = ProjectStatus.AssistantOutOfDate;
+            projectStatus.details = `Resources Completely Generated, but Assistant ${projectStatus.assistant.assistantId} does not include all files`;
 
             console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
