@@ -558,7 +558,7 @@ export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria,
     let allAssistants: OpenAIAssistant[] = [];
 
     do {
-        const getAssistantsRestEndpoint = `https://api.openai.com/v1/assistants?limit=100${afterCursor ? `&after=${afterCursor}` : ''}`;
+        const getAssistantsRestEndpoint = `https://api.openai.com/v1/assistants?limit=10${afterCursor ? `&after=${afterCursor}` : ''}`;
         const response = await fetch(getAssistantsRestEndpoint, {
             method: 'GET',
             headers: {
@@ -623,15 +623,15 @@ export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria,
         }
 
         if (isMatch && assistantMetadataToMatch.userName && assistant.metadata.userName) {
-            isMatch &&= assistant.metadata.userName?.includes(`${assistantMetadataToMatch.userName.replace(/[^a-zA-Z0-9]/g, '_')}`);
+            isMatch &&= assistant.metadata.userName === assistantMetadataToMatch.userName;
         }
 
         if (isMatch && assistantMetadataToMatch.orgName && assistant.metadata.orgName) {
-            isMatch &&= assistant.metadata.orgName?.includes(`_${assistantMetadataToMatch.orgName.replace(/[^a-zA-Z0-9]/g, '_')}`);
+            isMatch &&= assistant.metadata.orgName === assistantMetadataToMatch.orgName;
         }
 
         if (isMatch && assistantMetadataToMatch.projectId && assistant.metadata.projectId) {
-            isMatch &&= assistant.metadata.projectId?.includes(`_${assistantMetadataToMatch.projectId.replace(/[^a-zA-Z0-9]/g, '_')}`);
+            isMatch &&= assistant.metadata.projectId === assistantMetadataToMatch.projectId;
         }
         
         if (!isMatch) {

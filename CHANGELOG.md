@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 0.14.3: March 15th, 2024
+## Version 0.14.3: March 17th, 2024
 
 ### New Features
 - N/A
@@ -16,7 +16,7 @@ Polyverse Boost ReST API (Backend)
 - Project Status accepts a queryParam "verifyAssistant" to verify the assistant is completely connected to the project
 
 ### Bug Fixes
-- N/A
+- Add workaround for OpenAI API bug in Assistant search - can only retrieve 10 assistants at a time before data is corrupted (e.g. attached files are dropped)
 
 ## Version 0.14.2: March 15th, 2024
 
