@@ -1093,7 +1093,7 @@ app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, re
         const groomingDataListFilteredByStatus : ProjectGroomState[] =
             groomingDataList.filter((groomData) => status?groomData.status === status:true);
 
-        const listOfProjectNames : string = groomingDataList.map((groomData) => `${(groomData as any)._userName} org=${(groomData as any)._ownerName} repo=${(groomData as any)._repoName}`).join('\n');
+        const listOfProjectNames : string = groomingDataList.map((groomData) => `${(groomData as any)._userName} org=${(groomData as any)._ownerName} repo=${(groomData as any)._projectName}`).join('\n');
         console.info(`${req.originalUrl} retrieved ${groomingDataListFilteredByStatus.length} Projects to Groom with status:${status?status:'all'}: ${listOfProjectNames}`);
 
         return res
@@ -1498,6 +1498,14 @@ enum ProjectStatus {
     Synchronized = 'Fully Synchronized'                     // All current resources completely synchronized to OpenAI
 }
 
+interface ProjectAssistantInfo {
+    assistantId: string;
+
+    matchedResources: any[];
+
+    synchronized: boolean;
+}
+
 interface ProjectStatusState {
     status: ProjectStatus;
     synchronized?: boolean;
@@ -1508,6 +1516,7 @@ interface ProjectStatusState {
     childResources?: number;
     details?: string;
     lastUpdated: number;
+    assistant?: ProjectAssistantInfo;
 }
 
 const MinutesToWaitBeforeGeneratorConsideredStalled = 3;
@@ -1695,6 +1704,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
         const { org, project } = req.params;
 
+        const lookupAssistantId : boolean = req.query?.verifyAssistant !== undefined;
+
         let resourcesState : Map<string, string> = new Map<string, string>(
             [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification]
             .map((resource) => [resource, TaskStatus.Idle]));
@@ -1730,7 +1741,50 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
             // we can continue on, since we're just missing the last synchronized time - which probably didn't happen anyway
         }
+        
+        if (lookupAssistantId) {
 
+            const assistantMatched : ProjectAssistantInfo = {
+                assistantId: '',
+                matchedResources: [] as ProjectDataReference[],
+                synchronized: false
+            };
+
+            const matchDataReferencesPerAssistant = async (assistant: OpenAIAssistant) : Promise<boolean> => {
+                    // if we already found an assistant that matches, just stop looking... we assume only one assistant can match a file
+                    if (assistantMatched.assistantId !== '') {
+                        return false;
+                    }
+                    // skip assistants without files
+                    if (!assistant.file_ids?.length) {
+                        return false;
+                    }
+                    // see if any of our files match this assistant
+                    for (const fileId of assistant.file_ids) {
+                        const matchedDataReference = dataReferences.find((dataReference) => dataReference.id === fileId);
+                        if (!matchedDataReference) {
+                            continue;
+                        }
+
+                        assistantMatched.assistantId = assistant.id;
+                        assistantMatched.matchedResources.push(matchedDataReference);
+                    }
+
+                    // only return one assistant that matches our files
+                    return assistantMatched.assistantId !== '';
+                };
+                        
+            // ideally we'd also match the project id to be very specific - but since the project id in Sara is a Guid,
+            //    and the project name in backend is the user defined name, we can't match them up yet
+            const assistantsMatched = await searchOpenAIAssistants(
+                { email, org }, matchDataReferencesPerAssistant);
+            if (assistantsMatched.length > 0) {
+                assistantMatched.synchronized = assistantMatched.matchedResources.length === dataReferences.length;
+
+                projectStatus.assistant = assistantMatched;
+            }
+        }
+                
         for (const dataReference of dataReferences) {
             if (dataReference.lastUpdated) {
                 // pick the newest lastUpdated date - so we report the last updated date of the most recent resource sync

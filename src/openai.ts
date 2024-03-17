@@ -606,19 +606,34 @@ export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria,
 
     console.log(`${currentTime} searchOpenAIAssistants:SUCCEEDED: ${allAssistants.length} Assistants : ${searchParameters}`);
 
+    const ASSISTANT_METADATA_CREATOR = 'sara.frontend'
+
+    const assistantMetadataToMatch = {
+        projectId: project,
+        userName: email,
+        orgName: org,
+        creator: ASSISTANT_METADATA_CREATOR,
+    }
+
     let filteredAssistants = allAssistants.filter((assistant: OpenAIAssistant) => {
         let isMatch = true;
 
-        if (email && assistant.name) {
-            isMatch &&= assistant.name?.includes(`${email.replace(/[^a-zA-Z0-9]/g, '_')}`);
+        if (assistantMetadataToMatch.creator && assistant.metadata.creator) {
+            isMatch &&= assistant.metadata.creator === assistantMetadataToMatch.creator;
         }
 
-        if (isMatch && org && assistant.name) {
-            isMatch &&= assistant.name?.includes(`_${org.replace(/[^a-zA-Z0-9]/g, '_')}`);
+        if (isMatch && assistantMetadataToMatch.userName && assistant.metadata.userName) {
+            isMatch &&= assistant.metadata.userName?.includes(`${assistantMetadataToMatch.userName.replace(/[^a-zA-Z0-9]/g, '_')}`);
         }
-        if (isMatch && project) {
-            isMatch &&= assistant.metadata.projectName?.includes(`_${project.replace(/[^a-zA-Z0-9]/g, '_')}`);
+
+        if (isMatch && assistantMetadataToMatch.orgName && assistant.metadata.orgName) {
+            isMatch &&= assistant.metadata.orgName?.includes(`_${assistantMetadataToMatch.orgName.replace(/[^a-zA-Z0-9]/g, '_')}`);
         }
+
+        if (isMatch && assistantMetadataToMatch.projectId && assistant.metadata.projectId) {
+            isMatch &&= assistant.metadata.projectId?.includes(`_${assistantMetadataToMatch.projectId.replace(/[^a-zA-Z0-9]/g, '_')}`);
+        }
+        
         if (!isMatch) {
             return false;
         }

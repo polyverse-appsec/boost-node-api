@@ -13,6 +13,7 @@ Polyverse Boost ReST API (Backend)
 - Add the size of the project and the file count to the static blueprint
 - Include special titles on all vector store data - to match models in the frontend Sara model references in the prompt
 - Report the maximum # of resources/files that are expected to be processed by a generator (e.g. 1000 files) in Generators and Project Status
+- Project Status accepts a queryParam "verifyAssistant" to verify the assistant is completely connected to the project
 
 ### Bug Fixes
 - N/A

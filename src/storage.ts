@@ -143,7 +143,7 @@ export async function searchProjectData<T>(email: string | undefined, sourceType
                                 ...convertedItem,
                                 _userName: projectPathParts[0],
                                 _ownerName: projectPathParts[2],
-                                _repoName: projectPathParts[3],
+                                _projectName: projectPathParts[3],
                             } as T; // Cast to T, if T is the type you're working with
                         } catch (error: any) {
                             console.error(`StorageSchemaError: Error retrieving ${thisItem?.projectPath?.S}/${thisItem?.dataPath?.S}:`, error.stack || error);

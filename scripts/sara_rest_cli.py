@@ -55,10 +55,11 @@ def main(email, org, project, method, stage, data):
         "test": f"{URL}/test",
 
         "status": f"{URL}/api/user_project/{org}/{project}/status",
-        'status_refresh': f"{URL}/api/user_project/{org}/{project}/status",
+        "status_refresh": f"{URL}/api/user_project/{org}/{project}/status",
+        "status_assistant": f"{URL}/api/user_project/{org}/{project}/status?verifyAssistant",
 
-        'account': f"{URL}/api/user/{org}/account",
-        'org_account': f"{URL}/api/org/{org}/account",
+        "account": f"{URL}/api/user/{org}/account",
+        "org_account": f"{URL}/api/org/{org}/account",
 
         "data_references": f"{URL}/api/user_project/{org}/{project}/data_references",
         "data_references_refresh": f"{URL}/api/user_project/{org}/{project}/data_references",
@@ -153,6 +154,7 @@ def main(email, org, project, method, stage, data):
             "rediscover",
             "data_references_refresh",
             "status_refresh",
+            "status_assistant",
             "timer_interval",
             "groom_discoveries",
             "groom_toggle"
@@ -230,6 +232,7 @@ if __name__ == "__main__":
     parser.add_argument("--method", default="status",
                         choices=['status',
                                  'status_refresh',
+                                 'status_assistant',
 
                                  'create_auth_token',
 
