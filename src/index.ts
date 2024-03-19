@@ -35,7 +35,8 @@ import {
     searchOpenAIAssistants,
     OpenAIAssistant,
     deleteOpenAIAssistant,
-    getOpenAIFile
+    getOpenAIFile,
+    getOpenAIAssistant
 } from './openai';
 import { UserProjectData } from './types/UserProjectData';
 import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
@@ -4729,6 +4730,49 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, async (
             .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(aiAssistants);
+            
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
+const user_org_connectors_openai_assistant = `user/:org/connectors/openai/assistants/:assistantId`;
+app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistant}`, async (req: Request, res: Response, next) => {
+
+    try {
+        // try to elevate to admin first to determine - since we don't know what org the assistant may be attached to
+        const email = await validateUser(req, res, AuthType.Admin, true);
+
+        if (!email) {
+            return;
+        }
+
+        const org = req.params.org;
+
+        if (!org) {
+            console.error(`${email} ${req.method} ${req.originalUrl} Org is required`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+        }
+
+        const assistantId = req.params.assistantId;
+        if (!assistantId) {
+            console.error(`${email} ${req.method} ${req.originalUrl} AssistantId is required`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing assistantId in resource');
+        }
+
+        const aiAssistant : OpenAIAssistant | undefined = await getOpenAIAssistant(assistantId);
+        if (!aiAssistant) {
+            console.error(`${email} ${req.method} ${req.originalUrl} Assistant not found: ${assistantId}`);
+            return res
+                .status(HTTP_FAILURE_NOT_FOUND)
+                .contentType('plain/text')
+                .send('Assistant not found');
+        }
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType('application/json')
+            .send(aiAssistant);
             
     } catch (error) {
         return handleErrorResponse(error, req, res);

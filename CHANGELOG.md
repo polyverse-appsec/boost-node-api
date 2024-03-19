@@ -6,7 +6,7 @@ Polyverse Boost ReST API (Backend)
 ## Version 1.0.0: March 19th, 2024
 
 ### New Features
-- N/A
+- Add OpenAI Assistant lookup REST API - /api/user/{org}/connectors/openai/assistants/{assistant} (GET)
 
 ### Enhancements
 - N/A

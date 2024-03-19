@@ -483,6 +483,67 @@ export interface OpenAIAssistantQuery {
     has_more: boolean;
 }
 
+export const getOpenAIAssistant = async (assistantId: string): Promise<OpenAIAssistant | undefined> => {
+    const openAiKey : any = await getSecretsAsObject('exetokendev', 'openai-personal');
+    if (!openAiKey) {
+        throw new Error('OpenAI API key not found');
+    }
+
+    const getAssistantIdRest = `https://api.openai.com/v1/assistants/${assistantId}`;
+
+    const axiosConfig = {
+        headers: {
+            'Authorization': `Bearer ${openAiKey}`,
+            'OpenAI-Beta': 'assistants=v1',
+        },
+        timeout: 2000, // 2 second timeout
+    };
+
+    // Retry logic
+    const maxRetries = 2;
+    let attempt = 0;
+
+    while (attempt <= maxRetries) {
+        try {
+            const response = await axios.get(getAssistantIdRest, axiosConfig);
+            return response.data as OpenAIAssistant;
+        } catch (error: any) {
+            if (error?.response.status === 404) {
+                return undefined;
+            } else if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
+                attempt++;
+                if (attempt > maxRetries) {
+                    throw new Error(`Failed to fetch ${assistantId} after ${maxRetries + 1} attempts due to timeout.`);
+                }
+                const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+
+                console.warn(`getOpenAIAssistant:RETRY ${attempt} for ${assistantId} after Error: ${error.message} - ${errorDetails}`);
+            } else {
+                console.error(`getOpenAIAssistant:FAILED: ${assistantId} after Error: ${error.message}`);
+                // Handle non-timeout errors
+                if (error.response) {
+                    // The request was made and the server responded with a status code
+                    // that falls out of the range of 2xx
+                    const errorMessage = error.response.data.error?.message || 'No error message';
+                    const statusCode = error.response.status;
+                    if (statusCode === 429) {
+                        throw new Error(`OpenAI Get Call Rate limit exceeded for ${assistantId}: ${errorMessage}`);
+                    } else {
+                        throw new Error(`OpenAI Get Assistant failure for ${assistantId} status: ${statusCode}, error: ${errorMessage}`);
+                    }
+                } else if (error.request) {
+                    // The request was made but no response was received
+                    throw new Error(`OpenAI Get Assistant failure for ${assistantId}: No response from server`);
+                } else {
+                    // Something happened in setting up the request that triggered an Error
+                    throw new Error(`Error fetching Assistant ${assistantId}: ${error.message}`);
+                }
+            }
+        }
+    }
+    return undefined;
+}
+
 export const deleteOpenAIAssistant = async (assistantId: string): Promise<void> => {
     const openAiKey : any = await getSecretsAsObject('exetokendev', 'openai-personal');
     if (!openAiKey) {

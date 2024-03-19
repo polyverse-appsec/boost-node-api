@@ -126,13 +126,11 @@
             "cwd": "${workspaceFolder}",
             "args": [
                 "--email",
-                "airbear109@gmail.com",
-                "--project",
-                "saraDEMODOGFOOD",
-                "--stage",
-                "prod",
+                "root@localhost",
                 "--method",
-                "discover"
+                "assistant",
+                "--data",
+                "asst_WTVjd94s7m7rwJHBPNIOscRC",
             ],
             "console": "integratedTerminal",
             "justMyCode": true

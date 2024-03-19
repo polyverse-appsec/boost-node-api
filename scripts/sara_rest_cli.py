@@ -96,6 +96,7 @@ def main(email, org, project, method, stage, data):
         "aifiles_purge_at": f"{URL}/api/user/{org}/connectors/openai/files?groom&startAtFile={data}",
         "aifile_delete": f"{URL}/api/user/{org}/connectors/openai/files/{data}",
 
+        "assistant": f"{URL}/api/user/{org}/connectors/openai/assistants/{data}",
         "assistants": f"{URL}/api/user/{org}/connectors/openai/assistants",
         "delete_assistants": f"{URL}/api/user/{org}/connectors/openai/assistants?noFiles" + ("&confirm" if data == "confirm" else ""),
 
@@ -273,6 +274,7 @@ if __name__ == "__main__":
                                  'aifiles_purge_at',
                                  'aifile_delete',
 
+                                 'assistant',
                                  'assistants',
                                  'delete_assistants',
 
@@ -298,8 +300,12 @@ if __name__ == "__main__":
         "aifiles_purge",
         "aifiles_purge_at",
         "aifile_delete",
+
         "assistants",
+        "assistant",
+
         "github_access",
+
         "projects",
         "projects_all",
         "search_generators_all",
