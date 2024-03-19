@@ -53,6 +53,7 @@ def main(email, org, project, method, stage, data):
     URL = stage_url[stage]
     endpoints = {
         "test": f"{URL}/test",
+        "version": f"{URL}/api/status",
 
         "status": f"{URL}/api/user_project/{org}/{project}/status",
         "status_refresh": f"{URL}/api/user_project/{org}/{project}/status",
@@ -230,7 +231,10 @@ if __name__ == "__main__":
     parser.add_argument("--org", required=False, help="The organization name (default: polyverse-appsec)")
     parser.add_argument("--project", required=False, help="The project name")
     parser.add_argument("--method", default="status",
-                        choices=['status',
+                        choices=['test',
+                                 'version',
+
+                                 'status',
                                  'status_refresh',
                                  'status_assistant',
 
@@ -284,6 +288,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if (args.project is None and args.method not in [
+        "test",
+        "version",
         "account",
         "create_auth_token",
         "org_account",
