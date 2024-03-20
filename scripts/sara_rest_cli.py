@@ -75,8 +75,9 @@ def main(email, org, project, method, stage, data):
         "groom_status": f"{URL}/api/user_project/{org}/{project}/groom",
         "groom_toggle": f"{URL}/api/user_project/{org}/{project}/groom",
 
-        "discover": f"{URL}/api/user_project/{org}/{project}/discover",
-        "rediscover": f"{URL}/api/user_project/{org}/{project}/discover",
+        "discover": f"{URL}/api/user_project/{org}/{project}/discovery",
+        "discover_status": f"{URL}/api/user_project/{org}/{project}/discovery",
+        "rediscover": f"{URL}/api/user_project/{org}/{project}/discovery",
 
         "resource": f"{URL}/api/user_project/{org}/{project}/data/{data}",
 
@@ -257,6 +258,7 @@ if __name__ == "__main__":
                                  'search_generators',
 
                                  'discover',
+                                 'discover_status',
                                  'rediscover',
                                  'data_references',
                                  "data_references_refresh",

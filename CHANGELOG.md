@@ -9,7 +9,12 @@ Polyverse Boost ReST API (Backend)
 - Add OpenAI Assistant lookup REST API - /api/user/{org}/connectors/openai/assistants/{assistant} (GET)
 
 ### Enhancements
-- N/A
+- Renamed /api/user_project/{org}/{project}/discover to /api/user_project/{org}/{project}/discovery for REST semantics
+- Added support to read last discovery request /api/user_project/{org}/{project}/discovery (GET)
+- Discovery now tracks and reports who requested the discovery (e.g. user, groomer, project create/update, etc.)
+- Improved parameter validation for Project update and Discovery requests
+    - PATCH /api/user_project/{org}/{project}
+    - POST /api/user_project/{org}/{project}/discovery
 
 ### Bug Fixes
 - N/A

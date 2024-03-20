@@ -38,7 +38,7 @@ import {
     getOpenAIFile,
     getOpenAIAssistant
 } from './openai';
-import { UserProjectData } from './types/UserProjectData';
+import { DiscoveryTrigger, UserProjectData } from './types/UserProjectData';
 import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
 import { ProjectResource } from './types/ProjectResource';
 import axios from 'axios';
@@ -623,6 +623,34 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
 
         let body = req.body;
 
+        if (!body) {
+            console.error(`${email} ${req.method} ${req.originalUrl} empty body`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
+        }
+
+        if (typeof body !== 'string') {
+            if (Buffer.isBuffer(body) || Array.isArray(body)) {
+                body = Buffer.from(body).toString('utf8');
+            }
+        }
+
+        if (body === undefined || body === '') {
+            console.error(`${email} ${req.method} ${req.originalUrl} empty body`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
+        }
+        try {
+            body = JSON.parse(body) as UserProjectData;
+        } catch (error: any) {
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack || error);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
+        }
+        if (Object.keys(body).length === 0) {
+            console.error(`${email} ${req.method} ${req.originalUrl} empty body`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
+        }
+
+        let discoveryRequired : boolean = false;
+
         // Puts resources and/or guideline values to be updated into new object    
         let updates: { resources?: ProjectResource[], guidelines?: string } = {};
         if (body.resources !== undefined) {
@@ -631,6 +659,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
             if (await validateProjectRepositories(email, org, body.resources, req, res)) {
                 return res;
             }
+            discoveryRequired = true;
         }
         if (body.title !== undefined && (body.title === '' || typeof body.title !== 'string')) {
             console.error(`Invalid id: ${body.title}`);
@@ -652,6 +681,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
                 return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid guidelines - must be an array');
             }
             updates.guidelines = body.guidelines;
+            discoveryRequired = true;
         }
     
         const projectData = await loadProjectData(email, org, project);
@@ -664,6 +694,8 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
 
         await storeProjectData(email, SourceType.General, org, project, '', 'project', projectData);
 
+        // only launch discovery if we actually updated the resources or guidelines
+        if (discoveryRequired) {
         const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
 
         // get the path of the project data uri - excluding the api root endpoint
@@ -672,9 +704,10 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
             resetResources: true
         };
         try {
-            await localSelfDispatch<void>(email, signedIdentity, req, `${projectDataPath}/discover`, 'POST', discoveryWithResetState);
+                await localSelfDispatch<void>(email, signedIdentity, req, `${projectDataPath}/discovery`, 'POST', discoveryWithResetState);
         } catch (error) {
             console.error(`Unable to launch discovery for ${projectDataPath}`, error);
+            }
         }
 
         return res
@@ -822,7 +855,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         };
 
         try {
-            await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, `${projectPath}/discover`, 'POST',
+            await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, `${projectPath}/discovery`, 'POST',
                 discoveryWithResetState, maximumDiscoveryTimeoutOnProjectCreationInSeconds * 1000);
 
             // if the new task stage completes in 1 seconds, we'll wait...
@@ -1363,9 +1396,50 @@ interface ProjectGoals {
 
 interface DiscoverState {
     resetResources?: boolean;
+    requestor?: DiscoveryTrigger;
+    lastUpdated?: number;
 }
 
-const user_project_org_project_discover = `user_project/:org/:project/discover`;
+const user_project_org_project_discover = `user_project/:org/:project/discovery`;
+app.get(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req: Request, res: Response) => {
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const { org, project } = req.params;
+        if (!org || !project) {
+            if (!org) {
+                console.error(`Org is required`);
+            } else if (!project) {
+                console.error(`Project is required`);
+            }
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+        }
+
+        const rawDiscoverState = await getProjectData(email, SourceType.General, org, project, '', 'discovery');
+
+        let discoverState : DiscoverState | undefined = undefined;
+        if (rawDiscoverState) {
+            discoverState = JSON.parse(rawDiscoverState) as DiscoverState;
+
+            return res
+                .status(HTTP_SUCCESS)
+                .contentType('application/json')
+                .send(discoverState);
+        } else {
+            return res
+                .status(HTTP_FAILURE_NOT_FOUND)
+                .send('Project Discovery not found');
+        }        
+
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
 app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req: Request, res: Response) => {
 
     try {
@@ -1374,7 +1448,18 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
             return;
         }
 
+        const { org, project } = req.params;
+        if (!org || !project) {
+            if (!org) {
+                console.error(`Org is required`);
+            } else if (!project) {
+                console.error(`Project is required`);
+            }
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+        }
+
         let body = req.body;
+        let requestor : DiscoveryTrigger | undefined;
         let initializeResourcesToStart = false;
         if (body) {
             if (typeof body !== 'string') {
@@ -1389,17 +1474,19 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
             }
             if (body !== '') {
                 const discoverState : DiscoverState = JSON.parse(body);
+
                 initializeResourcesToStart = discoverState.resetResources? discoverState.resetResources : false;
+
+                requestor = discoverState.requestor? discoverState.requestor : requestor;
             }
         }
 
-        // take the original request uri and remove the trailing /discover to get the project data
+        // take the original request uri and remove the trailing /discovery to get the project data
         const originalUri = req.originalUrl;
-        const projectDataUri = originalUri.substring(0, originalUri.lastIndexOf('/discover'));
+        const projectDataUri = originalUri.substring(0, originalUri.lastIndexOf('/discovery'));
         const projectDataPath = projectDataUri.substring(projectDataUri.indexOf("user_project"));
 
         const resourcesToGenerate = [ProjectDataType.ArchitecturalBlueprint, ProjectDataType.ProjectSource, ProjectDataType.ProjectSpecification];
-        const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
 
         const startProcessing : GeneratorState = {
             status: TaskStatus.Processing,
@@ -1410,6 +1497,17 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
             startProcessing.stage = Stages.Reset;
             console.info(`Resetting resources for ${req.originalUrl}`);
         }
+
+        const discoverState : DiscoverState = {
+            lastUpdated: Date.now() / 1000
+        };
+        if (requestor !== undefined) {
+            discoverState.requestor = requestor;
+        }
+        if (discoverState.resetResources !== undefined) {
+            discoverState.resetResources = discoverState.resetResources;
+        }
+        await storeProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'discovery', discoverState);
 
         // kickoff project processing now, by creating the project resources in parallel
         //      We'll wait for up to 25 seconds to perform upload, then we'll do an upload
@@ -2599,7 +2697,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
 
                 const discoveryResult = await localSelfDispatch<ProjectDataReference[]>(
                     email, "", req,
-                    `${projectPath}/discover`, 'POST',
+                    `${projectPath}/discovery`, 'POST',
                     projectStatus.status === ProjectStatus.OutOfDateProjectData?discoveryWithResetState:undefined,
                     timeRemainingToDiscoverInSeconds * 1000);
 
