@@ -696,17 +696,19 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
 
         // only launch discovery if we actually updated the resources or guidelines
         if (discoveryRequired) {
-        const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
+            const signedIdentity = (await signedAuthHeader(email))[header_X_Signed_Identity];
 
-        // get the path of the project data uri - excluding the api root endpoint
-        const projectDataPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
-        const discoveryWithResetState : DiscoverState = {
-            resetResources: true
-        };
-        try {
+            // get the path of the project data uri - excluding the api root endpoint
+            const projectDataPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
+            const discoveryWithResetState : DiscoverState = {
+                resetResources: true,
+                requestor: DiscoveryTrigger.ProjectUpdate
+            };
+
+            try {
                 await localSelfDispatch<void>(email, signedIdentity, req, `${projectDataPath}/discovery`, 'POST', discoveryWithResetState);
-        } catch (error) {
-            console.error(`Unable to launch discovery for ${projectDataPath}`, error);
+            } catch (error) {
+                console.error(`Unable to launch discovery for ${projectDataPath}`, error);
             }
         }
 
@@ -851,7 +853,8 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         const maximumDiscoveryTimeoutOnProjectCreationInSeconds = 15;
 
         const discoveryWithResetState : DiscoverState = {
-            resetResources: true
+            resetResources: true,
+            requestor: DiscoveryTrigger.ProjectUpdate
         };
 
         try {
@@ -1503,6 +1506,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req
         };
         if (requestor !== undefined) {
             discoverState.requestor = requestor;
+        } else {
+            requestor = DiscoveryTrigger.UserManual;
         }
         if (discoverState.resetResources !== undefined) {
             discoverState.resetResources = discoverState.resetResources;
@@ -2672,7 +2677,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
 
         const originalIdentityHeader = getSignedIdentityFromHeader(req);
         const discoveryWithResetState : DiscoverState = {
-            resetResources: true
+            resetResources: true,
+            requestor: DiscoveryTrigger.AutomaticGrooming
         };
 
         const discoveryStart = Math.floor(Date.now() / 1000);
