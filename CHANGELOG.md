@@ -17,7 +17,7 @@ Polyverse Boost ReST API (Backend)
     - POST /api/user_project/{org}/{project}/discovery
 
 ### Bug Fixes
-- N/A
+- Fix missing childResources count in Generator when calling PATCH /api/user_project/{org}/{project}/data/{resource}/generator
 
 ## Version 0.14.3: March 19th, 2024
 

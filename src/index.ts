@@ -3344,6 +3344,9 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         if (input.possibleStagesRemaining) {
             currentGeneratorState.possibleStagesRemaining = input.possibleStagesRemaining;
         }
+        if (input.childResources) {
+            currentGeneratorState.childResources = input.childResources;
+        }
         if (input.statusDetails) {
             currentGeneratorState.statusDetails = input.statusDetails;
         } else if ((currentGeneratorState as any).status_details) {
