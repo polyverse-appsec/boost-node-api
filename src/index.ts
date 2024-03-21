@@ -1443,7 +1443,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req:
         } else {
             return res
                 .status(HTTP_FAILURE_NOT_FOUND)
-                .send('Project Discovery not found');
+                .send('Project Discovery Stqatus not found');
         }        
 
     } catch (error) {
@@ -1656,6 +1656,7 @@ interface ProjectStatusState {
     details?: string;
     lastUpdated: number;
     assistant?: ProjectAssistantInfo;
+    lastDiscoveryTrigger?: DiscoveryTrigger;
 }
 
 const MinutesToWaitBeforeGeneratorConsideredStalled = 3;
@@ -1933,6 +1934,23 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 }
                 break;
             }
+        }
+
+        // get the discovery state
+        try {
+            const discoverState : DiscoverState | undefined =
+                await localSelfDispatch(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/discovery`, 'GET');
+
+                projectStatus.lastDiscoveryTrigger = discoverState?.requestor;
+        } catch (error: any) {
+            if ((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
+                (error.code === HTTP_FAILURE_NOT_FOUND.toString())) {
+                console.error(`${req.originalUrl} Project Discovery status not found: ${projectDataUri}`);
+                return res.status(HTTP_FAILURE_NOT_FOUND).send('Project discovery status not found');
+            }
+
+            console.error(`${req.originalUrl} Unable to get project discovery data: `, error);
+            return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
         }
 
         // get the project data
