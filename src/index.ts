@@ -962,6 +962,14 @@ app.delete(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reque
             }
         }
 
+        try { // delete the discover status as well
+            await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, `${projectPath}/discover`, 'DELETE');
+        } catch (error: any) { // ignore 404 errors
+            if (!error.code || error.code !== HTTP_FAILURE_NOT_FOUND.toString()) {
+                console.warn(`${email} ${req.method} ${req.originalUrl} Unable to delete discovery status due to error: `, error.stack || error);
+            }
+        }
+
         try { // delete the project status as well
             await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, `${projectPath}/status`, 'DELETE');
         } catch (error: any) { // ignore 404 errors
@@ -1443,6 +1451,31 @@ app.get(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req:
     }
 });
 
+app.delete(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req: Request, res: Response) => {
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const { org, project } = req.params;
+        if (!org || !project) {
+            if (!org) {
+                console.error(`Org is required`);
+            } else if (!project) {
+                console.error(`Project is required`);
+            }
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+        }
+
+        await deleteProjectData(email, SourceType.General, org, project, '', 'discovery');
+
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
 app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req: Request, res: Response) => {
 
     try {
@@ -1833,7 +1866,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         // first we're going to see if the files have been synchronized to AI store ever
         let dataReferences : ProjectDataReference[] = [];
         try {
-            dataReferences = await localSelfDispatch<ProjectDataReference[]>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data_references`, 'GET');
+            dataReferences = await localSelfDispatch<ProjectDataReference[]>(email,
+                getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data_references`, 'GET');
         } catch (error) {
             if (axios.isAxiosError(error) && error.response && error.response.status === HTTP_FAILURE_UNAUTHORIZED) {
                 const errorMessage = error.message;
