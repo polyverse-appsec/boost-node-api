@@ -1,5 +1,5 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocument } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBDocument, UpdateCommandInput } from "@aws-sdk/lib-dynamodb";
 
 const client = new DynamoDBClient({ region: "us-west-2" });
 const dynamoDB = DynamoDBDocument.from(client);
@@ -36,27 +36,45 @@ export async function getUser(accountName: string): Promise<UserInfo | undefined
 
 export async function saveUser(
     accountName: string,
-    installationId: string,
     username: string,
-    owner: string,
     installMessage: string,
-    authToken: string = ""): Promise<void> {
+    installationId?: string,
+    owner?: string,
+    authToken?: string): Promise<void> {
     try {
-        const params = {
-            TableName: installationsKeyValueStore,
-            Item: {
-                account: accountName,
-                installationId,
-                username,
-                owner,
-                details: installMessage,
-                lastUpdated: Math.round(Date.now() / 1000),
-                authToken
-            },
+        // Build the update expression dynamically based on provided arguments
+        let updateExpression = "set lastUpdated = :lastUpdated, username = :username, details = :installMessage";
+        let expressionAttributeValues: any = {
+            ":lastUpdated": Math.round(Date.now() / 1000),
+            ":username": username,
+            ":installMessage": installMessage
         };
-        await dynamoDB.put(params);
-    } catch (error: any) {
-        console.error(`Error saving user info for account: ${accountName}`, error.stack || error);
+
+        if (installationId) {
+            updateExpression += ", installationId = :installationId";
+            expressionAttributeValues[":installationId"] = installationId;
+        }
+        if (owner) {
+            updateExpression += ", owner = :owner";
+            expressionAttributeValues[":owner"] = owner;
+        }
+        if (authToken) {
+            updateExpression += ", authToken = :authToken";
+            expressionAttributeValues[":authToken"] = authToken;
+        }
+
+        const updateParams = {
+            TableName: installationsKeyValueStore,
+            Key: { account: accountName },
+            UpdateExpression: updateExpression,
+            ExpressionAttributeValues: expressionAttributeValues,
+            ReturnValues: "UPDATED_NEW"
+        } as UpdateCommandInput;
+
+        await dynamoDB.update(updateParams);
+        console.log(`Successfully updated user info for account: ${accountName}`);
+    } catch (error) {
+        console.error(`Error saving user info for account: ${accountName}`, error);
     }
 }
 
