@@ -4498,7 +4498,7 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
 
         const user = await getUser(email);
-        accountStatus.github_username = user !== undefined?user.username:'';
+        accountStatus.github_username = user?.username || '';
 
         return res
             .status(HTTP_SUCCESS)
