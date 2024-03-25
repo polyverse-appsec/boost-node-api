@@ -4520,9 +4520,14 @@ app.patch(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
         }
 
         if (requestedUserAccountState.githubUsername !== undefined && requestedUserAccountState.githubUsername !== '') {
-            await saveUser(email, requestedUserAccountState.githubUsername,
-                // StephenAFisher Added Username via Sara/REST-API at March 25, 2024 at 02:21:49 AM
-                `${requestedUserAccountState.githubUsername} Added Username via Sara/REST-API at ${usFormatter.format(new Date())}`);
+            const existingUser = await getUser(email);
+            if (existingUser && existingUser.username === requestedUserAccountState.githubUsername) {
+                console.debug(`${email} ${req.method} ${req.originalUrl} [SaraLogin] No change in username`);
+            } else {
+                await saveUser(email, requestedUserAccountState.githubUsername,
+                    // StephenAFisher Added Username via Sara/REST-API at March 25, 2024 at 02:21:49 AM
+                    `${requestedUserAccountState.githubUsername} [SaraLogin] Added Username via Sara/REST-API at ${usFormatter.format(new Date())}`);
+            }
         } else {
             console.error(`${email} ${req.method} ${req.originalUrl} Missing github username`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing github username');
