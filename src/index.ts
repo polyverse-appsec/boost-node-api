@@ -4488,6 +4488,7 @@ app.patch(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
             return;
         }
 
+        // for updating the username, we don't need the org, since the username is tied back to the email address
         const org = req.params.org;
 
         let body = req.body;
