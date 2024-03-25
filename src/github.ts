@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { Octokit } from '@octokit/rest';
 import { createAppAuth } from '@octokit/auth-app';
 import { getSingleSecret } from './secrets';
-import { getUser } from './users';
+import { getUser } from './account';
 import axios, { AxiosRequestConfig } from 'axios';
 import AdmZip from 'adm-zip';
 import { App } from "octokit";

@@ -3,6 +3,24 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 1.1.0: March 25th, 2024
+
+### New Features
+- Added support for updating User account data (e.g. GitHub Username matched with Account email)
+    - /api/user/{org}/account (PATCH)
+
+### Enhancements
+- More detailed User Account and Org Account data
+    - portal_url renamed to billingUrl
+    - github_username renamed to githubUsername
+    - details returns account status message
+    - backgroundAnalysisAuthorized returns true or false if Boost GitHub App is installed
+    - lastUpdated returns the last time the account was updated/retrieved (in UNIX time)
+    - adminUsername returns the admin GitHub username for the account (Org Account only)
+
+### Bug Fixes
+- N/A
+
 ## Version 1.0.0: March 19th, 2024
 
 ### New Features

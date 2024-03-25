@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 
 import { AuthType } from './auth';
-import { getUser } from './users';
+import { getUser, saveUser, updateUser, UserInfo } from './account';
 
 import serverless from 'serverless-http';
 import {
@@ -4469,13 +4469,73 @@ interface UserAccountState {
     org: string,
     owner: string,
     plan: string,
-    saas_client: boolean,
     email: string,
-    portal_url: string,
-    github_username: string,
+    billingUrl: string,
+    githubUsername: string,
+    backgroundAnalysisAuthorized: boolean,
+    details: string,
+    lastUpdated: number,
 };
 
 const user_org_account = `user/:org/account`;
+
+app.patch(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
+
+    try {
+
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        const org = req.params.org;
+
+        let body = req.body;
+        if (!body) {
+            console.error(`${email} ${req.method} ${req.originalUrl} empty body`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
+        }
+
+        if (typeof body !== 'string') {
+            if (Buffer.isBuffer(body) || Array.isArray(body)) {
+                body = Buffer.from(body).toString('utf8');
+            }
+        }
+
+        if (body === undefined || body === '') {
+            console.error(`${email} ${req.method} ${req.originalUrl} empty body`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
+        }
+        let requestedUserAccountState: UserAccountState;
+        try {
+            requestedUserAccountState = JSON.parse(body) as UserAccountState;
+        } catch (error: any) {
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack || error);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
+        }
+        if (Object.keys(requestedUserAccountState).length === 0) {
+            console.error(`${email} ${req.method} ${req.originalUrl} empty body`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
+        }
+
+        if (requestedUserAccountState.githubUsername !== undefined && requestedUserAccountState.githubUsername !== '') {
+            await saveUser(email, requestedUserAccountState.githubUsername,
+                // StephenAFisher Added Username via Sara/REST-API at March 25, 2024 at 02:21:49 AM
+                `${requestedUserAccountState.githubUsername} Added Username via Sara/REST-API at ${usFormatter.format(new Date())}`);
+        } else {
+            console.error(`${email} ${req.method} ${req.originalUrl} Missing github username`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing github username');
+        }
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType('application/json')
+            .send(requestedUserAccountState);
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
 app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
 
     try {
@@ -4487,7 +4547,7 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
 
         const signedIdentity = getSignedIdentityFromHeader(req);
         if (!signedIdentity) {
-            console.error(`Missing signed identity - after User Validation passed`);
+            console.error(`${email} ${req.method} ${req.originalUrl} Missing signed identity - after User Validation passed`);
             return res
                 .status(HTTP_FAILURE_UNAUTHORIZED)
                 .send('Unauthorized');
@@ -4496,9 +4556,17 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
         const org = req.params.org;
 
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
+        // remap the billing url from the billing field name - portal_url
+        accountStatus.billingUrl = (accountStatus as any).portal_url || '';
 
         const user = await getUser(email);
-        accountStatus.github_username = user?.username || '';
+        accountStatus.githubUsername = user?.username || '';
+
+        accountStatus.backgroundAnalysisAuthorized = (user?.installationId !== undefined && user?.installationId !== '');
+
+        accountStatus.details = user?.details || `User Account retrieved at ${usFormatter.format(new Date())}`;
+
+        accountStatus.lastUpdated = user?.lastUpdated || (Date.now() / 1000);
 
         return res
             .status(HTTP_SUCCESS)
@@ -4513,9 +4581,11 @@ interface OrgAccountState {
     enabled: boolean,
     status: string,
     plan: string,
-    saas_client: boolean,
-    portal_url: string,
-    github_username: string,
+    billingUrl: string,
+    adminUsername: string,
+    backgroundAnalysisAuthorized: boolean,
+    details: string,
+    lastUpdated: number,
 };
 
 const org_org_account = `org/:org/account`;
@@ -4537,9 +4607,13 @@ app.get(`${api_root_endpoint}/${org_org_account}`, async (req, res) => {
             enabled: orgId?.username !== undefined,
             status: userAccountStatus.status,
             plan: userAccountStatus.plan,
-            saas_client: true,
-            portal_url: userAccountStatus.portal_url,
-            github_username: orgId !== undefined?orgId.username:'',
+            // remap the billing url from the billing field name - portal_url
+            billingUrl: (userAccountStatus as any).portal_url,
+            // remap the github username from the user account status
+            adminUsername: (orgId?.admin !== undefined)?orgId.admin:'',
+            details: orgId?.details || `Org Account retrieved at ${usFormatter.format(new Date())}`,
+            lastUpdated: orgId?.lastUpdated || (Date.now() / 1000),
+            backgroundAnalysisAuthorized: (orgId?.installationId !== undefined && orgId?.installationId !== ''),
         }
 
         return res
