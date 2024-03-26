@@ -12,7 +12,7 @@ Polyverse Boost ReST API (Backend)
 - Remove internal field data from project search
 
 ### Bug Fixes
-- N/A
+- Fix project creation to ensure title, description and guidelines are stored correctly
 
 ## Version 1.1.0: March 25th, 2024
 
