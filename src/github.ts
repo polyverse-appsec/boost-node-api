@@ -456,9 +456,9 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
                 // Handle rate limit exceeded error
                 const resetTime = publicError.response.headers['x-ratelimit-reset'];
                 if (allowPrivateAccess) {
-                    console.warn(`Warning: Rate limit exceeded for Public Access to ${owner} repo ${repo} details. Trying Private Access with ${email}`);
+                    console.warn(`${email} Warning: Rate limit exceeded for Public Access to ${owner} repo ${repo} details. Trying Private Access with ${email}`);
                 } else {
-                    console.error(`Rate limit exceeded for Public Access to ${owner} repo ${repo} details. Reset time: ${new Date(resetTime * 1000)}`);
+                    console.error(`${email} Rate limit exceeded for Public Access to ${owner} repo ${repo} details. Reset time: ${new Date(resetTime * 1000)}`);
                     // return a rate limit response
                     return { errorResponse: res.status(HTTP_FAILURE_BUSY).send('Rate Limit Exceeded') };
                 }
@@ -471,7 +471,7 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
         }
 
         if (!allowPrivateAccess) {
-            console.error(`Error: Private Access Not Allowed for this Plan: ${repo}`);
+            console.error(`Error: Private Access Not Allowed for this Plan: ${repo} by ${email}`);
             return { errorResponse: res.status(HTTP_FAILURE_UNAUTHORIZED).send('Access to Private GitHub Resources is not allowed for this Account') };
         }
 
@@ -512,14 +512,34 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
             const octokit = await app.getInstallationOctokit(Number(installationId));            
 
             // const reposForOrg = await octokit.rest.repos.listForOrg({type: "private", org: "polyverse-appsec"});
-            const repoDetails = await octokit.rest.repos.get({
+            const repoDetailsRaw = await octokit.rest.repos.get({
                 owner: owner,
                 repo: repo
             });
 
-            console.log(`Success Retrieving Repo Details from Private Repo ${repo}`)
+            console.log(`Success Retrieving Repo Details from Private Repo ${repo} by ${email} or ${owner}`)
 
-            return { data: repoDetails.data };
+            // Fetch the latest commit from the default branch
+            const commitsResponse = await octokit.rest.repos.listCommits({
+                owner: owner,
+                repo: repo,
+                per_page: 1, // We only want the latest commit
+            });
+
+            const repoDetails : RepoDetails = { data: repoDetailsRaw.data };
+
+            if (commitsResponse.data.length > 0) {
+                const latestCommit = commitsResponse.data[0];
+                const lastCommitHash = latestCommit.sha;
+                repoDetails.lastCommitHash = lastCommitHash;
+
+                if (latestCommit.commit.committer) {
+                    const lastCommitDateTime = latestCommit.commit.committer.date;
+                    repoDetails.lastCommitDateTime = lastCommitDateTime;
+                }
+            }
+
+            return repoDetails;
         } catch (authenticatedError) {
             return { errorResponse: handleErrorResponse(
                 authenticatedError, req, res, 'Error retrieving repo details via authenticated access')};
