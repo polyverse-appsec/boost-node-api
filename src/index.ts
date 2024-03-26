@@ -775,6 +775,9 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
         const storedProject : UserProjectData = {
             org : org,
             name : project,
+            title : updatedProject.title? updatedProject.title : '',
+            description : updatedProject.description? updatedProject.description : '',
+            guidelines : updatedProject.guidelines? updatedProject.guidelines : [],
             resources : updatedProject.resources? updatedProject.resources : [],
             lastUpdated : Date.now() / 1000,
         };
