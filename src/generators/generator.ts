@@ -3,9 +3,9 @@ import { UserProjectData } from "../types/UserProjectData";
 import { GeneratorState, TaskStatus } from "../types/GeneratorState";
 import { signedAuthHeader } from "../auth";
 import { saveProjectDataResource, loadProjectDataResource } from "..";
-import { FileContent } from "../github";
+import { FileContent, RepoDetails } from "../github";
 import { Stages } from "../types/GeneratorState";
-import { localSelfDispatch, HTTP_FAILURE_NOT_FOUND, HTTP_LOCKED, secondsBeforeRestRequestMaximumTimeout } from "../utility/dispatch";
+import { localSelfDispatch, HTTP_FAILURE_NOT_FOUND, HTTP_LOCKED, secondsBeforeRestRequestMaximumTimeout, secondsBeforeRestRequestShortTimeout } from "../utility/dispatch";
 import axios, { Axios } from "axios";
 
 const ignore = require('ignore');
@@ -355,6 +355,30 @@ export class Generator {
         }
         const errorText = await response.text() || 'Unknown Error';
         throw new Error(`Unable to get file list: ${response.status} - ${errorText}`);
+    }
+
+    async getProjectSourceSyncPoints() : Promise<RepoDetails[]> {
+        const repoDetails : RepoDetails[] = [];
+        for (let i = 0; i < this.projectData.resources.length; i++) {
+            const resource = this.projectData.resources[i];
+            const encodedUri = encodeURIComponent(resource.uri);
+            const repoDetailsPath = `user/${this.projectData.org}/connectors/github/details?uri=${encodedUri}`;
+            try {
+                const repoDetail : RepoDetails = await localSelfDispatch<RepoDetails>(
+                    this.email, '', this.serviceEndpoint, repoDetailsPath, 'GET', undefined, secondsBeforeRestRequestShortTimeout * 1000, true);
+                if (repoDetail) {
+                    repoDetails.push(repoDetail);
+                }
+            } catch (err) {
+                console.error(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Unable to get project source sync points: ${err}`);
+                if (axios.isAxiosError(err) && err.response) {
+                    const errorMsg = err.response.data || err.message;
+                    throw new axios.AxiosError(`Unable to get project source sync points: ${errorMsg}`, err.code, undefined, err.request, err.response);
+                }
+                throw err;
+            }
+        }
+        return repoDetails;
     }
 
     async getProjectSource() : Promise<FileContent[]> {

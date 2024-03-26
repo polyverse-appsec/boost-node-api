@@ -1,11 +1,12 @@
 import { ProjectDataType } from '../types/ProjectData';
 import { UserProjectData } from '../types/UserProjectData';
-import { Stages, GeneratorState } from '../types/GeneratorState';
-import { FileContent } from '../github';
+import { Stages, GeneratorState, ResourceSourceState } from '../types/GeneratorState';
+import { FileContent, RepoDetails } from '../github';
 import { Generator } from './generator';
 const ignore = require('ignore');
 
 enum ProjectSourceStage {
+    SourceSyncPoints = 'Retrieve Source Sync Points',
     FilePathScan = 'File Paths Scan',
     FullSourceScan = 'Full Source Code Import',
 }
@@ -42,9 +43,34 @@ export class ProjectSourceGenerator extends Generator {
                 .replace('{projectName}', this.projectData.name)
                 .replace('{projectRepo}', projectRepos);
 
-            nextStage = ProjectSourceStage.FilePathScan;
+            nextStage = ProjectSourceStage.SourceSyncPoints;
 
             break;
+
+        case ProjectSourceStage.SourceSyncPoints:
+            {
+                await this.updateProgress('Importing Project Source Sync Point');
+
+                const syncPoints : RepoDetails[] = await this.getProjectSourceSyncPoints();
+                if (syncPoints?.length) {
+                    const syncPointsData = syncPoints.map((syncPoint) => {
+                        if (syncPoint.lastCommitDateTime && syncPoint.lastCommitHash) {
+                            const syncTimeAsUnixTime = new Date(syncPoint.lastCommitDateTime).getTime() / 1000;
+                            return {
+                                syncTime: syncTimeAsUnixTime,
+                                syncHash: syncPoint.lastCommitHash,
+                            } as ResourceSourceState;
+                        }
+                        return {};
+                    });
+                    await this.updateProgress(`Found ${syncPoints.length} Project Source Sync Points`, 
+                        { resourceStatus: syncPointsData } as GeneratorState);
+                } else {
+                    await this.updateProgress('No Project Source Sync Points Found');
+                }
+
+                nextStage = ProjectSourceStage.FilePathScan;
+            }
 
         case ProjectSourceStage.FilePathScan:
             {

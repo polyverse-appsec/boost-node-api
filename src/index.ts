@@ -39,7 +39,7 @@ import {
     getOpenAIAssistant
 } from './openai';
 import { DiscoveryTrigger, UserProjectData } from './types/UserProjectData';
-import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
+import { GeneratorState, TaskStatus, Stages, ResourceSourceState } from './types/GeneratorState';
 import { ProjectResource } from './types/ProjectResource';
 import axios from 'axios';
 import { ProjectDataReference } from './types/ProjectDataReference';
@@ -512,6 +512,63 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_permission}`,
             .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(accessGranted);
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
+const user_org_connectors_github_details = `user/:org/connectors/github/details`;
+app.get(`${api_root_endpoint}/${user_org_connectors_github_details}`,
+    async (req: Request, res: Response) => {
+
+    try {
+        const email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        if (!req.query.uri) {
+            console.error(`URI is required`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('URI is required');
+        }
+
+        let uriString = req.query.uri as string;
+        const { org } = req.params;
+
+        // Check if the URI is encoded, decode it if necessary
+        if (uriString.match(/%[0-9a-f]{2}/i)) {
+            try {
+                uriString = decodeURIComponent(uriString);
+            } catch (error) {
+                console.error(`Invalid encoded URI: ${uriString}`);
+                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded URI');
+            }
+        }
+
+        let resourceUri;
+        try {
+            resourceUri = new URL(uriString as string);
+        } catch (error) {
+            console.error(`Invalid URI: ${uriString}`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
+        }
+
+        // get the account status
+        const signedIdentity = getSignedIdentityFromHeader(req);
+        if (!signedIdentity) {
+            return handleErrorResponse(
+                new Error("Unauthorized"), req, res, `Missing signed identity - after User Validation passed`, HTTP_FAILURE_UNAUTHORIZED);
+        }
+        const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
+
+        // verify this account (and org pair) can access this resource
+        const allowPrivateAccess = checkPrivateAccessAllowed(accountStatus);
+        const repoDetails : RepoDetails = await getDetailsFromRepo(email, resourceUri, req, res, allowPrivateAccess);
+
+        res
+            .status(HTTP_SUCCESS)
+            .contentType('application/json')
+            .send(repoDetails);
     } catch (error) {
         return handleErrorResponse(error, req, res);
     }
@@ -1663,6 +1720,7 @@ interface ProjectStatusState {
     lastUpdated: number;
     assistant?: ProjectAssistantInfo;
     lastDiscoveryTrigger?: DiscoveryTrigger;
+    sourceDataStatus?: ResourceSourceState[];
 }
 
 const MinutesToWaitBeforeGeneratorConsideredStalled = 3;
@@ -1879,12 +1937,12 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             if (axios.isAxiosError(error) && error.response && error.response.status === HTTP_FAILURE_UNAUTHORIZED) {
                 const errorMessage = error.message;
                 const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
-                console.error(`${req.originalUrl} Unable to get data references for ${projectDataUri} - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
+                console.error(`$${email} ${req.method} ${req.originalUrl} Unable to get data references for ${projectDataUri} - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
                 return handleErrorResponse(error, req, res);
             }
 
             // if we get an error, then we'll assume the project doesn't exist
-            console.error(`${req.originalUrl}: Project Data References not found; Project may not exist or hasn't been discovered yet: ${error}`);
+            console.error(`$${email} ${req.method} ${req.originalUrl}: Project Data References not found; Project may not exist or hasn't been discovered yet: ${error}`);
 
             // we can continue on, since we're just missing the last synchronized time - which probably didn't happen anyway
         }
@@ -1951,11 +2009,11 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         } catch (error: any) {
             if ((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
                 (error.code === HTTP_FAILURE_NOT_FOUND.toString())) {
-                console.error(`${req.originalUrl} Project Discovery status not found: ${projectDataUri}`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Project Discovery status not found: ${projectDataUri}`);
                 return res.status(HTTP_FAILURE_NOT_FOUND).send('Project discovery status not found');
             }
 
-            console.error(`${req.originalUrl} Unable to get project discovery data: `, error);
+            console.error(`${email} ${req.method} ${req.originalUrl} Unable to get project discovery data: `, error);
             return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
         }
 
@@ -1966,15 +2024,15 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         } catch (error: any) {
             if ((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
                 (error.code === HTTP_FAILURE_NOT_FOUND.toString())) {
-                console.error(`${req.originalUrl} Project not found: ${projectDataUri}`);
+                console.error(`${email} ${req.method} ${req.originalUrl}: Project not found: ${projectDataUri}`);
                 return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
             } else if ((error.response && error.response.status === HTTP_FAILURE_UNAUTHORIZED) ||
                           (error.code === HTTP_FAILURE_UNAUTHORIZED.toString())) {
-                console.error(`${req.originalUrl} Unauthorized: ${projectDataUri}`);
+                console.error(`${email} ${req.method} ${req.originalUrl}: Unauthorized: ${projectDataUri}`);
                 return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             }
 
-            console.error(`${req.originalUrl} Unable to get project data: `, error);
+            console.error(`${email} ${req.method} ${req.originalUrl}: Unable to get project data: `, error);
             return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
         }
 
@@ -1988,7 +2046,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 await storeProjectData(email, SourceType.General, org, project, '', 'status', projectStatus);
 
             } catch (error) {
-                console.error(`${req.originalUrl} Unable to persist project status`, error);
+                console.error(`${email} ${req.method} ${req.originalUrl}: Unable to persist project status`, error);
             }
         }
 
@@ -1996,7 +2054,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         if (projectData.resources.length === 0) {
             projectStatus.status = ProjectStatus.Synchronized;
             projectStatus.details = `No GitHub resources found - nothing to synchronize`;
-            console.log(`${req.originalUrl}: NO-OP : ${JSON.stringify(projectStatus)}`);
+            console.log(`${email} ${req.method} ${req.originalUrl}: NO-OP : ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -2016,7 +2074,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             try {
                 resourceStatus = await localSelfDispatch<ResourceStatusState>(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data/${resource}/status`, 'GET');
                 if (process.env.TRACE_LEVEL) {
-                    console.debug(`Resource ${resource} Status: ${JSON.stringify(resourceStatus)}`);
+                    console.debug(`${email} ${req.method} ${req.originalUrl}: Resource ${resource} Status: ${JSON.stringify(resourceStatus)}`);
                 }
                 if (resourceStatus.lastUpdated && resourceStatus.lastUpdated > 0) {
                     lastResourceUpdatedTimeStamp.set(resource, resourceStatus.lastUpdated);
@@ -2064,6 +2122,15 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                     projectStatus.childResources = generatorStatus.childResources;
                 }
             }
+            // determine the sync info on the source of the project resources (e.g. when was the data pulled from GitHub)
+            if (generatorStatus.resourceStatus && generatorStatus.resourceStatus.length > 0) {
+                // grab the first resource status as the source data status - since only project data should have this info
+                if (projectStatus.sourceDataStatus === undefined) {
+                    projectStatus.sourceDataStatus = generatorStatus.resourceStatus;
+                } else {
+                    console.warn(`${email} ${req.method} ${req.originalUrl}: Multiple resource status found for ${resource}`);
+                }
+            }
 
             resourcesState.set(resource, generatorStatus.status);
 
@@ -2080,7 +2147,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                     if (!lastResourceGeneratingTime) {
                         lastResourceGeneratingTime =  generatorStatus.lastUpdated;
                     } else if (!generatorStatus.lastUpdated) {
-                        console.log(`Can't get last generated time for: ${resource}`);
+                        console.log(`${email} ${req.method} ${req.originalUrl} Can't get last generated time for: ${resource}`);
                     } else if (lastResourceGeneratingTime < generatorStatus.lastUpdated) {
                         lastResourceGeneratingTime = generatorStatus.lastUpdated;
                     }
@@ -2126,7 +2193,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 const messageWithErrorsByResourceName = Array.from(resourceErrorMessages.keys()).map((resource) => `${resource}: ${resourceErrorMessages.get(resource)}`);
                 projectStatus.details += `\tErrors encountered:\n\t\t${messageWithErrorsByResourceName.join('\n\t\t')}.`;
             }
-            console.warn(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
+            console.warn(`${email} ${req.method} ${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -2155,7 +2222,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 // If the value is not Stages.Complete, no action is taken and the original value remains unchanged
             });
 
-            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
+            console.error(`${email} ${req.method} ${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -2175,7 +2242,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             } else {
                 projectStatus.details += `\nIncomplete Resources: ` + missingResources.concat(Array.from(incompleteResources.keys())).join('\n\t');
             }
-            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
+            console.error(`${email} ${req.method} ${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -2188,7 +2255,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         if (missingResources.length > 0) {
             projectStatus.status = ProjectStatus.ResourcesMissing;
             projectStatus.details = `Missing Resources: ${missingResources.join(', ')}`;
-            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
+            console.error(`${email} ${req.method} ${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -2201,7 +2268,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         if (incompleteResources.size > 0) {
             projectStatus.status = ProjectStatus.ResourcesIncomplete;
             projectStatus.details = `Incomplete Resources: ${Array.from(incompleteResources.values()).join(', ')}`;
-            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
+            console.error(`${email} ${req.method} ${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -2216,7 +2283,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             projectStatus.status = ProjectStatus.ResourcesIncomplete;
             projectStatus.details = `Resources Completed Generation, but no Timestamp`;
 
-            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
+            console.error(`${email} ${req.method} ${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -2284,7 +2351,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             // if we've never synchronized the data, then report not synchronized
             projectStatus.status = ProjectStatus.ResourcesNotSynchronized;
             projectStatus.details = `Resources Completed Generation at ${usFormatter.format(lastResourceCompletedDate)} but never Synchronized to AI Servers`;
-            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
+            console.error(`${email} ${req.method} ${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -2310,7 +2377,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 // If the value is not Stages.Complete, no action is taken and the original value remains unchanged
             });
 
-            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
+            console.error(`${email} ${req.method} ${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -2324,7 +2391,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             projectStatus.status = ProjectStatus.AssistantNotAttached;
             projectStatus.details = `Resources Completely Generated, but no Assistant Attached`;
 
-            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
+            console.error(`${email} ${req.method} ${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -2338,7 +2405,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             projectStatus.status = ProjectStatus.AssistantOutOfDate;
             projectStatus.details = `Resources Completely Generated, but Assistant ${projectStatus.assistant.assistantId} does not include all files`;
 
-            console.error(`${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
+            console.error(`${email} ${req.method} ${req.originalUrl}}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
@@ -2353,7 +2420,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         projectStatus.synchronized = true;
         projectStatus.details = `All Resources Completely Generated and Uploaded to AI Servers`;
 
-        console.log(`${req.originalUrl}: SYNCHRONIZED: ${JSON.stringify(projectStatus)}`);
+        console.log(`$${email} ${req.method} ${req.originalUrl}: SYNCHRONIZED: ${JSON.stringify(projectStatus)}`);
 
         await saveProjectStatusUpdate();
 

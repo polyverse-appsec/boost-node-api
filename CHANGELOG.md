@@ -6,7 +6,9 @@ Polyverse Boost ReST API (Backend)
 ## Version 1.1.1: March 26th, 2024
 
 ### New Features
-- N/A
+- GitHub Repo sync point (hash and time) are returned in Generator State and Project Status
+    - /api/user_project/{org}/{project}/data/{resource}/generator (GET)
+    - /api/user_project/{org}/{project}/status (GET)
 
 ### Enhancements
 - Remove internal field data from project search
