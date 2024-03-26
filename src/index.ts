@@ -1049,6 +1049,9 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
         for (const projectData of projectDataList) {
             // the project owner is the first part of the project data path, up until the first '/'
             projectData.owner = (projectData as any)._userName;
+            delete (projectData as any)._userName;
+            delete (projectData as any)._ownerName;
+            delete (projectData as any)._projectName;
 
             // repair the guidelines if needed
             if (projectData.guidelines !== undefined) {
