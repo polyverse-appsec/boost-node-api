@@ -407,6 +407,8 @@ export interface FileContent {
 export interface RepoDetails {
     data?: any;
     errorResponse?: any;
+    lastCommitHash?: string;
+    lastCommitDateTime?: string;
 }
 
 // returns details of repo, or undefined if res/Response is an error written
@@ -421,12 +423,32 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
     const octokit = new Octokit();
     try {
         // Fetch repository details to get the default branch
-        const repoDetails = await octokit.rest.repos.get({
+        const repoDetailsRaw = await octokit.rest.repos.get({
             owner: owner,
             repo: repo
         });
 
-        return { data: repoDetails.data };
+        // Fetch the latest commit from the default branch
+        const commitsResponse = await octokit.rest.repos.listCommits({
+            owner: owner,
+            repo: repo,
+            per_page: 1, // We only want the latest commit
+        });
+
+        const repoDetails : RepoDetails = { data: repoDetailsRaw.data };
+
+        if (commitsResponse.data.length > 0) {
+            const latestCommit = commitsResponse.data[0];
+            const lastCommitHash = latestCommit.sha;
+            repoDetails.lastCommitHash = lastCommitHash;
+
+            if (latestCommit.commit.committer) {
+                const lastCommitDateTime = latestCommit.commit.committer.date;
+                repoDetails.lastCommitDateTime = lastCommitDateTime;
+            }
+        }
+
+        return repoDetails;
 
     } catch (publicError: any) {
         if (publicError.status !== HTTP_FAILURE_NOT_FOUND && publicError?.response?.data?.message !== 'Not Found') {
