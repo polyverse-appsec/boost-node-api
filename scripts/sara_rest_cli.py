@@ -154,6 +154,8 @@ def main(email, org, project, method, stage, data, frontend=False):
         "timer_interval": f"{URL}/api/timer/interval",
         "groom_discoveries_list": f"{URL}/api/search/projects/groom?status=Pending",
         "groom_discoveries": f"{URL}/api/groom/projects",
+
+        "aiproxy": f"{URL}/api/proxy/ai/{org}/{data}"
     }
 
     if method not in endpoints:
@@ -342,7 +344,9 @@ if __name__ == "__main__":
 
                                  'timer_interval',
                                  'groom_discoveries_list',
-                                 'groom_discoveries'
+                                 'groom_discoveries',
+
+                                 'aiproxy'
                                  ], help="The method to run")
     parser.add_argument("--stage", default="local", choices=['local', 'dev', 'test', 'prod'], help="The Service to target (default: local)")
     parser.add_argument("--data", default=None, help="Data to pass to the method")
@@ -374,7 +378,9 @@ if __name__ == "__main__":
         "timer_interval",
         "groom_discoveries_list",
         "groom_discoveries",
-        "delete_assistants"
+        "delete_assistants",
+
+        "aiproxy"
     ]):
         parser.error("The --project argument is required for the method"
                      f" {args.method}.")
