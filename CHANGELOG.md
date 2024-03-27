@@ -12,6 +12,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Remove internal field data from project search
+- Improvements to error handling to propogate full error messages for HTTP errors
 
 ### Bug Fixes
 - Fix project creation to ensure title, description and guidelines are stored correctly

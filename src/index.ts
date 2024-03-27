@@ -16,7 +16,12 @@ import {
     getCachedProjectData,
     splitAndStoreData,
 } from './storage';
-import { validateUser, signedAuthHeader, getSignedIdentityFromHeader, local_sys_admin_email, header_X_Signed_Identity } from './auth';
+import {
+    validateUser,
+    signedAuthHeader,
+    getSignedIdentityFromHeader,
+    local_sys_admin_email,
+    header_X_Signed_Identity } from './auth';
 import {
     getFolderPathsFromRepo,
     getFileFromRepo,
@@ -74,7 +79,8 @@ import {
     HTTP_CONFLICT,
     HTTP_SUCCESS_ACCEPTED,
     HTTP_SUCCESS_NO_CONTENT,
-    HTTP_LOCKED
+    HTTP_LOCKED,
+    HTTP_FAILURE_SERVICE_UNAVAILABLE,
 } from './utility/dispatch';
 
 import { usFormatter } from './utility/log';
@@ -1474,8 +1480,8 @@ interface DiscoverState {
     lastUpdated?: number;
 }
 
-const user_project_org_project_discover = `user_project/:org/:project/discovery`;
-app.get(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req: Request, res: Response) => {
+const user_project_org_project_discovery = `user_project/:org/:project/discovery`;
+app.get(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (req: Request, res: Response) => {
 
     try {
         const email = await validateUser(req, res);
@@ -1514,7 +1520,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req:
     }
 });
 
-app.delete(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req: Request, res: Response) => {
+app.delete(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (req: Request, res: Response) => {
 
     try {
         const email = await validateUser(req, res);
@@ -1539,7 +1545,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_discover}`, async (r
     }
 });
 
-app.post(`${api_root_endpoint}/${user_project_org_project_discover}`, async (req: Request, res: Response) => {
+app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (req: Request, res: Response) => {
 
     try {
         const email = await validateUser(req, res);
@@ -4513,6 +4519,14 @@ const handleProxyRequest = async (req: Request, res: Response) => {
             if (axios.isAxiosError(error)) {
                 if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
                     console.error(`Error: TIMEOUT: Request to ${externalEndpoint} timed out after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
+                } else if (error.code === 'ECONNREFUSED') {
+                    let errorMessage;
+                    if (error.message.includes('localhost') || error.message.includes('::1')) {
+                        errorMessage = `Connection refused to ${externalEndpoint} - is the local server running?`;
+                    } else {
+                        errorMessage = `Connection refused to ${externalEndpoint} - is the external service running?`;
+                    }
+                    return handleErrorResponse(error, req, res, errorMessage, HTTP_FAILURE_SERVICE_UNAVAILABLE);
                 } else if (error.response) {
                     const errorMessage = error.message;
                     const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';

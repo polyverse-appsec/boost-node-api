@@ -25,6 +25,8 @@ export const HTTP_FAILURE_BUSY = 429;
 
 export const HTTP_FAILURE_INTERNAL_SERVER_ERROR = 500;
 
+export const HTTP_FAILURE_SERVICE_UNAVAILABLE = 503;
+
 export const logRequest = (req: Request, user: string) => {
     const logLine = `Request: ${user?user:"UNKNOWN"} ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
@@ -34,21 +36,24 @@ export const logRequest = (req: Request, user: string) => {
 
 export const handleErrorResponse = (error: any, req: Request, res: Response, supplementalErrorMessage: string = '', status_code: number = HTTP_FAILURE_INTERNAL_SERVER_ERROR) : Response => {
     // Base error message with the request details
-    const errorMessage = `${status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'UN' : ''}HANDLED_ERROR(Response): ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
+    let errorMessage = `${status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'UN' : ''}HANDLED_ERROR(Response): ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
-    const errorCodeText = status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'Internal Server Error':"";
+    const errorCodeText = status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'Internal Server Error':status_code.toString();
 
     const currentDate = usFormatter.format(new Date(Date.now()));
 
-    if (axios.isAxiosError(error) && error.response) {
+    if (axios.isAxiosError(error)) {
+        if (error.response) {
+            const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
 
-        const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+            console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage?`${supplementalErrorMessage} - `:''}${errorMessage} - Error: ${error.message} - Details: ${errorDetails}`, error.response.data.body || error.response.data);
 
-        console.error(`${process.env.IS_OFFLINE?`${currentDate}: `:``}${supplementalErrorMessage?`${supplementalErrorMessage} - `:''}${errorMessage} - Error: ${error.message} - Details: ${errorDetails}`, error.response.data.body || error.response.data);
-
-        return res
-            .status(status_code)
-            .send(`${errorCodeText}: ${supplementalErrorMessage?`${supplementalErrorMessage} - `:''}${errorMessage} - ${error.response.data.body || error.response.data}`);
+            return res
+                .status(status_code)
+                .send(`${errorCodeText}: ${supplementalErrorMessage?`${supplementalErrorMessage} - `:''}${errorMessage} - ${error.response.data.body || error.response.data}`);
+        } else if (error.request) {
+            errorMessage = `${errorMessage} - ${error.message}`;
+        }
     }
 
     // Check if we're in the development environment
@@ -138,8 +143,16 @@ export async function localSelfDispatch<T>(
             }
         }
 
+        // look if there's a body in the response. If so, we'll use it, otherwise we'll use the statusText
+
+        let errorBody = "";
+        try {
+            errorBody = `: ${await response.text()}`;
+        } catch {
+            // do nothing
+        }
         throw new axios.AxiosError(
-            `Request ${selfEndpoint} failed with status ${response.status}: ${response.statusText}`,
+            `Request ${selfEndpoint} failed with status ${response.statusText}(HTTP ${response.status})${errorBody}`,
             response.status.toString());
     } else {
         const headers = {
