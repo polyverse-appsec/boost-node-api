@@ -49,7 +49,7 @@ export class ProjectSourceGenerator extends Generator {
 
         case ProjectSourceStage.SourceSyncPoints:
             {
-                await this.updateProgress('Importing Project Source Sync Point');
+                await this.updateProgress('Retrieving Project Source Sync Point');
 
                 const syncPoints : RepoDetails[] = await this.getProjectSourceSyncPoints();
                 if (syncPoints?.length) {
