@@ -27,6 +27,20 @@ stage_url = {
     "prod": "https://33pdosoitl22c42c7sf46tabi40qwlae.lambda-url.us-west-2.on.aws"
 }
 
+stage_frontend_auth = {
+    "local": "",
+    "dev": "AcU1ASQgZDY5YmJhNDgtNDY5My00MDI4LTk5NjAtZmQxNTQ5YjhkNDUwYjk2MjJmZmU3NjkzNDFjNTk4ZTEwM2I3ZTc0MzRhZjc=",
+    "test": "AbmDASQgN2RkM2Q4NDYtOGQwYy00MDYyLWI2YzItMGQyM2U2YjRiZTdhZmM3YmM3ZTk0OGVhNDNjMGFlYmY3ZWFhMTQyMmNlNjk=",
+    "prod": "AbmFASQgZmJiYWViOTAtYTQ4Ni00ZWViLWE3MWQtY2U3YjIyNzZlM2Y2OWE0NmMxNmRiY2MzNDBmOGIyYTQyMzU1MWFiMWY0MTQ="
+}
+
+stage_frontend_db = {
+    "local": "",
+    "dev": "diverse-sponge-50485",
+    "test": "sweet-bunny-47491",
+    "prod": "polite-cod-47493"
+}
+
 
 def make_request(method, url, email, data):
     signed_header_value = get_signed_headers(email) if email is not None else None
@@ -41,7 +55,41 @@ def make_request(method, url, email, data):
     return response
 
 
-def main(email, org, project, method, stage, data):
+def fetch_redis_key(stage, method, project, key):
+    # Use the Upstash Redis base URL
+    base_url = f"https://{stage_frontend_db[stage]}.upstash.io"
+    # Retrieve the auth token from the environment variable
+    auth_token = os.environ.get("VERCEL_AUTH")
+    if not auth_token:
+        auth_token = stage_frontend_auth[stage]
+    if not auth_token:
+        raise Exception("VERCEL_AUTH environment variable not set.")
+
+    if method == 'status':
+        redis_key = f"mget/project:{project}"
+    else:
+        raise Exception(f"Method {method} not supported for Redis lookup.")
+
+    # Construct the full URL for the GET operation
+    full_url = f"{base_url}/{redis_key}"
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    response = requests.get(full_url, headers=headers)
+    if response.ok:
+        return response.json()
+    else:
+        error_response = response.json()
+        raise Exception(f"Failed to fetch key {key if key is not None else project} from Redis: Status code {response.status_code}, {error_response['error']}")
+
+
+def main(email, org, project, method, stage, data, frontend=False):
+    if frontend:
+        try:
+            redis_response = fetch_redis_key(stage, method, project, data)
+            print(f"Sara DB ({stage}) Lookup:{method}:   {data if data is not None else project}: {redis_response}")
+            exit(0)
+        except Exception as e:
+            print(f"Error during Redis lookup: {e}")
+            sys.exit(1)
 
     if method in ["create_auth_token"]:
         expires = True if data is True else False
@@ -298,6 +346,7 @@ if __name__ == "__main__":
                                  ], help="The method to run")
     parser.add_argument("--stage", default="local", choices=['local', 'dev', 'test', 'prod'], help="The Service to target (default: local)")
     parser.add_argument("--data", default=None, help="Data to pass to the method")
+    parser.add_argument("--frontend", action='store_true', help="Lookup with Sara frontend")
 
     args = parser.parse_args()
 
@@ -345,4 +394,4 @@ if __name__ == "__main__":
         else:
             args.org = "localhost"  # default org to make connector calls, even though it will be ignored
 
-    main(args.email, args.org, args.project, args.method, args.stage, args.data)
+    main(args.email, args.org, args.project, args.method, args.stage, args.data, args.frontend)

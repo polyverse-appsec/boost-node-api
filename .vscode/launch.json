@@ -119,6 +119,25 @@
             "justMyCode": true
         },
         {
+            "name": "Debug Sara Frontend CLI (Custom Parameters)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/scripts/sara_rest_cli.py",
+            "cwd": "${workspaceFolder}",
+            "args": [
+                "--email",
+                "root@localhost",
+                "--method",
+                "status",
+                "--project",
+                "e7906ca3-b781-464f-9798-7bc328ff0125",
+                "--stage",
+                "prod",
+                "--frontend",
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },        {
             "name": "Debug Sara CLI (Custom Parameters)",
             "type": "python",
             "request": "launch",
