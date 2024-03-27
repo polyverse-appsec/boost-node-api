@@ -709,7 +709,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
         let discoveryRequired : boolean = false;
 
         // Puts resources and/or guideline values to be updated into new object    
-        let updates: { resources?: ProjectResource[], guidelines?: string } = {};
+        let updates: { resources?: ProjectResource[], guidelines?: Record<string, string> } = {};
         if (body.resources !== undefined) {
             updates.resources = body.resources;
 
