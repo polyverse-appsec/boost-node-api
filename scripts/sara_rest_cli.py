@@ -115,10 +115,27 @@ def main(email, org, project, method, stage, data):
     test_url = endpoints["test"]
     retry = 0
     while True:
+        def retryConnect():
+            nonlocal retry
+            if retry == 0:
+                print("Remote Server not responding... Retrying...")
+            retry += 1
+            # print a single dot s(without a newline) for every retry
+            print(".", end="", flush=True)
+            try:
+                time.sleep(1)
+            except KeyboardInterrupt:
+                print("Aborting...")
+                return False
+            return True
+
         try:
             response = make_request("GET", test_url, None, None)
             if response.status_code == 200:
                 break
+
+            if not retryConnect():
+                return
         # control-c
         except KeyboardInterrupt:
             print("Aborting...")
@@ -127,16 +144,9 @@ def main(email, org, project, method, stage, data):
         # or NewConnectionError to retry
         except requests.exceptions.ConnectionError as e:
             if "NewConnectionError" in str(e) or "RemoteDisconnected" in str(e):
-                if retry == 0:
-                    print("Remote Server not responding... Retrying...")
-                retry += 1
-                # print a single dot (without a newline) for every retry
-                print(".", end="", flush=True)
-                try:
-                    time.sleep(1)
-                except KeyboardInterrupt:
-                    print("Aborting...")
+                if not retryConnect():
                     return
+
                 continue
             else:
                 print(f"Failed: {e}")
