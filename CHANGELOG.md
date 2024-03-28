@@ -17,6 +17,8 @@ Polyverse Boost ReST API (Backend)
 ### Bug Fixes
 - Fix project creation to ensure title, description and guidelines are stored correctly
 - Fix possible stages remaining not being reported when Completed (0 is not saved)
+- Fix issue with local untimed Dispatch failing to pass body to PATCH
+- Fix missing generator state/fields during the first generator launch (was overwriting mid-processing state)
 
 ## Version 1.1.0: March 25th, 2024
 

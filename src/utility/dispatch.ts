@@ -108,7 +108,7 @@ export async function localSelfDispatch<T>(
             }
         };
 
-        if (['POST', 'PUT'].includes(httpVerb) && bodyContent) {
+        if (['POST', 'PUT', 'PATCH'].includes(httpVerb) && bodyContent) {
             fetchOptions.body = JSON.stringify(bodyContent);
             fetchOptions.headers = {
                 ...fetchOptions.headers,
