@@ -3385,6 +3385,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
             throw new Error(`Invalid URI: ${uri}`);
         }
 
+        const forcedUpdate = (req.query.force !== undefined) || false;
         const { _, __, resource } = req.params;
         let currentGeneratorState : GeneratorState =
             await getProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`);
@@ -3417,7 +3418,12 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
             console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack || error);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
         }
-        if (input.status !== currentGeneratorState.status) {
+        // we only allow status changes via PATCH if force is set ; otherwise, we're only doing a progress update
+        if (forcedUpdate && input.status !== undefined) {
+            currentGeneratorState.status = input.status;
+        }
+        // the status should never change unexpectedly
+        if (!forcedUpdate && input.status !== currentGeneratorState.status) {
             if (currentGeneratorState.status === TaskStatus.Error &&
                 input.status === TaskStatus.Processing) {
                 return res
@@ -3466,7 +3472,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         };
 
         // if we're only updating the timestamp on the processing, then don't kick off any new work
-        if (currentGeneratorState.status === TaskStatus.Processing) {
+        if (forcedUpdate || currentGeneratorState.status === TaskStatus.Processing) {
 
             console.log(`${email} ${req.method} ${req.originalUrl}: updated processing task: ${JSON.stringify(currentGeneratorState)}`);
             await updateGeneratorState(currentGeneratorState);
@@ -3541,9 +3547,6 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             currentGeneratorState = JSON.parse(currentGeneratorState) as GeneratorState;
         }
 
-        // get the current # of processed stages
-        const currentProcessedStages = currentGeneratorState.processedStages || 0;
-
         let body = req.body;
         if (typeof body !== 'string') {
             if (Buffer.isBuffer(body) || Array.isArray(body)) {
@@ -3580,12 +3583,23 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 generatorState.possibleStagesRemaining = 0;
             }
 
-            // need to delete the current state property 'last_updated' if it exists
-            // it's a legacy property on the object, so it isn't in the GeneratorState definition
-            delete (currentGeneratorState as any).last_updated;
+            const thisGeneratorUri = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
+            const thusGeneratorUriWithForcedUpdate = `${thisGeneratorUri}?force`;
+            try {
+                await localSelfDispatch<void>(email, "", req, thusGeneratorUriWithForcedUpdate, 'PATCH', generatorState);
+            } catch (error: any) {
+                // if the generator state didn't exist, then we'll create it
+                if (error.code === HTTP_FAILURE_NOT_FOUND) {
+                    await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`, generatorState);
+                } else {
+                    if (error.response) {
+                        console.error(`${email} ${req.method} ${req.originalUrl}: Unable to update generator state: `, error.response.data.body || error.response.data);
+                    } else {
+                        console.error(`${email} ${req.method} ${req.originalUrl}: Unable to update generator state: `, error.stack || error);
+                    }
+                }
+            }
 
-            await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', 
-                `${resource}/generator`, generatorState);
             if (process.env.TRACE_LEVEL) {
                 console.log(`${email} ${req.method} ${req.originalUrl}: stored new state: ${JSON.stringify(generatorState)}`);
             }
@@ -3698,13 +3712,6 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     currentGeneratorState.status = TaskStatus.Processing;
                     currentGeneratorState.lastUpdated = undefined; // get a refreshed last updated timestamp
                     await updateGeneratorState(currentGeneratorState);
-
-                    // Launch the processing task
-                    let selfEndpoint = `${req.protocol}://${req.get('host')}`;
-                    // if we're running locally, then we'll use http:// no matter what
-                    if (req.get('host')!.includes('localhost')) {
-                        selfEndpoint = `http://${req.get('host')}`;
-                    }
 
                     // if user requested a specific stage, then we'll process that stage
                     //      otherwise, we'll process the current stage in the generator
