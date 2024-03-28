@@ -3445,6 +3445,9 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         if (input.childResources !== undefined) {
             currentGeneratorState.childResources = input.childResources;
         }
+        if (input.resourceStatus !== undefined) {
+            currentGeneratorState.resourceStatus = input.resourceStatus;
+        }
         if (input.statusDetails) {
             currentGeneratorState.statusDetails = input.statusDetails;
         } else if ((currentGeneratorState as any).status_details) {
