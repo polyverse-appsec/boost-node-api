@@ -16,6 +16,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Bug Fixes
 - Fix project creation to ensure title, description and guidelines are stored correctly
+- Fix possible stages remaining not being reported when Completed (0 is not saved)
 
 ## Version 1.1.0: March 25th, 2024
 

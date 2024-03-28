@@ -1721,6 +1721,7 @@ interface ProjectStatusState {
     activelyUpdating?: boolean;
     resourcesState?: any[];
     possibleStagesRemaining?: number;
+    processedStages?: number;
     childResources?: number;
     details?: string;
     lastUpdated: number;
@@ -2112,8 +2113,17 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 continue;
             }
 
+            // determine the possible stages remaining based on the most stages remaining of the generators
+            if (generatorStatus.processedStages !== undefined) {
+                if (projectStatus.processedStages === undefined) {
+                    projectStatus.processedStages = generatorStatus.processedStages;
+                } else if (projectStatus.processedStages < generatorStatus.processedStages) {
+                    projectStatus.processedStages = generatorStatus.processedStages;
+                }
+            }
+
             // set the possible stages remaining based on the most stages remaining of the generators
-            if (generatorStatus.possibleStagesRemaining && generatorStatus.possibleStagesRemaining > 0) {
+            if (generatorStatus.possibleStagesRemaining !== undefined) {
                 if (projectStatus.possibleStagesRemaining === undefined) {
                     projectStatus.possibleStagesRemaining = generatorStatus.possibleStagesRemaining;
                 } else if (projectStatus.possibleStagesRemaining > generatorStatus.possibleStagesRemaining) {
