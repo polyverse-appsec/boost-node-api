@@ -42,10 +42,13 @@ stage_frontend_db = {
 }
 
 
-def make_request(method, url, email, data):
+def make_request(method, url, email, data, timeout=None):
     signed_header_value = get_signed_headers(email) if email is not None else None
     if method == "GET":
-        response = requests.get(url, headers=signed_header_value)
+        if timeout is not None:
+            response = requests.get(url, headers=signed_header_value, timeout=timeout)
+        else:
+            response = requests.get(url, headers=signed_header_value)
     elif method == "POST":
         response = requests.post(url, headers=signed_header_value, data=data)
     elif method == "DELETE":
@@ -180,7 +183,7 @@ def main(email, org, project, method, stage, data, frontend=False):
             return True
 
         try:
-            response = make_request("GET", test_url, None, None)
+            response = make_request("GET", test_url, None, None, (1, 2))
             if response.status_code == 200:
                 break
 
@@ -202,6 +205,14 @@ def main(email, org, project, method, stage, data, frontend=False):
                 print(f"Failed: {e}")
                 return
         except requests.exceptions.RequestException as e:
+            if type(e.args[0]).__name__ == "ReadTimeoutError":
+                if not retryConnect():
+                    return
+
+                continue
+            print(f"Failed: {e}")
+            return
+        except Exception as e:
             print(f"Failed: {e}")
             return
     if retry > 0:
