@@ -258,6 +258,9 @@ export class Generator {
         if (extraGeneratorUpdates?.childResources != undefined) {
             state.childResources = extraGeneratorUpdates.childResources;
         }
+        if (extraGeneratorUpdates?.resourceStatus != undefined) {
+            state.resourceStatus = extraGeneratorUpdates.resourceStatus;
+        }
 
         if (!this.currentStage) {
             throw new Error('Current Stage not defined');

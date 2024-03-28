@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 1.1.1: March 26th, 2024
+## Version 1.1.1: March 27th, 2024
 
 ### New Features
 - GitHub Repo sync point (hash and time) are returned in Generator State and Project Status
