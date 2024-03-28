@@ -28,9 +28,9 @@
             "cwd": "${workspaceFolder}",
             "args": [
                 "--email",
-                "airbear109@gmail.com",
+                "stephen@polyverse.com",
                 "--project",
-                "nextsara"
+                "summarizer_syncpoint_8"
             ],
             "console": "integratedTerminal",
             "justMyCode": true
@@ -145,11 +145,13 @@
             "cwd": "${workspaceFolder}",
             "args": [
                 "--email",
-                "root@localhost",
+                "stephen@polyverse.com",
+                "--project",
+                "summarizer_syncpoint_3",
                 "--method",
-                "assistant",
+                "project_create",
                 "--data",
-                "asst_WTVjd94s7m7rwJHBPNIOscRC",
+                "https://github.com/polyverse-appsec/summarizer",
             ],
             "console": "integratedTerminal",
             "justMyCode": true
