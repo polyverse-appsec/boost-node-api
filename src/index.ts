@@ -43,8 +43,13 @@ import {
     getOpenAIFile,
     getOpenAIAssistant
 } from './openai';
-import { DiscoveryTrigger, UserProjectData } from './types/UserProjectData';
-import { GeneratorState, TaskStatus, Stages, ResourceSourceState } from './types/GeneratorState';
+import { UserProjectData } from './types/UserProjectData';
+import { DiscoveryTrigger } from './types/DiscoveryTrigger';
+import { GeneratorState, TaskStatus, Stages } from './types/GeneratorState';
+import { ProjectStatusState } from './types/ProjectStatusState';
+import { ProjectStatus } from './types/ProjectStatus';
+import { ProjectAssistantInfo } from './types/ProjectAssistantInfo';
+
 import { ProjectResource } from './types/ProjectResource';
 import axios from 'axios';
 import { ProjectDataReference } from './types/ProjectDataReference';
@@ -1690,45 +1695,6 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
         return handleErrorResponse(error, req, res);
     }    
 });
-
-enum ProjectStatus {
-    Unknown = 'Unknown',                                    // project not found
-    OutOfDateProjectData = 'Out of Date Project Data',      // project data out of date with source (e.g. newer source)
-    ResourcesMissing = 'Resources Missing',                 // project uris found, but not resources
-    // ResourcesOutOfDate = 'Resources Out of Date',        // Resources out of date with source (e.g. newer source)
-    ResourcesIncomplete = 'Resources Incomplete',           // resources found, but not completely generated
-    ResourcesInError = 'Resources In Error',                // resources found, but generators in error state
-    ResourcesGenerating = 'Resources Generating',           // resources missing or incomplete, but still being generated
-    ResourcesNotSynchronized = 'Resources Not Synchronized',// resources completely generated, but not synchronized to OpenAI
-    AIResourcesOutOfDate = 'AI Data Out of Date',           // resources synchronized to OpenAI, but newer resources available
-    AssistantNotAttached = 'Assistant Not Attached',        // resources synchronized to OpenAI, but no assistant attached
-    AssistantOutOfDate = 'Assistant Out of Date',           // resources synchronized to OpenAI, but assistant does not include all files
-    Synchronized = 'Fully Synchronized'                     // All current resources completely synchronized to OpenAI
-}
-
-interface ProjectAssistantInfo {
-    assistantId: string;
-
-    matchedResources: any[];
-
-    synchronized: boolean;
-}
-
-interface ProjectStatusState {
-    status: ProjectStatus;
-    synchronized?: boolean;
-    lastSynchronized?: number;
-    activelyUpdating?: boolean;
-    resourcesState?: any[];
-    possibleStagesRemaining?: number;
-    processedStages?: number;
-    childResources?: number;
-    details?: string;
-    lastUpdated: number;
-    assistant?: ProjectAssistantInfo;
-    lastDiscoveryTrigger?: DiscoveryTrigger;
-    sourceDataStatus?: ResourceSourceState[];
-}
 
 const MinutesToWaitBeforeGeneratorConsideredStalled = 3;
 

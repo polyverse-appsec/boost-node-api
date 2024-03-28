@@ -1,11 +1,5 @@
 import { ProjectResource } from "./ProjectResource";
 
-export enum DiscoveryTrigger {
-    ProjectUpdate = "ProjectCreation",
-    UserManual = "UserManual",
-    AutomaticGrooming = "AutomaticGrooming",
-}
-
 export interface UserProjectData {
     org : string,
     name : string,

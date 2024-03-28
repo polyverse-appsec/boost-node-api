@@ -11,10 +11,7 @@ export enum Stages {
     Complete = 'Complete',
 }
 
-export interface ResourceSourceState {
-    syncTime?: number;
-    syncHash?: string;
-}
+import { ResourceSourceState } from './ResourceSourceState';
 
 export interface GeneratorState {
     stage?: string;
