@@ -3430,10 +3430,13 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         if (input.lastUpdated) {
             currentGeneratorState.lastUpdated = input.lastUpdated;
         }
-        if (input.possibleStagesRemaining) {
+        if (input.possibleStagesRemaining !== undefined) {
             currentGeneratorState.possibleStagesRemaining = input.possibleStagesRemaining;
         }
-        if (input.childResources) {
+        if (input.processedStages !== undefined) {
+            currentGeneratorState.processedStages = input.processedStages;
+        }
+        if (input.childResources !== undefined) {
             currentGeneratorState.childResources = input.childResources;
         }
         if (input.statusDetails) {
