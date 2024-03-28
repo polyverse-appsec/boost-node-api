@@ -423,10 +423,16 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
     const octokit = new Octokit();
     try {
         // Fetch repository details to get the default branch
+        const startTimestamp = Date.now();
         const repoDetailsRaw = await octokit.rest.repos.get({
             owner: owner,
             repo: repo
         });
+        const rawDetailsTimestamp = Date.now();
+        const duration = rawDetailsTimestamp - startTimestamp;
+        if (duration > 2000) {
+            console.warn(`${email} ${uri.toString()} GITHUB_TIME_Success > 2 seconds: Retrieving Repo Details from Public Repo in ${duration}ms`)
+        }
 
         // Fetch the latest commit from the default branch
         const commitsResponse = await octokit.rest.repos.listCommits({
@@ -434,6 +440,10 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
             repo: repo,
             per_page: 1, // We only want the latest commit
         });
+        const commitsDuration = Date.now() - rawDetailsTimestamp;
+        if (commitsDuration > 2000) {
+            console.warn(`${email} ${uri.toString()} GITHUB_TIME_Success > 2 seconds: Retrieving Latest Commit from Public Repo in ${commitsDuration}ms`)
+        }
 
         const repoDetails : RepoDetails = { data: repoDetailsRaw.data };
 
@@ -511,13 +521,16 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
             });
             const octokit = await app.getInstallationOctokit(Number(installationId));            
 
-            // const reposForOrg = await octokit.rest.repos.listForOrg({type: "private", org: "polyverse-appsec"});
+            const startTimestamp = Date.now();
             const repoDetailsRaw = await octokit.rest.repos.get({
                 owner: owner,
                 repo: repo
             });
-
-            console.log(`Success Retrieving Repo Details from Private Repo ${repo} by ${email} or ${owner}`)
+            const rawDetailsTimestamp = Date.now();
+            const duration = rawDetailsTimestamp - startTimestamp;
+            if (duration > 2000) {
+                console.warn(`${email} ${uri.toString()} GITHUB_TIME_Success > 2 seconds: Retrieving Repo Details from Private Repo in ${duration}ms`)
+            }
 
             // Fetch the latest commit from the default branch
             const commitsResponse = await octokit.rest.repos.listCommits({
@@ -525,6 +538,12 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
                 repo: repo,
                 per_page: 1, // We only want the latest commit
             });
+            const commitsDuration = Date.now() - rawDetailsTimestamp;
+            if (commitsDuration > 2000) {
+                console.warn(`${email} ${uri.toString()} GITHUB_TIME_Success > 2 seconds: Retrieving Latest Commit from Private Repo in ${commitsDuration}ms`)
+            }
+
+            console.log(`Success Retrieving Repo Details from Private Repo ${repo} by ${email} or ${owner}`);
 
             const repoDetails : RepoDetails = { data: repoDetailsRaw.data };
 
