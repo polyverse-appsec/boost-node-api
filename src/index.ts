@@ -2126,7 +2126,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             if (generatorStatus.possibleStagesRemaining !== undefined) {
                 if (projectStatus.possibleStagesRemaining === undefined) {
                     projectStatus.possibleStagesRemaining = generatorStatus.possibleStagesRemaining;
-                } else if (projectStatus.possibleStagesRemaining > generatorStatus.possibleStagesRemaining) {
+                } else if (generatorStatus.possibleStagesRemaining > projectStatus.possibleStagesRemaining) {
                     projectStatus.possibleStagesRemaining = generatorStatus.possibleStagesRemaining;
                 }
             }
