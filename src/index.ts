@@ -1915,7 +1915,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             }
 
             // if we get an error, then we'll assume the project doesn't exist
-            console.error(`$${email} ${req.method} ${req.originalUrl}: Project Data References not found; Project may not exist or hasn't been discovered yet: ${error}`);
+            console.warn(`$${email} ${req.method} ${req.originalUrl}: Project Data References not found; Project may not exist or hasn't been discovered yet: ${error}`);
 
             // we can continue on, since we're just missing the last synchronized time - which probably didn't happen anyway
         }
@@ -4000,9 +4000,9 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Org is required`);
             } else if (!project) {
-                console.error(`Project is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Project is required`);
             }
 
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
@@ -4014,7 +4014,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
         }
 
         if (!userProjectData.resources || userProjectData.resources.length === 0) {
-            console.warn(`No resources found in project: ${userProjectData.org}/${userProjectData.name}`);
+            console.warn(`${email} ${req.method} ${req.originalUrl} No resources found in project`);
 
             // we reset the project data references to empty - since we have no resources to upload, and we want to update the cache
             const emptyProjectDataFileIds: ProjectDataReference[] = [];
@@ -4036,7 +4036,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
         const repoName = pathSegments.pop();
         const ownerName = pathSegments.pop();
         if (!repoName || !ownerName) {
-            console.error(`Invalid URI: ${repoUri}`);
+            console.error(`${email} ${req.method} ${req.originalUrl} Invalid URI: ${repoUri}`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
         }
 
