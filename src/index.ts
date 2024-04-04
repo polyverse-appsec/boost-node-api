@@ -892,7 +892,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             }
         } catch (error: any) {
             // check for HTTP_FAILURE_NOT_FOUND and ignore it - everything else, log and error and then continue
-            if (!error.message.includes('failed with status 404')) {
+            if (!(error.message.includes('failed with status') && error.message.includes('404'))) {
                 console.error(`${email} ${req.method} ${req.originalUrl} Unable to retrieve current project data just post the new data - due to error: `, error.stack || error);
             }
         }
