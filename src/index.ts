@@ -3356,7 +3356,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
         let currentGeneratorState : GeneratorState =
             await getProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`);
         if (!currentGeneratorState) {
-            console.warn(`${req.originalUrl}: not found to patch`);
+            console.warn(`${email} ${req.method} ${req.originalUrl}: No generator to patch`);
             return res
                 .status(HTTP_FAILURE_NOT_FOUND)
                 .send('Generator not found');
