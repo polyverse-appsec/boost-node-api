@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 1.2.1: April 4th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Reduce error logging in normal project creation and status paths
+
+### Bug Fixes
+- Fix missing generators during project creation
+
 ## Version 1.2.0: March 28th, 2024
 
 ### New Features
