@@ -1980,14 +1980,13 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
                 projectStatus.lastDiscoveryTrigger = discoverState?.requestor;
         } catch (error: any) {
-            if ((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
-                (error.code === HTTP_FAILURE_NOT_FOUND.toString())) {
-                console.error(`${email} ${req.method} ${req.originalUrl} Project Discovery status not found: ${projectDataUri}`);
-                return res.status(HTTP_FAILURE_NOT_FOUND).send('Project discovery status not found');
+            if (!((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
+                (error.code === HTTP_FAILURE_NOT_FOUND.toString()))) {
+                console.error(`${email} ${req.method} ${req.originalUrl} Unable to get project discovery data: `, error);
+                return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
             }
-
-            console.error(`${email} ${req.method} ${req.originalUrl} Unable to get project discovery data: `, error);
-            return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
+            // if discovery state isn't found, we can still return the current project status
+            //      we just won't have the discovery trigger info
         }
 
         // get the project data

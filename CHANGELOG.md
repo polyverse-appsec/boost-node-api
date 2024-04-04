@@ -13,6 +13,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Bug Fixes
 - Fix missing generators during project creation
+- Fix aborted Project Status due to missing Discovery trigger
 
 ## Version 1.2.0: March 28th, 2024
 
