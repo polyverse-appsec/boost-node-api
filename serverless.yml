@@ -1,5 +1,19 @@
 service: boost-rest-api
 
+custom:
+  discoveryGroomer: ${self:custom.${self:provider.stage}.DISCOVERY_GROOMER}
+
+  # DISCOVERY_GROOMER: "whatif"                       # set the discovery groomer to report grooming attempts, but skip discovery
+  # DISCOVERY_GROOMER: "automatic"                    # perform automatic rediscovery on grooming cycle
+  prod:
+    DISCOVERY_GROOMER: "whatif"
+  
+  dev:
+    DISCOVERY_GROOMER: "automatic"
+  
+  test:
+    DISCOVERY_GROOMER: "automatic"
+
 provider:
   name: aws
   runtime: nodejs20.x
@@ -11,6 +25,7 @@ provider:
     DYNAMO_DB_CRITICALDATA: "Boost.CriticalData.${self:provider.stage}"  # critical global data
     DYNAMO_DB_INSTALLATIONS: "Boost.GitHub-App.installations"            # github app data
     DEPLOYMENT_STAGE: "${self:provider.stage}"
+    DISCOVERY_GROOMER: ${self:custom.discoveryGroomer}
     # BUILD_CRITICALDATA_CACHE: "true"                                     # dynamically build the critical data cache
   iam:
     role:

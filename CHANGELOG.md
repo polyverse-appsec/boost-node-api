@@ -12,6 +12,7 @@ Polyverse Boost ReST API (Backend)
 - Reduce error logging in normal project creation and status paths
 - Return an empty list of Data References if no data references are found for a project
     - Previously returned an HTTP error
+- Groomer is enabled by default in Dev and Test deployments; WhatIf in Prod deployments
 
 ### Bug Fixes
 - Fix missing generators during project creation
