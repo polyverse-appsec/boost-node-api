@@ -415,7 +415,7 @@ export class Generator {
         } catch (err) {
             console.error(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Unable to get project source: ${err}`);
             if (axios.isAxiosError(err) && err.response) {
-                const errorMsg = err.response.data || err.message;
+                const errorMsg = err.response.data?.body || err.response.data || err.message;
                 throw new axios.AxiosError(`Unable to get project source: ${errorMsg}`, err.code, undefined, err.request, err.response);
             }
             throw err;
