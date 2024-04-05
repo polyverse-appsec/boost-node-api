@@ -915,7 +915,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
                 `${projectPath}/status`, 'POST', undefined, projectStatusRefreshDelayInMs, false);
         } catch (error: any) {
             // we don't care if the project status refresh fails - it's just a nice to have
-            console.warn(`${req.originalUrl} Unable to initialize the project status: `, error.stack || error);
+            console.warn(`${email} ${req.method} ${req.originalUrl} Unable to initialize the project status: `, error.stack || error);
         }
 
         // because the discovery process may take more than 15 seconds, we never want to fail the project creation
@@ -1517,7 +1517,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (req
         } else {
             return res
                 .status(HTTP_FAILURE_NOT_FOUND)
-                .send('Project Discovery Stqatus not found');
+                .send('Project Discovery Status not found');
         }        
 
     } catch (error) {
@@ -1698,7 +1698,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
 
 const MinutesToWaitBeforeGeneratorConsideredStalled = 3;
 
-const user_project_org_project_status = `user_project/:org/:project/status`;
+const user_project_org_project_status = `${user_project_org_project}/status`;
 app.delete(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
 
     try {
@@ -2430,7 +2430,7 @@ interface ProjectGroomState {
     lastUpdated: number;
 }
 
-const user_project_org_project_groom = `user_project/:org/:project/groom`;
+const user_project_org_project_groom = `${user_project_org_project}/groom`;
 app.get(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Request, res: Response) => {
 
     try {
@@ -2849,7 +2849,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
     }    
 });
 
-const user_project_org_project_goals = `user_project/:org/:project/goals`;
+const user_project_org_project_goals = `${user_project_org_project}/goals`;
 app.delete(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Request, res: Response) => {
 
     try {
@@ -2973,7 +2973,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Re
 
 });
 
-const user_project_org_project_config_boostignore = `user_project/:org/:project/config/.boostignore`;
+const user_project_org_project_config_boostignore = `${user_project_org_project}/config/.boostignore`;
 app.get(`${api_root_endpoint}/${user_project_org_project_config_boostignore}`, async (req: Request, res: Response) => {
 
     try {
@@ -3003,7 +3003,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_config_boostignore}`, a
     }
 });
 
-const user_project_org_project_data_resource = `user_project/:org/:project/data/:resource`;
+const user_project_org_project_data_resource = `${user_project_org_project}/data/:resource`;
 app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
 
     try {
@@ -3059,7 +3059,7 @@ interface ResourceStatusState {
     lastUpdated: number;
 }
 
-const user_project_org_project_data_resource_status = `user_project/:org/:project/data/:resource/status`;
+const user_project_org_project_data_resource_status = `${user_project_org_project_data_resource}/status`;
 app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`, async (req: Request, res: Response) => {
 
     try {
@@ -3197,7 +3197,7 @@ app.route(`${api_root_endpoint}/${user_project_org_project_data_resource}`)
    .post(textParserWithMbLimit, postOrPutUserProjectDataResource)
    .put(textParserWithMbLimit, postOrPutUserProjectDataResource);
 
-const user_project_org_project_data_resource_generator = `user_project/:org/:project/data/:resource/generator`;
+const user_project_org_project_data_resource_generator = `${user_project_org_project_data_resource}/generator`;
 app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
 
     try {
@@ -3876,7 +3876,7 @@ interface ResourceGeneratorProcessState {
     forceProcessing?: boolean;
 }
 
-const user_project_org_project_data_resource_generator_process = `user_project/:org/:project/data/:resource/generator/process`;
+const user_project_org_project_data_resource_generator_process = `${user_project_org_project_data_resource_generator}/process`;
 app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generator_process}`, async (req: Request, res: Response) => {
 
     try {
@@ -3988,7 +3988,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const user_project_org_project_data_references = `user_project/:org/:project/data_references`;
+const user_project_org_project_data_references = `${user_project_org_project}/data_references`;
 const postUserProjectDataReferences = async (req: Request, res: Response) => {
 
     try {
