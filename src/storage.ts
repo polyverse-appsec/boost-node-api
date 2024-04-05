@@ -134,7 +134,7 @@ export async function searchProjectData<T>(email: string | undefined, sourceType
                             const projectPathParts = thisItem.projectPath.S.split('/');
 
                             if (!thisItem?.data?.S) {
-                                console.error(`StorageSchemaError: No data field found for ${thisItem.projectPath.S}/${thisItem.dataPath.S}`);
+                                console.error(`StorageSchemaError: No data field found for ${thisItem.projectPath.S}${thisItem.dataPath.S}`);
                                 return null;
                             }
 
@@ -146,7 +146,7 @@ export async function searchProjectData<T>(email: string | undefined, sourceType
                                 _projectName: projectPathParts[3],
                             } as T; // Cast to T, if T is the type you're working with
                         } catch (error: any) {
-                            console.error(`StorageSchemaError: Error retrieving ${thisItem?.projectPath?.S}/${thisItem?.dataPath?.S}:`, error.stack || error);
+                            console.error(`StorageSchemaError: Error retrieving ${thisItem?.projectPath?.S} ${thisItem?.dataPath?.S}:`, error.stack || error);
                             return null;
                         }
                     });
