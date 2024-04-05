@@ -3546,8 +3546,8 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
                     .status(HTTP_LOCKED)
                     .send('Generator in error state - cannot process more updates');
             }
-            console.error(`${email} ${req.method} ${req.originalUrl}: Invalid status: ${input.status}`);
-            return res.status(HTTP_CONFLICT).send(`Invalid PATCH status: ${input.status}`)
+            console.error(`${email} ${req.method} ${req.originalUrl}: Invalid new status: ${input.status} from ${currentGeneratorState.status}`);
+            return res.status(HTTP_CONFLICT).send(`Invalid PATCH status: ${input.status} from ${currentGeneratorState.status}`);
         }
         if (input.lastUpdated) {
             currentGeneratorState.lastUpdated = input.lastUpdated;

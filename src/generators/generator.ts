@@ -5,7 +5,7 @@ import { signedAuthHeader } from "../auth";
 import { saveProjectDataResource, loadProjectDataResource } from "..";
 import { FileContent, RepoDetails } from "../github";
 import { Stages } from "../types/GeneratorState";
-import { localSelfDispatch, HTTP_FAILURE_NOT_FOUND, HTTP_LOCKED, secondsBeforeRestRequestMaximumTimeout, secondsBeforeRestRequestShortTimeout } from "../utility/dispatch";
+import { localSelfDispatch, HTTP_FAILURE_NOT_FOUND, HTTP_LOCKED, secondsBeforeRestRequestMaximumTimeout, secondsBeforeRestRequestShortTimeout, HTTP_CONFLICT } from "../utility/dispatch";
 import axios, { Axios } from "axios";
 
 const ignore = require('ignore');
@@ -291,6 +291,13 @@ export class Generator {
                 }
                 if (!this.forceProcessing) {
                     throw new Error(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Generator in Error - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
+                }
+            } else if (response.status === HTTP_CONFLICT) {
+                if (process.env.TRACE_LEVEL) {
+                    console.warn(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Generator in Conflict - ignoring progress update: ${JSON.stringify(state)}`);
+                }
+                if (!this.forceProcessing) {
+                    throw new Error(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Generator in Conflict - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
                 }
             } else {
                 const errorText = await response.text() || 'Unknown Error';
