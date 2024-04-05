@@ -300,7 +300,16 @@ export class Generator {
                     throw new Error(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Generator in Conflict - Aborting and ignoring progress update: ${JSON.stringify(state)}`);
                 }
             } else {
-                const errorText = await response.text() || 'Unknown Error';
+                let errorText = await response.text() || 'Unknown Error';
+                // try and convert to JSON in case it has embedded body for AWS API Gateway
+                try {
+                    const errorResponse = JSON.parse(errorText);
+                    if (typeof errorResponse === 'object' && errorResponse !== null && 'body' in errorResponse) {
+                        errorText = errorResponse.body;
+                    }
+                } catch (err) {
+                    // ignore
+                }
                 console.error(`${this.projectData.org}:${this.projectData.name}:${this.dataType} Unable to update resource generator progress: ${JSON.stringify(state)} - ${response.status} - ${errorText}`);
             }
         }
