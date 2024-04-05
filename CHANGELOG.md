@@ -21,6 +21,7 @@ Polyverse Boost ReST API (Backend)
     - /api/search/projects/groom (GET)
     - /api/search/projects/status (GET)
 - More improvements to AWS API Gateway support in local dispatch service (parsing undefined results)
+- Print all date times in local PST time - where the service is hosted - and make timezone explicit
 
 ### Bug Fixes
 - Fix missing generators during project creation
