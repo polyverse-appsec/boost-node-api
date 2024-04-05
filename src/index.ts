@@ -2523,7 +2523,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         const projectPath = projectGroomPath.substring(0, projectGroomPath.lastIndexOf('/groom'));
 
         const callStart = Math.floor(Date.now() / 1000);
-        const groomingCyclesToWaitForSettling = DefaultGroomingIntervalInMinutes * 2;
+        const groomingCyclesToWaitForSettling = 2;
 
         const storeGroomingState = async (groomingState: ProjectGroomState) => {
             await storeProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom', groomingState);
@@ -2592,9 +2592,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             }
 
             if (currentGroomingState.status === GroomingStatus.Disabled) {
-                console.warn(`${email} ${req.method} ${req.originalUrl} Grooming is disabled - skipping`);
+                console.warn(`${email} ${req.method} ${req.originalUrl} Grooming is disabled - skipping: ${JSON.stringify(currentGroomingState)}`);
                 return res
-                    .status(HTTP_SUCCESS)
+                    .status(HTTP_LOCKED)
                     .send(currentGroomingState);
             }
 
@@ -2610,15 +2610,16 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                     lastDiscoveryStart: currentGroomingState.lastDiscoveryStart,
                     lastUpdated: Math.floor(Date.now() / 1000)
                 };
+                console.warn(`${email} ${req.method} ${req.originalUrl} Groomer cycle active - skipping: ${JSON.stringify(groomerBusy)}`);
                 return res
-                    .status(HTTP_SUCCESS)
+                    .status(HTTP_LOCKED)
                     .contentType('application/json')
                     .send(groomerBusy);
             }
 
             // if the last discovery run was less than 2 cycles minutes ago, then we'll skip this run
             if (currentGroomingState.lastDiscoveryStart &&
-                currentGroomingState.lastDiscoveryStart > (callStart - (groomingCyclesToWaitForSettling * 60))) {
+                currentGroomingState.lastDiscoveryStart > (callStart - (groomingCyclesToWaitForSettling * DefaultGroomingIntervalInMinutes * 60))) {
 
                 // we only skip if we were actively grooming before... otherwise, we'll just let it run
                 //      (e.g. if we hit an error or another issue)
@@ -2632,8 +2633,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                         lastDiscoveryStart: currentGroomingState.lastDiscoveryStart,
                         lastUpdated: Math.floor(Date.now() / 1000)
                     };
+                    console.warn(`${email} ${req.method} ${req.originalUrl} Groomer is busy - skipping: ${JSON.stringify(groomerBusy)}`);
                     return res
-                        .status(HTTP_SUCCESS)
+                        .status(HTTP_LOCKED)
                         .contentType('application/json')
                         .send(groomerBusy);
                 }
@@ -2648,8 +2650,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                     lastDiscoveryStart: currentGroomingState.lastDiscoveryStart,
                     lastUpdated: Math.floor(Date.now() / 1000)
                 };
+                console.warn(`${email} ${req.method} ${req.originalUrl} Grooming Launch Pending - skipping: ${JSON.stringify(groomingState)}`);
                 return res
-                    .status(HTTP_SUCCESS)
+                    .status(HTTP_LOCKED)
                     .contentType('application/json')
                     .send(groomingState);
             }
@@ -2677,8 +2680,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 lastDiscoveryStart: 0,
                 lastUpdated: Math.floor(Date.now() / 1000)
             };
+            console.warn(`${email} ${req.method} ${req.originalUrl} Project Status is Unknown - skipping: ${JSON.stringify(groomingState)}`);
             return res
-                .status(HTTP_SUCCESS)
+                .status(HTTP_SUCCESS_ACCEPTED)
                 .contentType('application/json')
                 .send(groomingState);
         }
@@ -2694,9 +2698,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             };
 
             await storeGroomingState(groomingState);
+            console.warn(`${email} ${req.method} ${req.originalUrl} Project is actively updating - skipping: ${JSON.stringify(groomingState)}`);
 
             return res
-                .status(HTTP_SUCCESS)
+                .status(HTTP_SUCCESS_ACCEPTED)
                 .contentType('application/json')
                 .send(groomingState);
         }
@@ -2711,8 +2716,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 lastDiscoveryStart: currentGroomingState?currentGroomingState.lastDiscoveryStart:undefined,
                 lastUpdated: Math.floor(Date.now() / 1000)
             };
+            console.log(`${email} ${req.method} ${req.originalUrl} Project is synchronized - idling: ${JSON.stringify(groomingState)}`);
+
             return res
-                .status(HTTP_SUCCESS)
+                .status(HTTP_SUCCESS_ACCEPTED)
                 .contentType('application/json')
                 .send(groomingState);
         }
@@ -2730,8 +2737,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
 
             await storeGroomingState(groomingState);
 
+            console.warn(`${email} ${req.method} ${req.originalUrl} Insufficient time to rediscover - skipping: ${JSON.stringify(groomingState)}`);
+
             return res
-                .status(HTTP_SUCCESS)
+                .status(HTTP_SUCCESS_ACCEPTED)
                 .contentType('application/json')
                 .send(groomingState);
         }
@@ -2774,7 +2783,6 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             //      and we'll assume it will work
         }
 
-        const originalIdentityHeader = getSignedIdentityFromHeader(req);
         const discoveryWithResetState : DiscoverState = {
             resetResources: true,
             requestor: DiscoveryTrigger.AutomaticGrooming
@@ -2790,15 +2798,14 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         };
 
         try {
-            if (!process.env.DISCOVERY_GROOMER || process.env.DISCOVERY_GROOMER.toLocaleLowerCase() === 'whatif') {
+            launchedGroomingState.status = GroomingStatus.Grooming;
+
+            if (!process.env.DISCOVERY_GROOMER || process.env.DISCOVERY_GROOMER.toLowerCase() === 'whatif') {
                 launchedGroomingState.statusDetails = `Launched WhatIf Discovery at ${discoveryTime} for ${projectPath} with status ${JSON.stringify(projectStatus)}`;
+                console.log(`${email} ${req.method} ${req.originalUrl} Launching Groomer[whatif] Discovery with status ${JSON.stringify(projectStatus)}`);
             } else {
-                launchedGroomingState.status = GroomingStatus.Grooming;
-                if (process.env.DISCOVERY_GROOMER.toLocaleLowerCase() === 'automatic') {
-                    console.log(`Launching Automatic Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
-                } else {
-                    console.log(`Launching ${process.env.DISCOVERY_GROOMER} Discovery for ${projectPath} with status ${JSON.stringify(projectStatus)}`);
-                }
+                // "automatic" is the recommended trigger, but any non-empty value will work
+                console.log(`${email} ${req.method} ${req.originalUrl} Launching Groomer[${process.env.DISCOVERY_GROOMER}] Discovery with status ${JSON.stringify(projectStatus)}`);
 
                 const discoveryResult = await localSelfDispatch<ProjectDataReference[]>(
                     email, "", req,

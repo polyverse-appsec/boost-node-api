@@ -20,6 +20,7 @@ Polyverse Boost ReST API (Backend)
 - Fixes for logging in project, grooming and data_references updates
 - Fix issue with the first synchronized date recorded as the last synchronized date
     - This caused the project status to report unhealthy as AI files were mistakenly reported out of date
+- Fix issue preventing simulated (WhatIf) Discovery Grooming from running again
 
 ## Version 1.2.0: March 28th, 2024
 
