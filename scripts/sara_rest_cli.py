@@ -109,6 +109,9 @@ def main(email, org, project, method, stage, data, frontend=False):
         "status": f"{URL}/api/user_project/{org}/{project}/status",
         "status_refresh": f"{URL}/api/user_project/{org}/{project}/status",
         "status_assistant": f"{URL}/api/user_project/{org}/{project}/status?verifyAssistant",
+        "status_all": f"{URL}/api/search/projects/status",
+        "status_all_complete": f"{URL}/api/search/projects/status?synchronized=true",
+        "status_all_incomplete": f"{URL}/api/search/projects/status?synchronized=false",
 
         "account": f"{URL}/api/user/{org}/account",
         "org_account": f"{URL}/api/org/{org}/account",
@@ -155,7 +158,7 @@ def main(email, org, project, method, stage, data, frontend=False):
         "github_access": f"{URL}/api/user/{org}/connectors/github/access?uri={data}",
 
         "timer_interval": f"{URL}/api/timer/interval",
-        "groom_discoveries_list": f"{URL}/api/search/projects/groom?status=Pending",
+        "groom_discoveries_list": f"{URL}/api/search/projects/groom?status=Grooming",
         "groom_discoveries": f"{URL}/api/groom/projects",
 
         "aiproxy": f"{URL}/api/proxy/ai/{org}/{data}"
@@ -310,6 +313,9 @@ if __name__ == "__main__":
                                  'status',
                                  'status_refresh',
                                  'status_assistant',
+                                 'status_all',
+                                 'status_all_complete',
+                                 'status_all_incomplete',
 
                                  'create_auth_token',
 
@@ -384,6 +390,11 @@ if __name__ == "__main__":
 
         "projects",
         "projects_all",
+
+        "status_all",
+        "status_all_complete",
+        "status_all_incomplete",
+
         "search_generators_all",
         "search_generators",
         "timer_interval",

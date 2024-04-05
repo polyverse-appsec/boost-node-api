@@ -6,7 +6,8 @@ Polyverse Boost ReST API (Backend)
 ## Version 1.2.1: April 4th, 2024
 
 ### New Features
-- N/A
+- Add new Project Status search API: /api/search/projects/status (GET)
+    - Search for project status by user, org, project name or synchronized (true/false)
 
 ### Enhancements
 - Reduce error logging in normal project creation and status paths

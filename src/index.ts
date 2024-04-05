@@ -1186,16 +1186,16 @@ app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, re
 
         const { org, project, user, status } = req.query;
         if (org && typeof org !== 'string') {
-            console.error(`Org must be a string`);
+            console.error(`${email} ${req.method} ${req.originalUrl} Org must be a string`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid org');
         } else if (project && typeof project !== 'string') {
-            console.error(`Project must be a string`);
+            console.error(`${email} ${req.method} ${req.originalUrl} Project must be a string`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid project');
         } else if (user && typeof user !== 'string') {
-            console.error(`User must be a string`);
+            console.error(`${email} ${req.method} ${req.originalUrl} User must be a string`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid user');
         } else if (status && typeof status !== 'string') {
-            console.error(`Status must be a string`);
+            console.error(`${email} ${req.method} ${req.originalUrl} Status must be a string`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid status');
         }
 
@@ -1206,19 +1206,80 @@ app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, re
             project?project as string:searchWildcard, "", 'groom');
 
         if (process.env.TRACE_LEVEL) {
-            console.log(`${req.originalUrl}: retrieved data for ${groomingDataList.length} raw groom data`);
+            console.log(`${email} ${req.method} ${req.originalUrl} retrieved data for ${groomingDataList.length} raw groom data`);
         }
 
         const groomingDataListFilteredByStatus : ProjectGroomState[] =
             groomingDataList.filter((groomData) => status?groomData.status === status:true);
 
-        const listOfProjectNames : string = groomingDataList.map((groomData) => `${(groomData as any)._userName} org=${(groomData as any)._ownerName} repo=${(groomData as any)._projectName}`).join('\n');
-        console.info(`${req.originalUrl} retrieved ${groomingDataListFilteredByStatus.length} Projects to Groom with status:${status?status:'all'}: ${listOfProjectNames}`);
+        const listOfProjectNames : string = groomingDataListFilteredByStatus.map((groomData) => `${(groomData as any)._userName} org=${(groomData as any)._ownerName} project=${(groomData as any)._projectName}`).join('\n');
+        console.info(`${email} ${req.method} ${req.originalUrl}  retrieved ${groomingDataListFilteredByStatus.length} Projects to Groom with status:${status?status:'all'}: ${listOfProjectNames}`);
 
         return res
             .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(groomingDataListFilteredByStatus);
+
+    } catch (error) {
+        return handleErrorResponse(error, req, res);
+    }
+});
+
+// Services to search the entire system for the status of all projects
+const search_projects_status = `search/projects/status`;
+app.get(`${api_root_endpoint}/${search_projects_status}`, async (req: Request, res: Response) => {
+
+    try {
+        // since project search is system wide by default, we're going to require admin access to
+        //      run a search
+        const email = await validateUser(req, res, AuthType.Admin);
+        if (!email) {
+            return;
+        }
+
+        // query params support:
+        //  - org?: string - specific org, or all if not specified
+        //  - project?: string - specific project, or all if not specified
+        //  - user?: string - a specific user, or all if not specified
+        //  - synchronized?: string - a specific project status, or all if not specified
+
+        const { org, project, user, synchronized } = req.query;
+        if (org && typeof org !== 'string') {
+            console.error(`${email} ${req.method} ${req.originalUrl} Org must be a string`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid org');
+        } else if (project && typeof project !== 'string') {
+            console.error(`${email} ${req.method} ${req.originalUrl} Project must be a string`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid project');
+        } else if (user && typeof user !== 'string') {
+            console.error(`${email} ${req.method} ${req.originalUrl} User must be a string`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid user');
+        } else if (synchronized && typeof synchronized !== 'string') {
+            console.error(`${email} ${req.method} ${req.originalUrl} synchronized must be a string`);
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid synchronized');
+        }
+
+        const statusDataList : ProjectStatusState[] =
+            await searchProjectData<ProjectStatusState>(
+            user?user as string:searchWildcard, SourceType.General,
+            org?org as string:searchWildcard,
+            project?project as string:searchWildcard, "", 'status');
+
+        if (process.env.TRACE_LEVEL) {
+            console.log(`${email} ${req.method} ${req.originalUrl} retrieved data for ${statusDataList.length} raw status data`);
+        }
+
+        const synchronizedMatch = synchronized === 'true'?true:synchronized === 'false'?false:undefined;
+
+        const statusDataListFilteredBySynchronized : ProjectStatusState[] =
+            statusDataList.filter((statusData) => (synchronizedMatch !== undefined)?statusData.synchronized === synchronizedMatch:true);
+
+        const listOfProjectNames : string = statusDataListFilteredBySynchronized.map((statusData) => `${(statusData as any)._userName} org=${(statusData as any)._ownerName} project=${(statusData as any)._projectName}`).join('\n');
+        console.info(`${email} ${req.method} ${req.originalUrl} retrieved ${statusDataListFilteredBySynchronized.length} Project Status with synchronized:${synchronizedMatch?synchronizedMatch:'all'}: ${listOfProjectNames}`);
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType('application/json')
+            .send(statusDataListFilteredBySynchronized);
 
     } catch (error) {
         return handleErrorResponse(error, req, res);
