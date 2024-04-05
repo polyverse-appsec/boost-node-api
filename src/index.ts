@@ -1982,7 +1982,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         try {
             dataReferences = await localSelfDispatch<ProjectDataReference[]>(email,
                 getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/data_references`, 'GET');
-        } catch (error) {
+        } catch (error: any) {
             if (axios.isAxiosError(error) && error.response && error.response.status === HTTP_FAILURE_UNAUTHORIZED) {
                 const errorMessage = error.message;
                 const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
