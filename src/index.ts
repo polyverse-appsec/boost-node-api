@@ -2481,7 +2481,10 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req:
     }    
 });
 
-const didLastDiscoverySucceedOrFail = (groomStatus: ProjectGroomState, projectStatus: ProjectStatusState) : boolean | undefined => {
+const didLastDiscoverySucceedOrFail = (
+    groomStatus: ProjectGroomState,
+    lastDiscovery: DiscoverState | undefined,
+    projectStatus: ProjectStatusState) : boolean | undefined => {
     // if we didn't launch a discovery, then assume it would have succeeded
     if (!groomStatus.lastDiscoveryStart) {
         return true;
@@ -2501,6 +2504,11 @@ const didLastDiscoverySucceedOrFail = (groomStatus: ProjectGroomState, projectSt
     if (projectStatus.lastSynchronized &&
         groomStatus.lastDiscoveryStart < projectStatus.lastSynchronized) {
         return true;
+    }
+
+    // if the groomer didn't launch the discovery, then we can't be sure what effect the groomer would have
+    if (lastDiscovery?.requestor !== DiscoveryTrigger.AutomaticGrooming) {
+        return undefined;
     }
 
     // otherwise, we'll assume the groomer discovery launched before the last project update (or update attempt)
@@ -2671,6 +2679,18 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             return handleErrorResponse(error, req, res, `Unable to query Project Status`);
         }
 
+        // we'll check the status of the project data
+        let lastDiscovery : DiscoverState | undefined = undefined;
+        try {
+            lastDiscovery = await localSelfDispatch<ProjectStatusState>(email, "", req, `${projectPath}/discovery`, 'GET');
+        } catch (error: any) {
+            if (!((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
+                (error.code === HTTP_FAILURE_NOT_FOUND.toString()))) {
+                return handleErrorResponse(error, req, res, `Unable to query Project Discovery Status`);
+            }
+            console.warn(`${email} ${req.method} ${req.originalUrl} Last Project Discovery not found; groomer may be running before discovery has been started`);
+        }
+
         if (projectStatus.status === ProjectStatus.Unknown) {
             // if we're in an unknown project state, then we'll just skip this run - try looking up status again next time
             const groomingState : ProjectGroomState = {
@@ -2746,7 +2766,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         }
 
         // get the result of the last discovery launched by discovery
-        const lastDiscoveryResult: boolean | undefined = currentGroomingState?didLastDiscoverySucceedOrFail(currentGroomingState, projectStatus):undefined;
+        const lastDiscoveryResult: boolean | undefined = currentGroomingState?
+            didLastDiscoverySucceedOrFail(currentGroomingState, lastDiscovery, projectStatus):undefined;
 
         // if last discovery result was a success - then we can re-run groomer discovery again
         if (lastDiscoveryResult === true) {
