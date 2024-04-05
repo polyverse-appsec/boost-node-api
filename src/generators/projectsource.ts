@@ -1,6 +1,7 @@
 import { ProjectDataType } from '../types/ProjectData';
 import { UserProjectData } from '../types/UserProjectData';
-import { Stages, GeneratorState, ResourceSourceState } from '../types/GeneratorState';
+import { Stages, GeneratorState } from '../types/GeneratorState';
+import { ResourceSourceState } from '../types/ResourceSourceState';
 import { FileContent, RepoDetails } from '../github';
 import { Generator } from './generator';
 const ignore = require('ignore');
