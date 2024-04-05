@@ -1,27 +1,12 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocument, UpdateCommandInput } from "@aws-sdk/lib-dynamodb";
+import { usFormatter } from "./utility/log";
 
 const client = new DynamoDBClient({ region: "us-west-2" });
 const dynamoDB = DynamoDBDocument.from(client);
 
 const githubAppUserKeyValueStore = 'Boost.GitHub-App.installations';
 const reverseAccountLookupByUsernameSecondaryIndex = 'username-index';
-
-// for pretty printing dates in error messages and logs
-// print the date in PST with 12-hour time
-const usFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Los_Angeles',
-
-    year: 'numeric',
-    month: 'long',
-    day: '2-digit',
-
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    
-    hour12: true
-});
 
 export interface UserInfo {
     account?: string;
