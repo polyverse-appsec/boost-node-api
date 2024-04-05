@@ -1985,12 +1985,12 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             if (axios.isAxiosError(error) && error.response && error.response.status === HTTP_FAILURE_UNAUTHORIZED) {
                 const errorMessage = error.message;
                 const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
-                console.error(`$${email} ${req.method} ${req.originalUrl} Unable to get data references for ${projectDataUri} - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Unable to get data references for ${projectDataUri} - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
                 return handleErrorResponse(error, req, res);
             }
 
             // if we get an error, then we'll assume the project doesn't exist
-            console.warn(`$${email} ${req.method} ${req.originalUrl}: Project Data References not found; Project may not exist or hasn't been discovered yet: ${error}`);
+            console.warn(`${email} ${req.method} ${req.originalUrl}: Project Data References not found; Project may not exist or hasn't been discovered yet: ${error}`);
 
             // we can continue on, since we're just missing the last synchronized time - which probably didn't happen anyway
         }
@@ -2477,7 +2477,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         projectStatus.synchronized = true;
         projectStatus.details = `All Resources Completely Generated and Uploaded to AI Servers`;
 
-        console.log(`$${email} ${req.method} ${req.originalUrl}: SYNCHRONIZED: ${JSON.stringify(projectStatus)}`);
+        console.log(`${email} ${req.method} ${req.originalUrl}: SYNCHRONIZED: ${JSON.stringify(projectStatus)}`);
 
         await saveProjectStatusUpdate();
 
