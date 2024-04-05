@@ -10,10 +10,13 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Reduce error logging in normal project creation and status paths
+- Return an empty list of Data References if no data references are found for a project
+    - Previously returned an HTTP error
 
 ### Bug Fixes
 - Fix missing generators during project creation
 - Fix aborted Project Status due to missing Discovery trigger
+- Fixes for logging in project, grooming and data_references updates
 
 ## Version 1.2.0: March 28th, 2024
 

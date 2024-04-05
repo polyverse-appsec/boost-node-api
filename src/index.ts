@@ -2669,7 +2669,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         } catch (error: any) {
             if ((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
                 (error.code === HTTP_FAILURE_NOT_FOUND.toString())) {
-                console.error(`${req.method} ${req.originalUrl} Project Status not found; Project may not exist or hasn't been discovered yet`);
+                console.warn(`${email} ${req.method} ${req.originalUrl} Project Status not found; Project may not exist or hasn't been discovered yet`);
                 return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
             }
             return handleErrorResponse(error, req, res, `Unable to query Project Status`);
@@ -4257,15 +4257,19 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_references}`, asyn
         }
 
         if (!projectData.resources || projectData.resources.length === 0) {
-            console.error(`No resources found in project: ${projectData.org}/${projectData.name}`);
+            console.error(`${email} ${req.method} ${req.originalUrl} No resources found in project`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('No resources found in project');
         }
-        const uri = new URL(projectData.resources[0].uri);
 
         const dataReferencesRaw : any = await getProjectData(email, SourceType.General, projectData.org, projectData.name, '', 'data_references');
         if (!dataReferencesRaw) {
-            console.error(`No resources found in project: ${projectData.org}/${projectData.name}`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('No data references found for project');
+            console.warn(`${email} ${req.method} ${req.originalUrl} No data references found in project`);
+
+            // return an empty array if no data references found
+            return res
+                .status(HTTP_SUCCESS_NO_CONTENT)
+                .contentType('application/json')
+                .send([]);
         }
         const dataReferences = JSON.parse(dataReferencesRaw) as ProjectDataReference[];
 
