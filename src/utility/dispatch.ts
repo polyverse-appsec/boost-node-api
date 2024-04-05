@@ -128,7 +128,7 @@ export async function localSelfDispatch<T>(
         if (response.ok) {
             if (['GET'].includes(httpVerb)) {
                 const objectResponse = await response.json();
-                if ("body" in objectResponse) {
+                if (typeof objectResponse === 'object' && objectResponse !== null && 'body' in objectResponse) {
                     return (objectResponse.body?JSON.parse(objectResponse.body):{}) as T;
                 }
                 return objectResponse as T;
@@ -140,7 +140,7 @@ export async function localSelfDispatch<T>(
                     console.error(`Request ${httpVerb} ${selfEndpoint} failed with error: `, error.stack || error);
                     return {} as T;
                 }
-                if ("body" in objectResponse) {
+                if (typeof objectResponse === 'object' && objectResponse !== null && 'body' in objectResponse) {
                     return (objectResponse.body?JSON.parse(objectResponse.body):{}) as T;
                 }
                 return objectResponse as T;
@@ -156,7 +156,7 @@ export async function localSelfDispatch<T>(
             errorBody = `: ${await response.text()}`;
             try {
                 const objectResponse = JSON.parse(errorBody);
-                if ("body" in objectResponse) {
+                if (typeof objectResponse === 'object' && objectResponse !== null && 'body' in objectResponse) {
                     errorBody = `: ${objectResponse.body}`;
                 } else {
                     errorBody = `: ${objectResponse}`;
@@ -204,7 +204,7 @@ export async function localSelfDispatch<T>(
             }
     
             // Axios automatically parses JSON, so no need to manually parse it here.
-            if ("body" in response.data) {
+            if (typeof response.data === 'object' && response.data !== null && 'body' in response.data) {
                 // The 'body' key exists in the response data
                 if (response.data.body) {
                     // If 'body' is not undefined or an empty string, parse it
