@@ -2495,6 +2495,11 @@ const didLastDiscoverySucceedOrFail = (
         return true;
     }
 
+    // if groomer is in whatif mode, then we'll just return if we are fully synchronized
+    if (!process.env.DISCOVERY_GROOMER || process.env.DISCOVERY_GROOMER.toLowerCase() === 'whatif') {
+        return projectStatus.synchronized;
+    }
+
     // if groomer launched after last project status then unknown
     if (groomStatus.lastDiscoveryStart > projectStatus.lastUpdated) {
         return undefined;
@@ -2630,9 +2635,12 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                     .send(groomerBusy);
             }
 
-            // if the last discovery run was less than 2 cycles minutes ago, then we'll skip this run
+            // get the time outside the grooming cycle window - e.g. at least 2 full grooming cycles
+            const timeOutsideTheLongGroomingCycleWindow = callStart - (groomingCyclesToWaitForSettling * DefaultGroomingIntervalInMinutes * 60);
+
+            // if the last discovery run was started within the long grooming cycle window, then we'll skip this run
             if (currentGroomingState.lastDiscoveryStart &&
-                currentGroomingState.lastDiscoveryStart > (callStart - (groomingCyclesToWaitForSettling * DefaultGroomingIntervalInMinutes * 60))) {
+                currentGroomingState.lastDiscoveryStart > timeOutsideTheLongGroomingCycleWindow) {
 
                 // we only skip if we were actively grooming before... otherwise, we'll just let it run
                 //      (e.g. if we hit an error or another issue)
@@ -2655,19 +2663,24 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             }
 
             if (currentGroomingState.status === GroomingStatus.LaunchPending) {
-                // if we're in a pending state, then we'll just skip this run
-                const groomingState = {
-                    status: GroomingStatus.Skipping,
-                    statusDetails: 'Grooming Launch Pending',
-                    consecutiveErrors: currentGroomingState.consecutiveErrors,
-                    lastDiscoveryStart: currentGroomingState.lastDiscoveryStart,
-                    lastUpdated: Math.floor(Date.now() / 1000)
-                };
-                console.warn(`${email} ${req.method} ${req.originalUrl} Grooming Launch Pending - skipping: ${JSON.stringify(groomingState)}`);
-                return res
-                    .status(HTTP_LOCKED)
-                    .contentType('application/json')
-                    .send(groomingState);
+                // if the last update of the groomer was within than 2 grooming cycle windows, and we have a pending launch
+                //     then we'll skip this run
+                if (currentGroomingState.lastUpdated > timeOutsideTheLongGroomingCycleWindow) {
+
+                    // if we're in a pending state, then we'll just skip this run
+                    const groomingState = {
+                        status: GroomingStatus.Skipping,
+                        statusDetails: 'Grooming Launch Pending',
+                        consecutiveErrors: currentGroomingState.consecutiveErrors,
+                        lastDiscoveryStart: currentGroomingState.lastDiscoveryStart,
+                        lastUpdated: Math.floor(Date.now() / 1000)
+                    };
+                    console.warn(`${email} ${req.method} ${req.originalUrl} Grooming Launch Pending - skipping: ${JSON.stringify(groomingState)}`);
+                    return res
+                        .status(HTTP_LOCKED)
+                        .contentType('application/json')
+                        .send(groomingState);
+                }
             }
         }
 
@@ -2682,18 +2695,6 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
             }
             return handleErrorResponse(error, req, res, `Unable to query Project Status`);
-        }
-
-        // we'll check the status of the project data
-        let lastDiscovery : DiscoverState | undefined = undefined;
-        try {
-            lastDiscovery = await localSelfDispatch<ProjectStatusState>(email, "", req, `${projectPath}/discovery`, 'GET');
-        } catch (error: any) {
-            if (!((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
-                (error.code === HTTP_FAILURE_NOT_FOUND.toString()))) {
-                return handleErrorResponse(error, req, res, `Unable to query Project Discovery Status`);
-            }
-            console.warn(`${email} ${req.method} ${req.originalUrl} Last Project Discovery not found; groomer may be running before discovery has been started`);
         }
 
         if (projectStatus.status === ProjectStatus.Unknown) {
@@ -2712,6 +2713,18 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 .send(groomingState);
         }
 
+        // we'll check the status of the project data
+        let lastDiscovery : DiscoverState | undefined = undefined;
+        try {
+            lastDiscovery = await localSelfDispatch<ProjectStatusState>(email, "", req, `${projectPath}/discovery`, 'GET');
+        } catch (error: any) {
+            if (!((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
+                (error.code === HTTP_FAILURE_NOT_FOUND.toString()))) {
+                return handleErrorResponse(error, req, res, `Unable to query Project Discovery Status`);
+            }
+            console.warn(`${email} ${req.method} ${req.originalUrl} Last Project Discovery not found; groomer may be running before discovery has been started`);
+        }
+        
         // if the project is actively updating/discovery, then groomer will be idle
         if (projectStatus.activelyUpdating) {
             const groomingState = {
@@ -2736,17 +2749,51 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             const synchronizedDate = new Date(projectStatus.lastSynchronized! * 1000);
             const groomingState = {
                 status: GroomingStatus.Idle,
-                statusDetails: `Project is synchronized as of ${usFormatter.format(synchronizedDate)} - Idling Groomer`,
+                statusDetails: `Project is synchronized by Discovery[${lastDiscovery?.requestor}] as of ${usFormatter.format(synchronizedDate)} - Idling Groomer`,
                 consecutiveErrors: 0, // since the project synchronized, assume groomer did or could work, so reset the error counter
                 lastDiscoveryStart: currentGroomingState?currentGroomingState.lastDiscoveryStart:undefined,
                 lastUpdated: Math.floor(Date.now() / 1000)
             };
-            console.log(`${email} ${req.method} ${req.originalUrl} Project is synchronized - idling: ${JSON.stringify(groomingState)}`);
+            console.log(`${email} ${req.method} ${req.originalUrl} Project is synchronized by Discovery[${lastDiscovery?.requestor}] - idling: ${JSON.stringify(groomingState)}`);
+
+            // reset the groomer for this project, since we've reached synchronization
+            await storeGroomingState(groomingState);
 
             return res
                 .status(HTTP_SUCCESS_ACCEPTED)
                 .contentType('application/json')
                 .send(groomingState);
+        }
+
+        // if the discovery was launched or pending - and the discovery itself wasn't received,
+        //     then it seems the actual launch didn't work, so we'll reset the discovery
+        if (currentGroomingState?.status === GroomingStatus.LaunchPending ||
+            currentGroomingState?.status === GroomingStatus.Grooming) {
+
+            if (lastDiscovery?.requestor !== DiscoveryTrigger.AutomaticGrooming) {
+
+                if (!process.env.DISCOVERY_GROOMER || process.env.DISCOVERY_GROOMER.toLowerCase() === 'whatif') {
+
+                    // for the WhatIf case, we only want to simulate the groomer, so we'll record it as an error
+                    console.warn(`${email} ${req.method} ${req.originalUrl} Last Discovery(${lastDiscovery?.requestor}) was not the Groomer(WhatIf) - resetting to error`);
+                    currentGroomingState.status = GroomingStatus.Error;
+                    currentGroomingState.statusDetails = `Last Discovery(${lastDiscovery?.requestor}) was not the Groomer(WhatIf) - resetting to error`;
+                    currentGroomingState.consecutiveErrors = currentGroomingState.consecutiveErrors?currentGroomingState.consecutiveErrors + 1:1;
+
+                } else {
+                    currentGroomingState.status = GroomingStatus.Idle;
+                    currentGroomingState.statusDetails = `Last Discovery (${lastDiscovery?.requestor}) was not the Groomer - resetting to idle`;
+                }
+            } else if (lastDiscovery?.lastUpdated && currentGroomingState.lastDiscoveryStart &&
+                lastDiscovery.lastUpdated < currentGroomingState.lastDiscoveryStart) {
+
+                console.warn(`${email} ${req.method} ${req.originalUrl} Last Groomer Launch wasn't received by the Project Discovery - resetting discovery`);
+    
+                currentGroomingState.status = GroomingStatus.Idle;
+                currentGroomingState.statusDetails = `Last Groomer Launch at ${usFormatter.format(new Date(currentGroomingState.lastDiscoveryStart * 1000))} ` +
+                    `wasn't received by Project Discovery - ` +
+                    `which was last updated at ${usFormatter.format(new Date(lastDiscovery.lastUpdated * 1000))} - resetting to idle`;
+            }
         }
 
         const timeRemainingToDiscoverInSeconds = secondsBeforeRestRequestMaximumTimeout - (Math.floor(Date.now() / 1000) - callStart);

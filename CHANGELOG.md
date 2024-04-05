@@ -13,6 +13,7 @@ Polyverse Boost ReST API (Backend)
 - Return an empty list of Data References if no data references are found for a project
     - Previously returned an HTTP error
 - Groomer is enabled by default in Dev and Test deployments; WhatIf in Prod deployments
+- Enable Groomer to recover from a stale Pending or Launched prior Groomer that did not start discovery
 - Only count Groomer Discoveries against the Groomer retry limit if the Discovery fails
 - Reduced error logging for normal groomer patterns
 
