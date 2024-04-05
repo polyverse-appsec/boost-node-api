@@ -1731,7 +1731,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
             } catch (error: any) {
                 if (axios.isAxiosError(error) && error.response) {
                     const errorMessage = error.message;
-                    const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
+                    const errorDetails = error.response?.data?.body ?
+                        error.response.data?.body: error.response.data? JSON.stringify(error.response.data) : 'No additional error information';
                     console.error(`${req.originalUrl} Discovery unable to launch generator (continuing) for ${generatorPath} - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
                 } else {
                     console.error(`${req.originalUrl} Discovery unable to launch generator (continuing) for ${generatorPath}`, (error.stack || error));
