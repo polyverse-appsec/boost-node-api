@@ -129,7 +129,11 @@ export async function localSelfDispatch<T>(
             if (['GET'].includes(httpVerb)) {
                 const objectResponse = await response.json();
                 if (typeof objectResponse === 'object' && objectResponse !== null && 'body' in objectResponse) {
-                    return (objectResponse.body?JSON.parse(objectResponse.body):{}) as T;
+                    try {
+                        return (objectResponse.body?JSON.parse(objectResponse.body):{}) as T;
+                    } catch {
+                        return objectResponse.body as T;
+                    }
                 }
                 return objectResponse as T;
             } else if (['POST', 'PUT', 'PATCH'].includes(httpVerb) && response.status === 200) {
