@@ -17,6 +17,8 @@ Polyverse Boost ReST API (Backend)
 - Fix missing generators during project creation
 - Fix aborted Project Status due to missing Discovery trigger
 - Fixes for logging in project, grooming and data_references updates
+- Fix issue with the first synchronized date recorded as the last synchronized date
+    - This caused the project status to report unhealthy as AI files were mistakenly reported out of date
 
 ## Version 1.2.0: March 28th, 2024
 

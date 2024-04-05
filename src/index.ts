@@ -1956,12 +1956,13 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
         }
                 
         for (const dataReference of dataReferences) {
-            if (dataReference.lastUpdated) {
-                // pick the newest lastUpdated date - so we report the last updated date of the most recent resource sync
-                if (!projectStatus.lastSynchronized || projectStatus.lastSynchronized < dataReference.lastUpdated) {
-                    projectStatus.lastSynchronized = dataReference.lastUpdated;
-                }
-                break;
+            if (!dataReference.lastUpdated) {
+                continue;
+            }
+            
+            // pick the newest lastUpdated date - so we report the last updated date of the most recent resource sync
+            if (!projectStatus.lastSynchronized || projectStatus.lastSynchronized < dataReference.lastUpdated) {
+                projectStatus.lastSynchronized = dataReference.lastUpdated;
             }
         }
 
