@@ -6,6 +6,7 @@ import { usFormatter } from './utility/log';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 import axios from 'axios';
+import { HTTP_FAILURE_BUSY, HTTP_FAILURE_NOT_FOUND } from './utility/dispatch';
 
 export async function uploadProjectDataForAIAssistant(email: string, org: string, project: string, repoUri: URL, dataTypeId: string, simpleFilename: string, projectData: string) : Promise<ProjectDataReference> {
 
@@ -167,7 +168,7 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
         errorObj = errorText ? JSON.parse(errorText) : null;
 
         // Check if the error is due to rate limiting
-        if (response.status === 429 && errorObj && errorObj.error && errorObj.error.code === "rate_limit_exceeded") {
+        if (response.status === HTTP_FAILURE_BUSY && errorObj && errorObj.error && errorObj.error.code === "rate_limit_exceeded") {
             throw new Error(`Rate limit exceeded: ${errorObj.error.message}`);
         } else {
             // For other errors, include the original error message
@@ -227,7 +228,7 @@ export const getOpenAIFile = async (fileId: string): Promise<OpenAIFile | undefi
                     // that falls out of the range of 2xx
                     const errorMessage = error.response.data.error?.message || 'No error message';
                     const statusCode = error.response.status;
-                    if (statusCode === 429) {
+                    if (statusCode === HTTP_FAILURE_BUSY) {
                         throw new Error(`OpenAI Get Call Rate limit exceeded for ${fileId}: ${errorMessage}`);
                     } else {
                         throw new Error(`OpenAI Get file failure for ${fileId} status: ${statusCode}, error: ${errorMessage}`);
@@ -281,14 +282,19 @@ export const deleteAssistantFile = async (fileId: string): Promise<void> => {
 
                 console.warn(`deleteAssistantFile:RETRY ${attempt} for ${fileId} after Error: ${error.message} - ${errorDetails}`);
             } else {
-                console.error(`deleteAssistantFile:FAILED: ${fileId} after Error: ${error.message}`);
+                if (axios.isAxiosError(error) && error.response?.status === HTTP_FAILURE_NOT_FOUND) {
+                    console.warn(`deleteAssistantFile:FAILED: ${fileId} not found`);
+                } else {
+                    console.error(`deleteAssistantFile:FAILED: ${fileId} after Error: ${error.message}`);
+                }
+                
                 // Handle non-timeout errors
                 if (error.response) {
                     // The request was made and the server responded with a status code
                     // that falls out of the range of 2xx
                     const errorMessage = error.response.data.error?.message || 'No error message';
                     const statusCode = error.response.status;
-                    if (statusCode === 429) {
+                    if (statusCode === HTTP_FAILURE_BUSY.toString()) {
                         throw new Error(`OpenAI Delete Call Rate limit exceeded for ${fileId}: ${errorMessage}`);
                     } else {
                         throw new Error(`OpenAI Delete file failure for ${fileId} status: ${statusCode}, error: ${errorMessage}`);
@@ -526,7 +532,7 @@ export const getOpenAIAssistant = async (assistantId: string): Promise<OpenAIAss
                     // that falls out of the range of 2xx
                     const errorMessage = error.response.data.error?.message || 'No error message';
                     const statusCode = error.response.status;
-                    if (statusCode === 429) {
+                    if (statusCode === HTTP_FAILURE_BUSY) {
                         throw new Error(`OpenAI Get Call Rate limit exceeded for ${assistantId}: ${errorMessage}`);
                     } else {
                         throw new Error(`OpenAI Get Assistant failure for ${assistantId} status: ${statusCode}, error: ${errorMessage}`);
@@ -586,7 +592,7 @@ export const deleteOpenAIAssistant = async (assistantId: string): Promise<void> 
                     // that falls out of the range of 2xx
                     const errorMessage = error.response.data.error?.message || 'No error message';
                     const statusCode = error.response.status;
-                    if (statusCode === 429) {
+                    if (statusCode === HTTP_FAILURE_BUSY) {
                         throw new Error(`OpenAI Delete Call Rate limit exceeded for ${assistantId}: ${errorMessage}`);
                     } else {
                         throw new Error(`OpenAI Delete assistant failure for ${assistantId} status: ${statusCode}, error: ${errorMessage}`);
@@ -618,8 +624,10 @@ export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria,
     let afterCursor: string | undefined;
     let allAssistants: OpenAIAssistant[] = [];
 
+    let pageSize = 5;
+
     do {
-        const getAssistantsRestEndpoint = `https://api.openai.com/v1/assistants?limit=10${afterCursor ? `&after=${afterCursor}` : ''}`;
+        const getAssistantsRestEndpoint = `https://api.openai.com/v1/assistants?limit=${pageSize}${afterCursor ? `&after=${afterCursor}` : ''}`;
         const response = await fetch(getAssistantsRestEndpoint, {
             method: 'GET',
             headers: {
@@ -639,7 +647,7 @@ export const searchOpenAIAssistants = async (searchCriteria: DataSearchCriteria,
                 errorObj = errorText ? JSON.parse(errorText) : null;
         
                 // Check if the error is due to rate limiting
-                if (response.status === 429 && errorObj && errorObj.error && errorObj.error.code === "rate_limit_exceeded") {
+                if (response.status === HTTP_FAILURE_BUSY && errorObj && errorObj.error && errorObj.error.code === "rate_limit_exceeded") {
                     throw new Error(`Rate limit exceeded: ${errorObj.error.message}`);
                 } else {
                     // For other errors, include the original error message
