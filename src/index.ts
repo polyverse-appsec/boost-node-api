@@ -1304,7 +1304,7 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
 
         const originalIdentityHeader = getSignedIdentityFromHeader(req);
         if (!originalIdentityHeader) {
-            console.error(`${req.method} ${req.originalUrl} Unauthorized: Signed Header missing`);
+            console.error(`${email} ${req.method} ${req.originalUrl} Unauthorized: Signed Header missing`);
             return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
         }
 
@@ -1330,7 +1330,7 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
                     projectsToGroom = groomProjectsState.projectsToGroom;
                 } catch (parseError: any) {
                     if (parseError instanceof SyntaxError) {
-                        console.error(`${req.method} ${req.originalUrl} Invalid JSON: ${parseError.stack || parseError}`);
+                        console.error(`${email} ${req.method} ${req.originalUrl} Invalid JSON: ${parseError.stack || parseError}`);
                         return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid JSON in body - ${parseError.stack || parseError}`);
                     } else {
                         throw parseError;
@@ -1369,7 +1369,7 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
             const projectDataPath = user_project_org_project.replace(":org", project.org).replace(":project", project.name);
 
             if (!project.owner) {
-                console.error(`${req.method} ${req.originalUrl} Unable to groom; Project ${projectDataPath} has no owner`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Unable to groom; Project ${projectDataPath} has no owner`);
                 return Promise.resolve(null); // Resolve to null to easily filter out later
             }
 
@@ -1382,14 +1382,14 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
 
                     if (groomingState?.status === undefined) {
                         if (process.env.TRACE_LEVEL) {
-                            console.warn(`${req.method} ${req.originalUrl} Timeout starting Project ${projectDataPath} grooming; unclear result`);
+                            console.warn(`${email} ${req.method} ${req.originalUrl} Timeout starting Project ${projectDataPath} grooming; unclear result`);
                         }
                         return { project, groomingState: undefined };
                     } else if (groomingState.status === GroomingStatus.Grooming) {
                         // grooming in progress
                     } else {
                         if (process.env.TRACE_LEVEL) {
-                            console.log(`${req.method} ${req.originalUrl} Project ${projectDataPath} is not grooming - status: ${groomingState.status}`);
+                            console.log(`${email} ${req.method} ${req.originalUrl} Project ${projectDataPath} is not grooming - status: ${groomingState.status}`);
                         }
                     }
 
@@ -1399,16 +1399,21 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
                     switch (error?.response?.status) {
                     case HTTP_FAILURE_NOT_FOUND:
                         if (process.env.TRACE_LEVEL) {
-                            console.log(`${req.method} ${req.originalUrl} Project ${projectDataPath} not found`);
+                            console.log(`${email} ${req.method} ${req.originalUrl} Project ${projectDataPath} not found`);
+                        }
+                        break;
+                    case HTTP_LOCKED:
+                        if (process.env.TRACE_LEVEL) {
+                            console.warn(`${email} ${req.method} ${req.originalUrl} Project  ${projectDataPath} Groomer is busy`);
                         }
                         break;
                     default:
                         if (axios.isAxiosError(error) && error.response) {
                             const errorMessage = error.message;
                             const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
-                            console.error(`${req.method} ${req.originalUrl} Unable to launch async grooming for ${projectDataPath} - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
+                            console.error(`${email} ${req.method} ${req.originalUrl} Unable to launch async grooming for ${projectDataPath} - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
                         } else {
-                            console.error(`${req.method} ${req.originalUrl} Unable to launch async grooming for ${projectDataPath}`, (error.stack || error));
+                            console.error(`${email} ${req.method} ${req.originalUrl} Unable to launch async grooming for ${projectDataPath}`, (error.stack || error));
                         }
                         break;
                     }
@@ -1440,7 +1445,7 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
 
         const nextBatch = projectsForRetry.concat(projectsToGroom.slice(25));
 
-        console.info(`${req.method} ${req.originalUrl} Groomed ${projectsGroomed.length} projects; ${nextBatch.length} projects remaining`);
+        console.info(`${email} ${req.method} ${req.originalUrl} Groomed ${projectsGroomed.length} projects; ${nextBatch.length} projects remaining`);
 
         if (nextBatch.length > 0) {
             const groomProjectsState : GroomProjectsState = {
@@ -1457,9 +1462,9 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
                 if (axios.isAxiosError(error) && error.response) {
                     const errorMessage = error.message;
                     const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
-                    console.error(`${req.method} ${req.originalUrl} Unable to launch next batch of grooming - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
+                    console.error(`${email} ${req.method} ${req.originalUrl} Unable to launch next batch of grooming - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
                 } else {
-                    console.error(`${req.method} ${req.originalUrl} Unable to launch next batch of grooming`, (error.stack || error));
+                    console.error(`${email} ${req.method} ${req.originalUrl} Unable to launch next batch of grooming`, (error.stack || error));
                 }
             }
         }

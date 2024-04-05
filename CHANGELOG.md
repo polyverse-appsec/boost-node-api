@@ -14,6 +14,7 @@ Polyverse Boost ReST API (Backend)
     - Previously returned an HTTP error
 - Groomer is enabled by default in Dev and Test deployments; WhatIf in Prod deployments
 - Only count Groomer Discoveries against the Groomer retry limit if the Discovery fails
+- Reduced error logging for normal groomer patterns
 
 ### Bug Fixes
 - Fix missing generators during project creation
