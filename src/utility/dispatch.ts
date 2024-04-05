@@ -207,8 +207,12 @@ export async function localSelfDispatch<T>(
             if (typeof response.data === 'object' && response.data !== null && 'body' in response.data) {
                 // The 'body' key exists in the response data
                 if (response.data.body) {
-                    // If 'body' is not undefined or an empty string, parse it
-                    return JSON.parse(response.data.body) as T;
+                    try {
+                        // If 'body' is not undefined or an empty string, parse it
+                        return JSON.parse(response.data.body) as T;
+                    } catch (error) {
+                        return response.data.body as T;
+                    }
                 } else {
                     // If 'body' is undefined or an empty string, we return an empty object
                     return {} as T;
