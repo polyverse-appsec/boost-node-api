@@ -1205,6 +1205,8 @@ app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, re
             org?org as string:searchWildcard,
             project?project as string:searchWildcard, "", 'groom');
 
+        cleanupProjectDataSearchResults(groomingDataList);
+
         if (process.env.TRACE_LEVEL) {
             console.log(`${email} ${req.method} ${req.originalUrl} retrieved data for ${groomingDataList.length} raw groom data`);
         }
@@ -1212,7 +1214,7 @@ app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, re
         const groomingDataListFilteredByStatus : ProjectGroomState[] =
             groomingDataList.filter((groomData) => status?groomData.status === status:true);
 
-        const listOfProjectNames : string = groomingDataListFilteredByStatus.map((groomData) => `${(groomData as any)._userName} org=${(groomData as any)._ownerName} project=${(groomData as any)._projectName}`).join('\n');
+        const listOfProjectNames : string = groomingDataListFilteredByStatus.map((groomData) => `${(groomData as any).owner} org=${(groomData as any).org} project=${(groomData as any).project}`).join('\n');
         console.info(`${email} ${req.method} ${req.originalUrl}  retrieved ${groomingDataListFilteredByStatus.length} Projects to Groom with status:${status?status:'all'}: ${listOfProjectNames}`);
 
         return res
@@ -1224,6 +1226,19 @@ app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, re
         return handleErrorResponse(error, req, res);
     }
 });
+
+function cleanupProjectDataSearchResults(projectSearchData: any[]) {
+    // we need to remove the _userName, _ownerName, and _projectName from the data, and replace them
+    //   with the owner, org, and project values
+    for (const searchItem of projectSearchData) {
+        (searchItem as any).owner = (searchItem as any)._userName;
+        (searchItem as any).org = (searchItem as any)._ownerName;
+        (searchItem as any).project = (searchItem as any)._projectName;
+        delete (searchItem as any)._userName;
+        delete (searchItem as any)._ownerName;
+        delete (searchItem as any)._projectName;
+    }
+}
 
 // Services to search the entire system for the status of all projects
 const search_projects_status = `search/projects/status`;
@@ -1264,6 +1279,8 @@ app.get(`${api_root_endpoint}/${search_projects_status}`, async (req: Request, r
             org?org as string:searchWildcard,
             project?project as string:searchWildcard, "", 'status');
 
+        cleanupProjectDataSearchResults(statusDataList);
+
         if (process.env.TRACE_LEVEL) {
             console.log(`${email} ${req.method} ${req.originalUrl} retrieved data for ${statusDataList.length} raw status data`);
         }
@@ -1273,7 +1290,7 @@ app.get(`${api_root_endpoint}/${search_projects_status}`, async (req: Request, r
         const statusDataListFilteredBySynchronized : ProjectStatusState[] =
             statusDataList.filter((statusData) => (synchronizedMatch !== undefined)?statusData.synchronized === synchronizedMatch:true);
 
-        const listOfProjectNames : string = statusDataListFilteredBySynchronized.map((statusData) => `${(statusData as any)._userName} org=${(statusData as any)._ownerName} project=${(statusData as any)._projectName}`).join('\n');
+        const listOfProjectNames : string = statusDataListFilteredBySynchronized.map((statusData) => `${(statusData as any).owner} org=${(statusData as any).org} project=${(statusData as any).project}`).join('\n');
         console.info(`${email} ${req.method} ${req.originalUrl} retrieved ${statusDataListFilteredBySynchronized.length} Project Status with synchronized:${synchronizedMatch?synchronizedMatch:'all'}: ${listOfProjectNames}`);
 
         return res

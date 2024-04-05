@@ -17,6 +17,9 @@ Polyverse Boost ReST API (Backend)
 - Enable Groomer to recover from a stale Pending or Launched prior Groomer that did not start discovery
 - Only count Groomer Discoveries against the Groomer retry limit if the Discovery fails
 - Reduced error logging for normal groomer patterns
+- Cleanup owner, org, and project name fields on project search data APIs
+    - /api/search/projects/groom (GET)
+    - /api/search/projects/status (GET)
 
 ### Bug Fixes
 - Fix missing generators during project creation
