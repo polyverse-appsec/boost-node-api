@@ -128,14 +128,7 @@ export async function localSelfDispatch<T>(
         if (response.ok) {
             if (['GET'].includes(httpVerb)) {
                 const objectResponse = await response.json();
-                if (typeof objectResponse === 'object' && objectResponse !== null && 'body' in objectResponse) {
-                    try {
-                        return (objectResponse.body?JSON.parse(objectResponse.body):{}) as T;
-                    } catch {
-                        return objectResponse.body as T;
-                    }
-                }
-                return objectResponse as T;
+                return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
             } else if (['POST', 'PUT', 'PATCH'].includes(httpVerb) && response.status === 200) {
                 let objectResponse;
                 try {
@@ -144,10 +137,7 @@ export async function localSelfDispatch<T>(
                     console.error(`Request ${httpVerb} ${selfEndpoint} failed with error: `, error.stack || error);
                     return {} as T;
                 }
-                if (typeof objectResponse === 'object' && objectResponse !== null && 'body' in objectResponse) {
-                    return (objectResponse.body?JSON.parse(objectResponse.body):{}) as T;
-                }
-                return objectResponse as T;
+                return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
             } else { // DELETE
                 return {} as T;
             }
@@ -158,16 +148,6 @@ export async function localSelfDispatch<T>(
         let errorBody = "";
         try {
             errorBody = `: ${await response.text()}`;
-            try {
-                const objectResponse = JSON.parse(errorBody);
-                if (typeof objectResponse === 'object' && objectResponse !== null && 'body' in objectResponse) {
-                    errorBody = `: ${objectResponse.body}`;
-                } else {
-                    errorBody = `: ${objectResponse}`;
-                }
-            } catch {
-                // do nothing
-            }
         } catch {
             // do nothing
         }
@@ -208,21 +188,9 @@ export async function localSelfDispatch<T>(
             }
     
             // Axios automatically parses JSON, so no need to manually parse it here.
-            if (typeof response.data === 'object' && response.data !== null && 'body' in response.data) {
-                // The 'body' key exists in the response data
-                if (response.data.body) {
-                    try {
-                        // If 'body' is not undefined or an empty string, parse it
-                        return JSON.parse(response.data.body) as T;
-                    } catch (error) {
-                        return response.data.body as T;
-                    }
-                } else {
-                    // If 'body' is undefined or an empty string, we return an empty object
-                    return {} as T;
-                }
+            if (response.data.body) {
+                return JSON.parse(response.data.body) as T;
             } else {
-                // The 'body' key does not exist in the response data, return response.data as is
                 return response.data as T;
             }
         } catch (error : any) {
