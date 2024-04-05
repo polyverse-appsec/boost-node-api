@@ -20,6 +20,7 @@ Polyverse Boost ReST API (Backend)
 - Cleanup owner, org, and project name fields on project search data APIs
     - /api/search/projects/groom (GET)
     - /api/search/projects/status (GET)
+- More improvements to AWS API Gateway support in local dispatch service (parsing undefined results)
 
 ### Bug Fixes
 - Fix missing generators during project creation

@@ -128,7 +128,10 @@ export async function localSelfDispatch<T>(
         if (response.ok) {
             if (['GET'].includes(httpVerb)) {
                 const objectResponse = await response.json();
-                return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
+                if ("body" in objectResponse) {
+                    return (objectResponse.body?JSON.parse(objectResponse.body):{}) as T;
+                }
+                return objectResponse as T;
             } else if (['POST', 'PUT', 'PATCH'].includes(httpVerb) && response.status === 200) {
                 let objectResponse;
                 try {
@@ -137,7 +140,10 @@ export async function localSelfDispatch<T>(
                     console.error(`Request ${httpVerb} ${selfEndpoint} failed with error: `, error.stack || error);
                     return {} as T;
                 }
-                return (objectResponse.body?JSON.parse(objectResponse.body):objectResponse) as T;
+                if ("body" in objectResponse) {
+                    return (objectResponse.body?JSON.parse(objectResponse.body):{}) as T;
+                }
+                return objectResponse as T;
             } else { // DELETE
                 return {} as T;
             }
@@ -188,9 +194,17 @@ export async function localSelfDispatch<T>(
             }
     
             // Axios automatically parses JSON, so no need to manually parse it here.
-            if (response.data.body) {
-                return JSON.parse(response.data.body) as T;
+            if ("body" in response.data) {
+                // The 'body' key exists in the response data
+                if (response.data.body) {
+                    // If 'body' is not undefined or an empty string, parse it
+                    return JSON.parse(response.data.body) as T;
+                } else {
+                    // If 'body' is undefined or an empty string, we return an empty object
+                    return {} as T;
+                }
             } else {
+                // The 'body' key does not exist in the response data, return response.data as is
                 return response.data as T;
             }
         } catch (error : any) {
