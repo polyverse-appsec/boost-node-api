@@ -152,7 +152,7 @@ const createAssistantFile = async (dataFilename: string, data: string): Promise<
     });
 
     if (response.ok) {
-        console.log(`${currentTime} createAssistantFile:UPLOAD:SUCEEDED: ${dataFilename} (${dataSize} bytes)`);
+        console.log(`${currentTime} createAssistantFile:UPLOAD:SUCCEEDED: ${dataFilename} (${dataSize} bytes)`);
 
         const responseData: OpenAIFile = await response.json() as OpenAIFile;
         responseData.created_at = Date.now() / 1000; // store our own timestamp so we're sure time comparisons are consistent
