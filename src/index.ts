@@ -3708,8 +3708,8 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 await localSelfDispatch<void>(email, "", req, thusGeneratorUriWithForcedUpdate, 'PATCH', generatorState);
             } catch (error: any) {
                 // if the generator state didn't exist, then we'll create it
-                if (error.response && error.response.status === HTTP_FAILURE_NOT_FOUND ||
-                    error.code === HTTP_FAILURE_NOT_FOUND) {
+                if ((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
+                    error.code === HTTP_FAILURE_NOT_FOUND.toString()) {
                     await storeProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`, generatorState);
                 } else {
                     if (error.response) {

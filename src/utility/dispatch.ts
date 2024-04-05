@@ -154,6 +154,16 @@ export async function localSelfDispatch<T>(
         let errorBody = "";
         try {
             errorBody = `: ${await response.text()}`;
+            try {
+                const objectResponse = JSON.parse(errorBody);
+                if ("body" in objectResponse) {
+                    errorBody = `: ${objectResponse.body}`;
+                } else {
+                    errorBody = `: ${objectResponse}`;
+                }
+            } catch {
+                // do nothing
+            }
         } catch {
             // do nothing
         }
