@@ -24,7 +24,7 @@ export class ProjectSourceGenerator extends Generator {
         `## Project Repositories:\n{projectRepo}\n\n\n`;
 
     readonly fileSourceEntry =
-        `# Contents of File: {relativeFileName}:\n\`\`\`\n{fileSource}\`\`\`\n\n`
+        `# Contents of Source File: {relativeFileName}:\n\`\`\`\n{fileSource}\`\`\`\n\n`
 
     get validStages() : string[] {
         return Object.values(ProjectSourceStage);
@@ -86,7 +86,7 @@ export class ProjectSourceGenerator extends Generator {
                     // we're going to start empty file contents to be fast, then we'll
                     //      update the contents later
                     this.data += this.fileSourceEntry
-                        .replace('{relativeFileName}', filepath)
+                        .replace('./{relativeFileName}', filepath)
                         .replace('{fileSource}', '');
                 }
 

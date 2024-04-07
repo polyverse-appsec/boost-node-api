@@ -46,7 +46,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
         `## Project Repositories:\n{projectRepo}\n\n\n`;
 
     readonly fileArchitecturalSpecificationEntry =
-        `# Summary for File {relativeFileName}:\n\`\`\`\n{architecturalSpec}\`\`\`\n\n`
+        `# Summary for Source File {relativeFileName}:\n\`\`\`\n{architecturalSpec}\`\`\`\n\n`
 
     async onGenerate(stage: string) : Promise<string> {
 
@@ -103,7 +103,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
 
             for (const fileContent of filteredFileContents) {
                 this.data += this.fileArchitecturalSpecificationEntry
-                    .replace('{relativeFileName}', fileContent.path)
+                    .replace('./{relativeFileName}', fileContent.path)
                     .replace('{architecturalSpec}', NoSpecificationAvailable);
             }
 
