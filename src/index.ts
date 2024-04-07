@@ -3622,9 +3622,9 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Org is required`);
             } else if (!project) {
-                console.error(`Project is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Project is required`);
             }
 
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
@@ -3733,7 +3733,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 const refreshAIFileOnBatchSizeProcessed = 25;
                 if (generatorState.processedStages && generatorState.processedStages >= refreshAIFileOnBatchSizeProcessed &&
                     generatorState.processedStages % refreshAIFileOnBatchSizeProcessed === 0) {
-                    console.info(`${req.method} ${req.originalUrl}: Refreshing AI File on Batch Size (${refreshAIFileOnBatchSizeProcessed}) Processed: ${generatorState.processedStages} already processed`);
+                    console.info(`${email} ${req.method} ${req.originalUrl}: Refreshing AI File on Batch Size (${refreshAIFileOnBatchSizeProcessed}) Processed: ${generatorState.processedStages} already processed`);
                 } else {
                     return;
                 }
@@ -3744,11 +3744,11 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
             // we have completed all stages or reached a terminal point (e.g. error or non-active updating)
             if (generatorState.status === TaskStatus.Idle && generatorState.stage === Stages.Complete) {
-                console.debug(`${req.originalUrl}: Completed all stages`);
+                console.debug(`${email} ${req.method} ${req.originalUrl} Completed all stages`);
             } else if (generatorState.status === TaskStatus.Error) {
-                console.debug(`${req.originalUrl}: Generator errored out: ${generatorState.statusDetails}`);
+                console.debug(`${email} ${req.method} ${req.originalUrl} Generator errored out: ${generatorState.statusDetails}`);
             } else if (generatorState.status === TaskStatus.Processing) {
-                console.debug(`${req.originalUrl}: Incremental File Refresh mid-processing: ${generatorState.statusDetails}`);
+                console.debug(`${email} ${req.method} ${req.originalUrl} Incremental File Refresh mid-processing: ${generatorState.statusDetails}`);
             }
 
             const projectStatusRefreshDelayInMs = 250;
@@ -3767,13 +3767,13 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 if (error.response) {
                     switch (error.response.status) {
                         case HTTP_FAILURE_NOT_FOUND:
-                            console.debug(`${req.originalUrl} Unable to refresh project status for ${org}/${project} - Project Not Found`);
+                            console.debug(`${email} ${req.method} ${req.originalUrl} Unable to refresh project status for ${org}/${project} - Project Not Found`);
                             break;
                         default:
-                            console.warn(`${req.originalUrl} Unable to refresh project status for ${org}/${project} - due to error: ${error.response.data.body || error.response.data}`);
+                            console.warn(`${email} ${req.method} ${req.originalUrl} Unable to refresh project status for ${org}/${project} - due to error: ${error.response.data.body || error.response.data}`);
                         }
                 } else {
-                    console.warn(`${req.originalUrl} Unable to refresh project status for ${org}/${project} - due to error: ${error.stack || error}`);
+                    console.warn(`${email} ${req.method} ${req.originalUrl} Unable to refresh project status for ${org}/${project} - due to error: ${error.stack || error}`);
                 }
             }
             // upload what resources we have to the AI servers
@@ -3785,16 +3785,16 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 if (axios.isAxiosError(error) && error.response) {
                     switch (error.response?.status) {
                         case HTTP_FAILURE_NOT_FOUND:
-                            console.debug(`${req.originalUrl} Unable to upload data references to AI Servers for ${org}/${project} - Project Not Found`);
+                            console.debug(`${email} ${req.method} ${req.originalUrl} Unable to upload data references to AI Servers for ${org}/${project} - Project Not Found`);
                             break;
                         default:
                             const errorMessage = error.message;
                             const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
         
-                            console.error(`${req.originalUrl} Unable to upload data references to AI Servers for ${org}/${project} - due to error: ${errorMessage} - ${errorDetails}`);
+                            console.error(`${email} ${req.method} ${req.originalUrl} Unable to upload data references to AI Servers for ${org}/${project} - due to error: ${errorMessage} - ${errorDetails}`);
                     }
                 } else {
-                    console.error(`Error uploading data references to AI Servers: `, (error.stack || error));
+                    console.error(`${email} ${req.method} ${req.originalUrl} Error uploading data references to AI Servers: `, (error.stack || error));
                 }
             }
         };
@@ -3802,7 +3802,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
         try {
             if (userGeneratorRequest.status === TaskStatus.Processing) {
 
-                console.log(`${user_project_org_project_data_resource_generator}: processing task: ${JSON.stringify(userGeneratorRequest)}`);
+                console.log(`${email} ${req.method} ${req.originalUrl} processing task: ${JSON.stringify(userGeneratorRequest)}`);
 
                 try {
                     // to prevent a runaway generator - where it infinite loops on one stage, or processes too many stages
@@ -3854,7 +3854,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         throw new Error(`Processor timed out ${processEndTime - processStartTime} sec - ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"} Stage`);
                     } else {
                         if (process.env.TRACE_LEVEL) {
-                            console.log(`${req.originalUrl} TIMECHECK: ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"}: processing started:${processStartTime} ended:${processEndTime} (${processEndTime - processStartTime} seconds) - move to stage: ${currentGeneratorState.stage}`);
+                            console.log(`${email} ${req.method} ${req.originalUrl} TIMECHECK: ${processNextStageState.stage?processNextStageState.stage:"[Initializing]"}: processing started:${processStartTime} ended:${processEndTime} (${processEndTime - processStartTime} seconds) - move to stage: ${currentGeneratorState.stage}`);
                         }
                     }
                     currentGeneratorState.stage = newGeneratorState.stage;
@@ -3868,12 +3868,12 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
                     await updateGeneratorState(currentGeneratorState);
                 } catch (error: any) {
-                    console.error(`${req.originalUrl} Error processing stage ${currentGeneratorState.stage?currentGeneratorState.stage:"[Initializing]"}:`, error);
+                    console.error(`${email} ${req.method} ${req.originalUrl} Error processing stage ${currentGeneratorState.stage?currentGeneratorState.stage:"[Initializing]"}:`, error);
 
                     if (error instanceof GeneratorProcessingError) {
                         const processingError = error as GeneratorProcessingError;
                         if (processingError.stage != currentGeneratorState.stage) {
-                            console.error(`${req.originalUrl}: Resetting to ${processingError.stage} due to error in ${resource} stage ${currentGeneratorState.stage}:`, processingError);
+                            console.error(`${email} ${req.method} ${req.originalUrl} Resetting to ${processingError.stage} due to error in ${resource} stage ${currentGeneratorState.stage}:`, processingError);
 
                             currentGeneratorState.statusDetails = `Resetting to earlier stage ${processingError.stage} due to error: ${processingError}`;
                         } else {
@@ -3905,7 +3905,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     //      so we'll start a new async HTTP request - detached from the caller to continue processing
                     //      the next stage
                     if (process.env.TRACE_LEVEL) {
-                        console.log(`${req.originalUrl}: starting async processing for ${JSON.stringify(currentGeneratorState)}`);
+                        console.log(`${email} ${req.method} ${req.originalUrl} starting async processing for ${JSON.stringify(currentGeneratorState)}`);
                     }
 
                     // create a new request object
@@ -3951,7 +3951,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 }
             } else if (userGeneratorRequest.status === TaskStatus.Idle) {
                 if (process.env.TRACE_LEVEL) {
-                    console.log(`${req.originalUrl}: idle task: ${JSON.stringify(userGeneratorRequest)}`);
+                    console.log(`${email} ${req.method} ${req.originalUrl} idle task: ${JSON.stringify(userGeneratorRequest)}`);
                 }
 
                 if (currentGeneratorState.status === TaskStatus.Processing) {
@@ -3976,11 +3976,11 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 }
             } else if (userGeneratorRequest.status === TaskStatus.Error) {
                 // external caller can't set the status to error, so we'll return bad input HTTP status code
-                console.error(`Invalid input status: ${userGeneratorRequest.status}`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Invalid input status: ${userGeneratorRequest.status}`);
                 return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send();
             } else {
                 // external caller can't set the status to unknown, so we'll return bad input HTTP status code
-                console.error(`Invalid input status: ${userGeneratorRequest.status}`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Invalid input status: ${userGeneratorRequest.status}`);
                 return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send();
             }
         } catch (error) {
@@ -4003,7 +4003,7 @@ app.route(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
 async function processStage(serviceEndpoint: string, email: string, project: UserProjectData, resource: string, stage?: string, forceProcessing: boolean = false) {
     
     if (stage) {
-        console.log(`${project.org}:${project.name}:${resource} Processing stage ${stage}...`);
+        console.log(`${email} ${project.org}:${project.name}:${resource} Processing stage ${stage}...`);
     }
     let thisGenerator : Generator;
     switch (resource) {
@@ -4040,16 +4040,16 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Org is required`);
             } else if (!project) {
-                console.error(`Project is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Project is required`);
             }
 
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
         const { _, __, resource } = req.params;
         if (!resource) {
-            console.error(`Resource is required`);
+            console.error(`${email} ${req.method} ${req.originalUrl} Resource is required`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
@@ -4099,7 +4099,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
                 stage: nextStage
             };
             if (process.env.TRACE_LEVEL) {
-                console.log(`${req.originalUrl}: Completed stage ${nextStage}`);
+                console.log(`${email} ${req.method} ${req.originalUrl} Completed stage ${nextStage}`);
             }
 
             return res
@@ -4116,7 +4116,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
             if (error instanceof GeneratorProcessingError) {
                 const processingError = error as GeneratorProcessingError;
                 if (processingError.stage != currentStage) {
-                    console.error(`${req.originalUrl}: Resetting to ${processingError.stage} due to error in ${resource} stage ${currentStage}:`, (processingError.stack || processingError));
+                    console.error(`${email} ${req.method} ${req.originalUrl} Resetting to ${processingError.stage} due to error in ${resource} stage ${currentStage}:`, (processingError.stack || processingError));
             
                     const nextGeneratorState : ResourceGeneratorProcessState = {
                         stage: processingError.stage
@@ -4129,7 +4129,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
                 }
             }
 
-            console.error(`${req.originalUrl} Error processing stage ${currentStage}:`, (error.stack || error));
+            console.error(`${email} ${req.method} ${req.originalUrl} Error processing stage ${currentStage}:`, (error.stack || error));
 
             throw error;
         }
