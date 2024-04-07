@@ -84,7 +84,7 @@ def fetch_redis_key(stage, method, project, key):
         raise Exception(f"Failed to fetch key {key if key is not None else project} from Redis: Status code {response.status_code}, {error_response['error']}")
 
 
-def main(email, org, project, method, stage, data, frontend=False):
+def main(email, org, project, method, stage, data, frontend=False, output=None):
     if frontend:
         try:
             redis_response = fetch_redis_key(stage, method, project, data)
@@ -266,7 +266,14 @@ def main(email, org, project, method, stage, data, frontend=False):
         if len(response.text) == 0:
             return
 
-        def print_response(responseObj):
+        def print_text_response(responseText, output):
+            if output is not None:
+                with open(output, "w") as f:
+                    f.write(responseText)
+            else:
+                print(responseText)
+
+        def print_json_response(responseObj):
             def print_json(json_obj):
                 if 'lastUpdated' in json_obj:
                     # pretty print a unixtime as a human-readable date - lastUpdated can be a string or a number
@@ -292,18 +299,22 @@ def main(email, org, project, method, stage, data, frontend=False):
         if response.headers.get('content-type').startswith('application/json'):
             responseObj = response.json() if 'body' not in response.json() else json.loads(response.json()['body']) if (len(response.json()['body']) > 0 and response.json()['body'][0] in ['{', '[']) else response.json()['body']
 
-            print_response(responseObj)
+            print_json_response(responseObj)
         else:
             # check if response.text starts with a JSON character
             if response.text[0] in ['{', '[']:
-                print(response.text if 'body' not in response.json() else response.json()['body'])
+                if 'body' not in response.json():
+                    print_text_response(response, output)
+                else:
+                    print_text_response(response.json()['body'])
             else:
-                print(response.text)
+                print_text_response(response.text, output)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="CLI utility for managing user projects.")
     parser.add_argument("--email", required=False, help="The user's email address")
+    parser.add_argument("--output", required=False, help="The name of the output file to write the data")
     parser.add_argument("--org", required=False, help="The organization name (default: polyverse-appsec)")
     parser.add_argument("--project", required=False, help="The project name")
     parser.add_argument("--method", default="status",
@@ -422,4 +433,4 @@ if __name__ == "__main__":
         else:
             args.org = "localhost"  # default org to make connector calls, even though it will be ignored
 
-    main(args.email, args.org, args.project, args.method, args.stage, args.data, args.frontend)
+    main(args.email, args.org, args.project, args.method, args.stage, args.data, args.frontend, args.output)
