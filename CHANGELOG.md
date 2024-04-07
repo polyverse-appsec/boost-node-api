@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 1.2.2: April 5th, 2024
+## Version 1.2.2: April 6th, 2024
 
 ### New Features
 - N/A
@@ -11,6 +11,7 @@ Polyverse Boost ReST API (Backend)
 ### Enhancements
 - Minor logging improvements to backend service
 - Workaround OpenAI Assistant search bug (changed page size from 10 to 5) - possible OpenAI caching bug
+- Set OpenAI filename to include the markdown extension to improve parsing of contents
 
 ### Bug Fixes
 - N/A

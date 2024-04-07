@@ -28,7 +28,6 @@ export async function uploadProjectDataForAIAssistant(email: string, org: string
         throw new Error(`Invalid URI: ${repoUri}`);
     }
 
-    const projectName = `${org}_${project}`;
     const projectQualifiedFullFilename = generateFilenameFromGitHubProject(email, org, project, ownerName, repoName, simpleFilename);
 
     if (process.env.TRACE_LEVEL) {
@@ -54,7 +53,6 @@ function generateFilenameFromGitHubProject(email: string, org: string, project: 
     const safeProject = project.replace(/[^a-zA-Z0-9]/g, '_');
     const safeOwnerName = ownerName.replace(/[^a-zA-Z0-9]/g, '_');
     const safeRepoName = repoName.replace(/[^a-zA-Z0-9]/g, '_');
-    const safeSimpleFilename = simpleFilename.replace(/[^a-zA-Z0-9]/g, '_');
 
     const serviceVersion = process.env.APP_VERSION;
     if (!serviceVersion) {
@@ -63,7 +61,7 @@ function generateFilenameFromGitHubProject(email: string, org: string, project: 
     const safeVersion = serviceVersion.replace(".", '_');
 
     // Combine the parts with an underscore
-    return `sara_rest_v${safeVersion}_project_data_${safeEmail}_${safeOrg}__${safeProject}__${safeOwnerName}_${safeRepoName}__${safeSimpleFilename}`;
+    return `sara_rest_v${safeVersion}_project_data_${safeEmail}_${safeOrg}__${safeProject}__${safeOwnerName}_${safeRepoName}__${simpleFilename}`;
 }
 
 export interface OpenAIFile {
@@ -287,7 +285,7 @@ export const deleteAssistantFile = async (fileId: string): Promise<void> => {
                 } else {
                     console.error(`deleteAssistantFile:FAILED: ${fileId} after Error: ${error.message}`);
                 }
-                
+
                 // Handle non-timeout errors
                 if (error.response) {
                     // The request was made and the server responded with a status code
