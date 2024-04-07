@@ -4221,7 +4221,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
                 let resourceData = await getCachedProjectData<string>(email, SourceType.GitHub, ownerName, repoName, "", projectDataTypes[i], false);
                 if (!resourceData) {
                     if (process.env.TRACE_LEVEL) {
-                        console.log(`${req.originalUrl}: no data found for ${projectDataTypes[i]}`);
+                        console.log(`${email} ${req.method} ${req.originalUrl} no data found for ${projectDataTypes[i]}`);
                     }
                     missingDataTypes.push(projectDataTypes[i]);
                     continue;
@@ -4250,7 +4250,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
                             //      file still exists
                             const existingFile : OpenAIFile | undefined = await getOpenAIFile(existingProjectFileIds.get(projectDataTypes[i])?.id!);
                             if (!existingFile) {
-                                console.debug(`${req.originalUrl}: Existing Project AI File ${projectDataTypes[i]} ${existingProjectFileIds.get(projectDataTypes[i])?.id} not found - needs refresh`);
+                                console.debug(`${email} ${req.method} ${req.originalUrl} Existing Project AI File ${projectDataTypes[i]} ${existingProjectFileIds.get(projectDataTypes[i])?.id} not found - needs refresh`);
                                 needsRefresh = true;
                             }
                         }
@@ -4261,22 +4261,22 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
                             if (timeRemainingFromOneSecondThrottle > 0 && i < projectDataTypes.length - 1) {
                                 await delay(timeRemainingFromOneSecondThrottle);
                             }
-                            console.debug(`${req.originalUrl}: Skipping upload of ${projectDataTypes[i]} - likely uploaded at ${usFormatter.format(lastUploadedDate)} and resource updated at ${usFormatter.format(resourceStatusDate)}`);
+                            console.debug(`${email} ${req.method} ${req.originalUrl}: Skipping upload of ${projectDataTypes[i]} - likely uploaded at ${usFormatter.format(lastUploadedDate)} and resource updated at ${usFormatter.format(resourceStatusDate)}`);
                             continue;
                         }
                     }
 
                     if (lastUploaded) {
-                        console.debug(`${req.originalUrl}: Uploading ${projectDataTypes[i]} (${resourceData.length} bytes) from ${usFormatter.format(resourceStatusDate)}: ${timeDifferenceInSeconds} seconds out of sync; last uploaded at ${usFormatter.format(lastUploadedDate)}`);
+                        console.debug(`${email} ${req.method} ${req.originalUrl}: Uploading ${projectDataTypes[i]} (${resourceData.length} bytes) from ${usFormatter.format(resourceStatusDate)}: ${timeDifferenceInSeconds} seconds out of sync; last uploaded at ${usFormatter.format(lastUploadedDate)}`);
                     } else {
-                        console.debug(`${req.originalUrl}: Uploading ${projectDataTypes[i]} (${resourceData.length} bytes) from ${usFormatter.format(resourceStatusDate)}: never uploaded`);
+                        console.debug(`${email} ${req.method} ${req.originalUrl}: Uploading ${projectDataTypes[i]} (${resourceData.length} bytes) from ${usFormatter.format(resourceStatusDate)}: never uploaded`);
                     }
                 } catch (error) {
-                    console.error(`${req.originalUrl} Uploading ${projectDataTypes[i]} (${resourceData.length} bytes) due to error checking last upload time: `, error);
+                    console.error(`${email} ${req.method} ${req.originalUrl} Uploading ${projectDataTypes[i]} (${resourceData.length} bytes) due to error checking last upload time: `, error);
                 }
                 
                 if (process.env.TRACE_LEVEL) {
-                    console.log(`${user_project_org_project_data_references}: retrieved project data for ${projectDataTypes[i]}`);
+                    console.log(`${email} ${req.method} ${req.originalUrl} retrieved project data for ${projectDataTypes[i]}`);
                 }
 
                 try {
@@ -4284,9 +4284,9 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
                     const timeBeforeOpenAICall = Date.now();
                     const storedProjectDataId = await uploadProjectDataForAIAssistant(email, userProjectData.org, userProjectData.name, repoUri, projectDataTypes[i], projectDataNames[i], resourceData);
                     if (process.env.TRACE_LEVEL) {
-                        console.log(`${user_project_org_project_data_references}: found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${JSON.stringify(storedProjectDataId)}`);
+                        console.log(`${email} ${req.method} ${req.originalUrl} found File Id for ${projectDataTypes[i]} under ${projectDataNames[i]}: ${JSON.stringify(storedProjectDataId)}`);
                     }
-                    console.debug(`${req.originalUrl}: Uploaded ${storedProjectDataId.id} - ${projectDataTypes[i]} (${resourceData.length} bytes) to AI Servers in ${Date.now() - timeBeforeOpenAICall} ms`);
+                    console.debug(`${email} ${req.method} ${req.originalUrl} Uploaded ${storedProjectDataId.id} - ${projectDataTypes[i]} (${resourceData.length} bytes) to AI Servers in ${Date.now() - timeBeforeOpenAICall} ms`);
                     refreshedProjectData = true;
 
                     // update the existing resources with the newly uploaded info
@@ -4298,9 +4298,9 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
                         }
                         try {
                             await deleteAssistantFile(previousProjectFileId);
-                            console.debug(`${req.originalUrl}: Deleted previous Project File Resource ${projectDataTypes[i]} ${previousProjectFileId}`);
+                            console.debug(`${email} ${req.method} ${req.originalUrl} Deleted previous Project File Resource ${projectDataTypes[i]} ${previousProjectFileId}`);
                         } catch (error: any) { // we're going to ignore failure to delete and keep going... auto groomer will cleanup later
-                            console.error(`${req.originalUrl} Unable to delete previous Project File Resource ${projectDataTypes[i]} ${previousProjectFileId}:`, error.message);
+                            console.error(`${email} ${req.method} ${req.originalUrl} Unable to delete previous Project File Resource ${projectDataTypes[i]} ${previousProjectFileId}:`, error.message);
                         }
                     }
                     existingProjectFileIds.set(projectDataTypes[i], storedProjectDataId);
@@ -4326,7 +4326,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
 
         if (missingDataTypes.length > 0) {
             if (missingDataTypes.length < projectDataTypes.length) {
-                console.warn(`${req.originalUrl}: Missing data for ${missingDataTypes.join(", ")}`);
+                console.warn(`${email} ${req.method} ${req.originalUrl} Missing data for ${missingDataTypes.join(", ")}`);
             } else {
                 return res.status(HTTP_SUCCESS_NO_CONTENT).send(`No data found for ${missingDataTypes.join(", ")}`);
             }
@@ -4337,7 +4337,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
             const failedKeys = Array.from(uploadFailures.keys());
             const failedValues = Array.from(uploadFailures.values());
             if (uploadFailures.size < projectDataTypes.length) {
-                console.warn(`${req.originalUrl}: Failed to upload data for ${failedKeys.join(", ")}`);
+                console.warn(`${email} ${req.method} ${req.originalUrl} Failed to upload data for ${failedKeys.join(", ")}`);
             } else {
                 // Handle the first error specifically
                 return handleErrorResponse(failedValues[0], req, res, `Unable to store project data on AI Servers:`);
