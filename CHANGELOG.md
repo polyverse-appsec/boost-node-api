@@ -12,6 +12,7 @@ Polyverse Boost ReST API (Backend)
 - Minor logging improvements to backend service
 - Workaround OpenAI Assistant search bug (changed page size from 10 to 5) - possible OpenAI caching bug
 - Set OpenAI filename to include the markdown extension to improve parsing of contents
+- Demarkate source file content and AI specification with tick marks to separate source from markdown
 
 ### Bug Fixes
 - N/A

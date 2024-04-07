@@ -24,7 +24,7 @@ export class ProjectSourceGenerator extends Generator {
         `## Project Repositories:\n{projectRepo}\n\n\n`;
 
     readonly fileSourceEntry =
-        `# Contents of {relativeFileName}:\n{fileSource}\n\n`
+        `# Contents of File: {relativeFileName}:\n\`\`\`\n{fileSource}\`\`\`\n\n`
 
     get validStages() : string[] {
         return Object.values(ProjectSourceStage);

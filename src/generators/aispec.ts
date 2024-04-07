@@ -46,7 +46,7 @@ export class ArchitecturalSpecificationGenerator extends Generator {
         `## Project Repositories:\n{projectRepo}\n\n\n`;
 
     readonly fileArchitecturalSpecificationEntry =
-        `# Summary for {relativeFileName}:\n{architecturalSpec}\n\n`
+        `# Summary for File {relativeFileName}:\n\`\`\`\n{architecturalSpec}\`\`\`\n\n`
 
     async onGenerate(stage: string) : Promise<string> {
 
