@@ -220,7 +220,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
                 return handleErrorResponse(publicError, req, res, `Error retrieving folder paths for ${owner} to ${repo}`);
             }
         } else {
-            console.log(`Unable to publicly retrieve folder paths for ${owner} from ${repo}:`, publicError);
+            console.log(`Unable to publicly retrieve folder paths for user ${email} - ${owner} - ${repo}${allowPrivateAccess? ' - Trying Private Access' : ''}`);
         }
     }
 
@@ -335,7 +335,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
                 return handleErrorResponse(publicError, req, res, `Error retrieving file paths for ${owner} to ${repo}`);
             }
         } else {
-            console.log(`Unable to publicly retrieve file paths for ${owner} from ${repo}:`, publicError);
+            console.log(`Unable to publicly retrieve file paths for user ${email} - ${owner} - ${repo}${allowPrivateAccess? ' - Trying Private Access' : ''}`);
         }
     }
 
