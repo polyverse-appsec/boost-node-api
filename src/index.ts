@@ -1644,9 +1644,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Org is required`);
             } else if (!project) {
-                console.error(`Project is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Project is required`);
             }
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
@@ -1688,7 +1688,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
         // if the user wants to reset the resources, then we'll ask each generator to restart
         if (initializeResourcesToStart) {
             startProcessing.stage = Stages.Reset;
-            console.info(`Resetting resources for ${req.originalUrl}`);
+            console.info(`${email} ${req.method} ${req.originalUrl} Resetting resources`);
         }
 
         const discoverState : DiscoverState = {
@@ -1722,10 +1722,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
                     false);
                 // check if we timed out, with an empty object
                 if (Object.keys(newGeneratorState).length === 0) {
-                    console.warn(`${req.originalUrl} Async generator for ${resource} timed out after ${secondsBeforeRestRequestMaximumTimeout} seconds: ${JSON.stringify(newGeneratorState)}`);
+                    console.warn(`${email} ${req.method} ${req.originalUrl}  Async generator for ${resource} timed out after ${secondsBeforeRestRequestMaximumTimeout} seconds: ${JSON.stringify(newGeneratorState)}`);
                 } else {
                     if (process.env.TRACE_LEVEL) {
-                        console.log(`${req.originalUrl} New Generator State: ${JSON.stringify(newGeneratorState)}`);
+                        console.log(`${email} ${req.method} ${req.originalUrl}  New Generator State: ${JSON.stringify(newGeneratorState)}`);
                     }
                 }
             } catch (error: any) {
@@ -1733,9 +1733,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
                     const errorMessage = error.message;
                     const errorDetails = error.response?.data?.body ?
                         error.response.data?.body: error.response.data? JSON.stringify(error.response.data) : 'No additional error information';
-                    console.error(`${req.originalUrl} Discovery unable to launch generator (continuing) for ${generatorPath} - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
+                    console.error(`${email} ${req.method} ${req.originalUrl} Discovery unable to launch generator (continuing) for ${generatorPath} - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
                 } else {
-                    console.error(`${req.originalUrl} Discovery unable to launch generator (continuing) for ${generatorPath}`, (error.stack || error));
+                    console.error(`${email} ${req.method} ${req.originalUrl}  Discovery unable to launch generator (continuing) for ${generatorPath}`, (error.stack || error));
                 }
             }
         });
@@ -1756,7 +1756,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
                 `${projectDataPath}/data_references`, 
                 'PUT');
 
-            console.log(`Existing Data References: ${JSON.stringify(existingDataReferences)}`);
+            console.log(`${email} ${req.method} ${req.originalUrl} Existing Data References: ${JSON.stringify(existingDataReferences)}`);
         } finally {
             const projectStatusRefreshRequest : ProjectStatusState = {
                 status: ProjectStatus.Unknown,
@@ -1770,7 +1770,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
                     `${projectDataPath}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs, false);
             } catch (error: any) {
                 // we don't care if the project refresh fails - it's just a nice to have
-                console.warn(`${req.originalUrl} Unable to start post-discovery async project status refresh for due to error: `, error.stack || error);
+                console.warn(`${email} ${req.method} ${req.originalUrl} Unable to start post-discovery async project status refresh for due to error: `, error.stack || error);
             }
         }
 
