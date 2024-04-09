@@ -2709,7 +2709,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 if (input?.consecutiveErrors !== undefined) {
                     console.info(`${email} ${req.method} ${req.originalUrl} Reset grooming error count to 0 from input: ${input.consecutiveErrors}`);
                     input.consecutiveErrors = 0;
-                } else if (currentGroomingState.consecutiveErrors !== undefined) {
+                } else if (currentGroomingState?.consecutiveErrors !== undefined) {
                     console.info(`${email} ${req.method} ${req.originalUrl} Reset grooming error count to 0 from current: ${currentGroomingState.consecutiveErrors}`);
                     currentGroomingState.consecutiveErrors = 0;
                 }
