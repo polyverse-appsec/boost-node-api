@@ -37,9 +37,9 @@ export const logRequest = (req: Request, user: string) => {
     console.log(process.env.IS_OFFLINE?`${currentDate}: ${logLine}`:logLine);
 }
 
-export const handleErrorResponse = (error: any, req: Request, res: Response, supplementalErrorMessage: string = '', status_code: number = HTTP_FAILURE_INTERNAL_SERVER_ERROR) : Response => {
+export const handleErrorResponse = (email: string | undefined, error: any, req: Request, res: Response, supplementalErrorMessage: string = '', status_code: number = HTTP_FAILURE_INTERNAL_SERVER_ERROR) : Response => {
     // Base error message with the request details
-    let errorMessage = `${status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'UN' : ''}HANDLED_ERROR(Response): ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
+    let errorMessage = `${status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'UN' : ''}HANDLED_ERROR(Response): ${email?email:`UNKNOWN_EMAIL`} ${req.method} ${req.protocol}://${req.get('host')}${req.originalUrl}`;
 
     const errorCodeText = status_code === HTTP_FAILURE_INTERNAL_SERVER_ERROR ? 'Internal Server Error':status_code.toString();
 

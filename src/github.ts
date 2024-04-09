@@ -90,7 +90,7 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
                     return res.status(HTTP_FAILURE_BUSY).send('Rate Limit Exceeded');
                 }
             } else {
-                return handleErrorResponse(publicError, req, res, `Error retrieving public access file for ${owner}:${repo} at path ${filePathWithoutBranch}`);
+                return handleErrorResponse(email, publicError, req, res, `Error retrieving public access file for ${owner}:${repo} at path ${filePathWithoutBranch}`);
             }
         } else {
             // HTTP_FAILURE_NOT_FOUND Not Found
@@ -153,7 +153,7 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
             .send(fileContent);
 
     } catch (error) {
-        return handleErrorResponse(error, req, res, `Error retrieving file via private access to ${owner}:${repo} at path ${filePathWithoutBranch}`);
+        return handleErrorResponse(email, error, req, res, `Error retrieving file via private access to ${owner}:${repo} at path ${filePathWithoutBranch}`);
     }
 }
 
@@ -217,7 +217,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
                     return res.status(HTTP_FAILURE_BUSY).send('Rate Limit Exceeded');
                 }
             } else {
-                return handleErrorResponse(publicError, req, res, `Error retrieving folder paths for ${owner} to ${repo}`);
+                return handleErrorResponse(email, publicError, req, res, `Error retrieving folder paths for ${owner} to ${repo}`);
             }
         } else {
             console.log(`Unable to publicly retrieve folder paths for user ${email} - ${owner} - ${repo}${allowPrivateAccess? ' - Trying Private Access' : ''}`);
@@ -279,7 +279,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
             .send(folderPaths);
 
     } catch (error) {
-        return handleErrorResponse(error, req, res, `Error retrieving folders for ${owner} to ${repo} via private access`);
+        return handleErrorResponse(email, error, req, res, `Error retrieving folders for ${owner} to ${repo} via private access`);
     }
 }
 
@@ -332,7 +332,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
                     return res.status(HTTP_FAILURE_BUSY).send('Rate Limit Exceeded');
                 }
             } else {
-                return handleErrorResponse(publicError, req, res, `Error retrieving file paths for ${owner} to ${repo}`);
+                return handleErrorResponse(email, publicError, req, res, `Error retrieving file paths for ${owner} to ${repo}`);
             }
         } else {
             console.log(`Unable to publicly retrieve file paths for user ${email} - ${owner} - ${repo}${allowPrivateAccess? ' - Trying Private Access' : ''}`);
@@ -395,7 +395,7 @@ export async function getFilePathsFromRepo(email: string, uri: URL, req: Request
             .send(filePaths);
 
     } catch (error) {
-        return handleErrorResponse(error, req, res, `Error retrieving files for ${owner} to ${repo} via private access`);
+        return handleErrorResponse(email, error, req, res, `Error retrieving files for ${owner} to ${repo} via private access`);
     }
 }
 
@@ -473,7 +473,7 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
                     return { errorResponse: res.status(HTTP_FAILURE_BUSY).send('Rate Limit Exceeded') };
                 }
             } else {
-                return { errorResponse: handleErrorResponse(
+                return { errorResponse: handleErrorResponse(email, 
                     publicError, req, res, `Error retrieving repo details for ${owner} to ${repo}`)};
             }
         } else {
@@ -560,7 +560,7 @@ export async function getDetailsFromRepo(email: string, uri: URL, req: Request, 
 
             return repoDetails;
         } catch (authenticatedError) {
-            return { errorResponse: handleErrorResponse(
+            return { errorResponse: handleErrorResponse(email, 
                 authenticatedError, req, res, 'Error retrieving repo details via authenticated access')};
         }
     }
@@ -759,7 +759,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
                     return res.status(HTTP_FAILURE_BUSY).send('Rate Limit Exceeded');
                 }
             } else {
-                return handleErrorResponse(publicError, req, res, `Error retrieving full source for ${owner} from ${repo}`);
+                return handleErrorResponse(email, publicError, req, res, `Error retrieving full source for ${owner} from ${repo}`);
             }
         } else {
             console.log(`Public access for ${repo} to get Full Source failed, attempting authenticated access`);
@@ -811,7 +811,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
             // Ensure we have the token
             if (!installationAccessToken?.token) {
                 const getInstallationAccessTokenError = new Error('Failed to retrieve installation access token');
-                return handleErrorResponse(getInstallationAccessTokenError, req, res);
+                return handleErrorResponse(email, getInstallationAccessTokenError, req, res);
             }
 
             let fileContents : FileContent[] = await downloadAndExtractRepo(archiveUrl, installationAccessToken.token);
@@ -823,7 +823,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
                 .contentType('application/json')
                 .send(fileContents);
         } catch (authenticatedError) {
-            return handleErrorResponse(authenticatedError, req, res, 'Error retrieving full source via authenticated access');
+            return handleErrorResponse(email, authenticatedError, req, res, 'Error retrieving full source via authenticated access');
         }
     }
 }

@@ -185,7 +185,7 @@ function sleep(ms: number) {
 }
 
 export async function storeProjectData(
-    email: string | null, sourceType: SourceType,
+    email: string | undefined, sourceType: SourceType,
     owner: string, project: string,
     resourcePath: string,
     analysisType: string,

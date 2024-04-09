@@ -134,8 +134,9 @@ export async function loadProjectDataResource(
 
 const postOrPutUserProjectDataResource = async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -200,7 +201,7 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
             .contentType('application/json')
             .send(resourceStatus);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 };
 
@@ -242,8 +243,9 @@ function checkPrivateAccessAllowed(accountStatus: UserAccountState): boolean {
 const user_org_connectors_github_file = `user/:org/connectors/github/file`;
 app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -318,16 +320,17 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: R
 
         return getFileFromRepo(email, uri!, repo!, path, req, res, privateAccessAllowed);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 
 });
 
 const user_org_connectors_github_folders = `user/:org/connectors/github/folders`;
 app.get(`${api_root_endpoint}/${user_org_connectors_github_folders}`, async (req: Request, res: Response) => {
-    
+
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -371,15 +374,16 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_folders}`, async (req
 
         return getFolderPathsFromRepo(email, uri, req, res, privateAccessAllowed);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 const user_org_connectors_github_files = `user/:org/connectors/github/files`;
 app.get(`${api_root_endpoint}/${user_org_connectors_github_files}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -423,7 +427,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_files}`, async (req: 
 
         return getFilePathsFromRepo(email, uri, req, res, privateAccessAllowed);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -433,8 +437,9 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
     express.json({ limit: '10mb' }),
     async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -478,7 +483,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
 
         return getFullSourceFromRepo(email, uri, req, res, privateAccessAllowed);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -486,8 +491,9 @@ const user_org_connectors_github_permission = `user/:org/connectors/github/acces
 app.get(`${api_root_endpoint}/${user_org_connectors_github_permission}`,
     async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -525,7 +531,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_permission}`,
             .contentType('application/json')
             .send(accessGranted);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -533,8 +539,9 @@ const user_org_connectors_github_details = `user/:org/connectors/github/details`
 app.get(`${api_root_endpoint}/${user_org_connectors_github_details}`,
     async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -568,7 +575,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_details}`,
         // get the account status
         const signedIdentity = getSignedIdentityFromHeader(req);
         if (!signedIdentity) {
-            return handleErrorResponse(
+            return handleErrorResponse(email, 
                 new Error("Unauthorized"), req, res, `Missing signed identity - after User Validation passed`, HTTP_FAILURE_UNAUTHORIZED);
         }
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
@@ -582,7 +589,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_details}`,
             .contentType('application/json')
             .send(repoDetails);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -591,14 +598,14 @@ async function validateProjectRepositories(email: string, org: string, resources
     // validate every resource is a valid Uri
     for (const resource of resources) {
         if (!resource.uri) {
-            return handleErrorResponse(new Error("Resource Uri is required"), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
+            return handleErrorResponse(email, new Error("Resource Uri is required"), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
         let resourceUri;
         try {
             resourceUri = new URL(resource.uri);
         } catch (error) {
             console.error(`Invalid URI: ${resource.uri}`);
-            return handleErrorResponse(new Error(`Invalid URI: ${resource.uri}`), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
+            return handleErrorResponse(email, new Error(`Invalid URI: ${resource.uri}`), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         // for now, we'll validate that the resource is a valid GitHub resource
@@ -610,12 +617,12 @@ async function validateProjectRepositories(email: string, org: string, resources
 
         // Validate that the resource is from github.com
         if (!(secondLevelDomain === 'github' && topLevelDomain === 'com')) {
-            return handleErrorResponse(new Error("Invalid Resource - must be Github"), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
+            return handleErrorResponse(email, new Error("Invalid Resource - must be Github"), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
         // get the account status
         const signedIdentity = getSignedIdentityFromHeader(req);
         if (!signedIdentity) {
-            return handleErrorResponse(
+            return handleErrorResponse(email, 
                 new Error("Unauthorized"), req, res, `Missing signed identity - after User Validation passed`, HTTP_FAILURE_UNAUTHORIZED);
         }
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
@@ -627,7 +634,7 @@ async function validateProjectRepositories(email: string, org: string, resources
         if (repoDetails.errorResponse) {
             return repoDetails.errorResponse;
         } else if (!repoDetails.data) {
-            return handleErrorResponse(new Error(`Unable to get Repo Details and no Error found: ${resource.uri}`), req, res);
+            return handleErrorResponse(email, new Error(`Unable to get Repo Details and no Error found: ${resource.uri}`), req, res);
         }
     }
     return undefined;
@@ -636,8 +643,9 @@ async function validateProjectRepositories(email: string, org: string, resources
 const user_project_org_projects = `user_project/:org/projects`;
 app.get(`${api_root_endpoint}/${user_project_org_projects}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -646,7 +654,7 @@ app.get(`${api_root_endpoint}/${user_project_org_projects}`, async (req: Request
 
         if (!org) {
             console.error(`Org is required`);
-            return handleErrorResponse(new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
+            return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         // we're going to make a call to the ${search_projects} endpoint to get the list of projects
@@ -666,15 +674,16 @@ app.get(`${api_root_endpoint}/${user_project_org_projects}`, async (req: Request
             .contentType('application/json')
             .send(projectsFound);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 const user_project_org_project = `user_project/:org/:project`;
 app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -785,14 +794,15 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
             .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 const postOrPutUserProject = async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -957,7 +967,7 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
             .contentType('application/json')
             .send(storedProject);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 }
 
@@ -968,8 +978,9 @@ app.route(`${api_root_endpoint}/${user_project_org_project}`)
 
 app.get(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -999,15 +1010,16 @@ app.get(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request,
             .send(projectData);
 
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
     
 });
 
 app.delete(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -1077,7 +1089,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reque
             .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
     
 });
@@ -1086,10 +1098,11 @@ app.delete(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reque
 const search_projects = `search/projects`;
 app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
         // since project search is system wide by default, we're going to require admin access to
         //      run a search
-        const email = await validateUser(req, res, AuthType.Admin);
+        email = await validateUser(req, res, AuthType.Admin);
         if (!email) {
             return;
         }
@@ -1155,7 +1168,7 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
             .send(projectDataList);
 
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -1170,10 +1183,11 @@ interface ProjectSearchData {
 const search_projects_groom = `search/projects/groom`;
 app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
         // since project search is system wide by default, we're going to require admin access to
         //      run a search
-        const email = await validateUser(req, res, AuthType.Admin);
+        email = await validateUser(req, res, AuthType.Admin);
         if (!email) {
             return;
         }
@@ -1223,7 +1237,7 @@ app.get(`${api_root_endpoint}/${search_projects_groom}`, async (req: Request, re
             .send(groomingDataListFilteredByStatus);
 
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -1244,10 +1258,11 @@ function cleanupProjectDataSearchResults(projectSearchData: any[]) {
 const search_projects_status = `search/projects/status`;
 app.get(`${api_root_endpoint}/${search_projects_status}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
         // since project search is system wide by default, we're going to require admin access to
         //      run a search
-        const email = await validateUser(req, res, AuthType.Admin);
+        email = await validateUser(req, res, AuthType.Admin);
         if (!email) {
             return;
         }
@@ -1299,7 +1314,7 @@ app.get(`${api_root_endpoint}/${search_projects_status}`, async (req: Request, r
             .send(statusDataListFilteredBySynchronized);
 
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -1307,10 +1322,11 @@ app.get(`${api_root_endpoint}/${search_projects_status}`, async (req: Request, r
 const search_projects_generators_groom = `search/projects/generators`;
 app.get(`${api_root_endpoint}/${search_projects_generators_groom}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
         // since project search is system wide by default, we're going to require admin access to
         //      run a search
-        const email = await validateUser(req, res, AuthType.Admin);
+        email = await validateUser(req, res, AuthType.Admin);
         if (!email) {
             return;
         }
@@ -1358,7 +1374,7 @@ app.get(`${api_root_endpoint}/${search_projects_generators_groom}`, async (req: 
             .send(generatorDataListFilteredByStatus);
 
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -1373,9 +1389,10 @@ interface GroomProjectsState {
 const groom_projects = `groom/projects`;
 app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
         // need to elevate to admin since we search all projects for grooming action
-        const email = await validateUser(req, res, AuthType.Admin);
+        email = await validateUser(req, res, AuthType.Admin);
         if (!email) {
             return;
         }
@@ -1553,7 +1570,7 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
             .send(projectsGroomed);
 
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -1571,8 +1588,9 @@ interface DiscoverState {
 const user_project_org_project_discovery = `user_project/:org/:project/discovery`;
 app.get(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -1604,14 +1622,15 @@ app.get(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (req
         }        
 
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 app.delete(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -1629,14 +1648,15 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (
         await deleteProjectData(email, SourceType.General, org, project, '', 'discovery');
 
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -1712,7 +1732,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
 
             try {
                 const newGeneratorState = await localSelfDispatch<GeneratorState>(
-                    email,
+                    email!,
                     '', 
                     req,
                     generatorPath,
@@ -1776,7 +1796,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
 
         return res.status(HTTP_SUCCESS).send(existingDataReferences);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }    
 });
 
@@ -1785,8 +1805,9 @@ const MinutesToWaitBeforeGeneratorConsideredStalled = 3;
 const user_project_org_project_status = `${user_project_org_project}/status`;
 app.delete(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -1808,15 +1829,16 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_status}`, async (req
             .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }    
 });
 
 app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
 
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -1877,15 +1899,16 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req:
                 .send('Project Status not found');
         }
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
 
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -1942,15 +1965,16 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
             .contentType('application/json')
             .send(projectStatus);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
 
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -1987,7 +2011,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 const errorMessage = error.message;
                 const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
                 console.error(`${email} ${req.method} ${req.originalUrl} Unable to get data references for ${projectDataUri} - due to error: ${error.response.status}:${errorMessage} - ${errorDetails}`);
-                return handleErrorResponse(error, req, res);
+                return handleErrorResponse(email, error, req, res);
             }
 
             // if we get an error, then we'll assume the project doesn't exist
@@ -2486,7 +2510,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             .status(HTTP_SUCCESS)
             .send(projectStatus);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }    
 });
 
@@ -2510,9 +2534,10 @@ interface ProjectGroomState {
 const user_project_org_project_groom = `${user_project_org_project}/groom`;
 app.get(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
 
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -2532,14 +2557,15 @@ app.get(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Re
             .contentType('application/json')
             .send(groomStatus);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 app.delete(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -2561,7 +2587,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req:
             .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }    
 });
 
@@ -2609,9 +2635,10 @@ const MaxGroomingErrorsBeforeManualDiscovery = 3;
 
 app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
 
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -2773,7 +2800,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 console.warn(`${email} ${req.method} ${req.originalUrl} Project Status not found; Project may not exist or hasn't been discovered yet`);
                 return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
             }
-            return handleErrorResponse(error, req, res, `Unable to query Project Status`);
+            return handleErrorResponse(email, error, req, res, `Unable to query Project Status`);
         }
 
         if (projectStatus.status === ProjectStatus.Unknown) {
@@ -2799,7 +2826,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         } catch (error: any) {
             if (!((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
                 (error.code === HTTP_FAILURE_NOT_FOUND.toString()))) {
-                return handleErrorResponse(error, req, res, `Unable to query Project Discovery Status`);
+                return handleErrorResponse(email, error, req, res, `Unable to query Project Discovery Status`);
             }
             console.warn(`${email} ${req.method} ${req.originalUrl} Last Project Discovery not found; groomer may be running before discovery has been started`);
         }
@@ -2997,15 +3024,16 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         }
 
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }    
 });
 
 const user_project_org_project_goals = `${user_project_org_project}/goals`;
 app.delete(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -3027,14 +3055,15 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req:
             .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }    
 });
 
 app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -3084,15 +3113,16 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
             .contentType('application/json')
             .send(updatedGoals);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
     
 });
 
 app.get(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -3120,7 +3150,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Re
             .contentType('application/json')
             .send(projectGoals);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 
 });
@@ -3128,8 +3158,9 @@ app.get(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Re
 const user_project_org_project_config_boostignore = `${user_project_org_project}/config/.boostignore`;
 app.get(`${api_root_endpoint}/${user_project_org_project_config_boostignore}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -3151,15 +3182,16 @@ app.get(`${api_root_endpoint}/${user_project_org_project_config_boostignore}`, a
             .contentType('application/json')
             .send(ignoreFileSpecs);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 const user_project_org_project_data_resource = `${user_project_org_project}/data/:resource`;
 app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -3203,7 +3235,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async 
             .contentType('text/plain')
             .send(resourceData);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -3214,8 +3246,9 @@ interface ResourceStatusState {
 const user_project_org_project_data_resource_status = `${user_project_org_project_data_resource}/status`;
 app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -3273,14 +3306,15 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
             .contentType('application/json')
             .send(resourceStatus);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -3338,7 +3372,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource}`, asy
             .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -3352,8 +3386,9 @@ app.route(`${api_root_endpoint}/${user_project_org_project_data_resource}`)
 const user_project_org_project_data_resource_generator = `${user_project_org_project_data_resource}/generator`;
 app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -3392,14 +3427,15 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource_genera
             .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -3407,15 +3443,15 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                return handleErrorResponse(new Error(`Org is required`), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
+                return handleErrorResponse(email, new Error(`Org is required`), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             } else if (!project) {
-                return handleErrorResponse(new Error(`Project is required`), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
+                return handleErrorResponse(email, new Error(`Project is required`), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
         }
 
         const projectData = await loadProjectData(email, org, project);
         if (!projectData) {
-            return handleErrorResponse(new Error(`Project not found`), req, res, undefined, HTTP_FAILURE_NOT_FOUND);
+            return handleErrorResponse(email, new Error(`Project not found`), req, res, undefined, HTTP_FAILURE_NOT_FOUND);
         }
 
         const uri = new URL(projectData.resources[0].uri);
@@ -3426,7 +3462,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
         const repoName = pathSegments.pop();
         const ownerName = pathSegments.pop();
         if (!repoName || !ownerName) {
-            return handleErrorResponse(new Error(`Invalid URI: ${uri}`), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
+            return handleErrorResponse(email, new Error(`Invalid URI: ${uri}`), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const { _, __, resource } = req.params;
@@ -3465,15 +3501,16 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
             }
         }
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 // for updating the generator task status
 app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generator}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return res;
         }
@@ -3607,14 +3644,15 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
             return res.status(HTTP_CONFLICT).send(`Invalid PATCH status: ${currentGeneratorState.status}`)
         }
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return res;
         }
@@ -3706,7 +3744,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             const thisGeneratorUri = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));
             const thusGeneratorUriWithForcedUpdate = `${thisGeneratorUri}?force`;
             try {
-                await localSelfDispatch<void>(email, "", req, thusGeneratorUriWithForcedUpdate, 'PATCH', generatorState);
+                await localSelfDispatch<void>(email!, "", req, thusGeneratorUriWithForcedUpdate, 'PATCH', generatorState);
             } catch (error: any) {
                 // if the generator state didn't exist, then we'll create it
                 if ((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
@@ -3754,7 +3792,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             // upload what resources we have to the AI servers
             // this is all an async process (we don't wait for it to complete)
             try {
-                await localSelfDispatch<ProjectDataReference[]>(email, getSignedIdentityFromHeader(req)!, req,
+                await localSelfDispatch<ProjectDataReference[]>(email!, getSignedIdentityFromHeader(req)!, req,
                     `user_project/${org}/${project}/data_references`, 'PUT', undefined, millisecondsBeforeRestRequestMicroTimeout, false);
             } catch (error: any) {
                 if (axios.isAxiosError(error) && error.response) {
@@ -3783,7 +3821,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             // we're going to initialize an async project status refresh (but only wait a few milliseconds to make sure it starts)
             try {
                 await localSelfDispatch<ProjectStatusState>(
-                    email, getSignedIdentityFromHeader(req)!, req,
+                    email!, getSignedIdentityFromHeader(req)!, req,
                     `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, millisecondsBeforeRestRequestMicroTimeout, false);
             } catch (error: any) {
                 if (error.response) {
@@ -3897,7 +3935,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     await updateGeneratorState(currentGeneratorState);
 
                     // we errored out, so we'll return an error HTTP status code for operation failed, may need to retry
-                    return handleErrorResponse(error, req, res);
+                    return handleErrorResponse(email, error, req, res);
                 }
 
                 // if we're processing and not yet completed the full stages, then we need to process the next stage
@@ -3941,7 +3979,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                         await updateGeneratorState(currentGeneratorState);
 
                         // we errored out, so we'll return an error HTTP status code for operation failed, may need to retry
-                        return handleErrorResponse(error, req, res, `Error starting next stage to process`);
+                        return handleErrorResponse(email, error, req, res, `Error starting next stage to process`);
                     }
 
                     // Return a response immediately without waiting for the async process
@@ -3985,7 +4023,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                 return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send();
             }
         } catch (error) {
-            return handleErrorResponse(error, req, res, `Unable to handle task request`);
+            return handleErrorResponse(email, error, req, res, `Unable to handle task request`);
         }
 
         return res
@@ -3993,7 +4031,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
             .contentType('application/json')
             .send(currentGeneratorState);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 };
 
@@ -4032,8 +4070,9 @@ interface ResourceGeneratorProcessState {
 const user_project_org_project_data_resource_generator_process = `${user_project_org_project_data_resource_generator}/process`;
 app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generator_process}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return res;
         }
@@ -4135,7 +4174,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_data_resource_generato
             throw error;
         }
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -4144,8 +4183,9 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const user_project_org_project_data_references = `${user_project_org_project}/data_references`;
 const postUserProjectDataReferences = async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -4309,7 +4349,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
                 } catch (error: any) {
                     if (error.message?.includes("exceeded")) {
                         // If rate limit exceeded error is detected, fail immediately - don't continue AI uploads
-                        return handleErrorResponse(error, req, res, `Rate Limit Exceeded: ${error}`);
+                        return handleErrorResponse(email, error, req, res, `Rate Limit Exceeded: ${error}`);
                     }
                     
                     // continue trying to upload all resources we can - and record the failures
@@ -4322,7 +4362,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
                 }
             }
         } catch (error) {
-            return handleErrorResponse(error, req, res, `Unable to retrieve project data`);
+            return handleErrorResponse(email, error, req, res, `Unable to retrieve project data`);
         }
 
         if (missingDataTypes.length > 0) {
@@ -4341,7 +4381,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
                 console.warn(`${email} ${req.method} ${req.originalUrl} Failed to upload data for ${failedKeys.join(", ")}`);
             } else {
                 // Handle the first error specifically
-                return handleErrorResponse(failedValues[0], req, res, `Unable to store project data on AI Servers:`);
+                return handleErrorResponse(email, failedValues[0], req, res, `Unable to store project data on AI Servers:`);
             }
         }
 
@@ -4376,7 +4416,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
             .contentType('application/json')
             .send(projectDataFileIds);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 };
 
@@ -4386,8 +4426,9 @@ app.route(`${api_root_endpoint}/${user_project_org_project_data_references}`)
 
 app.get(`${api_root_endpoint}/${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -4430,14 +4471,15 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_references}`, asyn
             .contentType('application/json')
             .send(dataReferences);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -4479,15 +4521,16 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, a
             .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 const files_source_owner_project_path_analysisType = `files/:source/:owner/:project/:pathBase64/:analysisType`;
 app.delete(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, async (req, res) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -4526,14 +4569,15 @@ app.delete(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}
             .send();
 
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 app.get(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, async (req, res) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -4573,14 +4617,15 @@ app.get(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, 
 
         return res.status(HTTP_SUCCESS).contentType('text/plain').send(data);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 app.post(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, async (req, res) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -4609,18 +4654,19 @@ app.post(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`,
         res.sendStatus(HTTP_SUCCESS);
 
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 const proxy_ai_endpoint = "proxy/ai/:org/:endpoint";
 const handleProxyRequest = async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
         const org = req.params.org;
         const endpoint = req.params.endpoint;
 
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -4671,7 +4717,7 @@ const handleProxyRequest = async (req: Request, res: Response) => {
                     } else {
                         errorMessage = `Connection refused to ${externalEndpoint} - is the external service running?`;
                     }
-                    return handleErrorResponse(error, req, res, errorMessage, HTTP_FAILURE_SERVICE_UNAVAILABLE);
+                    return handleErrorResponse(email, error, req, res, errorMessage, HTTP_FAILURE_SERVICE_UNAVAILABLE);
                 } else if (error.response) {
                     const errorMessage = error.message;
                     const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
@@ -4688,7 +4734,7 @@ const handleProxyRequest = async (req: Request, res: Response) => {
             return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
         }
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 };
 
@@ -4713,9 +4759,10 @@ const user_org_account = `user/:org/account`;
 
 app.patch(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
 
+    let email : string | undefined = undefined;
     try {
 
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -4770,15 +4817,16 @@ app.patch(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
             .contentType('application/json')
             .send(requestedUserAccountState);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
 
+    let email : string | undefined = undefined;
     try {
 
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -4811,7 +4859,7 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
             .contentType('application/json')
             .send(accountStatus);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -4829,9 +4877,10 @@ interface OrgAccountState {
 const org_org_account = `org/:org/account`;
 app.get(`${api_root_endpoint}/${org_org_account}`, async (req, res) => {
 
+    let email : string | undefined = undefined;
     try {
 
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -4859,16 +4908,17 @@ app.get(`${api_root_endpoint}/${org_org_account}`, async (req, res) => {
             .contentType('application/json')
             .send(orgAccountState);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 const user_profile = `user/profile`;
 app.delete(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
 
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -4880,7 +4930,7 @@ app.delete(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Res
             .status(HTTP_SUCCESS)
             .send();
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -4892,9 +4942,10 @@ interface UserProfile {
 
 app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
 
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -4935,15 +4986,16 @@ app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
             .contentType('application/json')
             .send(profileData);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 app.get(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Response) => {
 
+    let email : string | undefined = undefined;
     try {
 
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -4959,7 +5011,7 @@ app.get(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
             .contentType('application/json')
             .send(profileData);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -4998,7 +5050,7 @@ app.get(`${api_root_endpoint}/${api_status}`, async (req: Request, res: Response
             .contentType('application/json')
             .send(status);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(undefined, error, req, res);
     }
 });
 
@@ -5008,8 +5060,9 @@ let existingInterval : NodeJS.Timeout | undefined = undefined;
 const api_timer_config = `timer/config`;
 app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: Response, next) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res, AuthType.Admin);
+        email = await validateUser(req, res, AuthType.Admin);
         if (!email) {
             return;
         }
@@ -5086,15 +5139,16 @@ app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: R
             .contentType("application/json")
             .send(groomingInterval.toString());
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 const api_timer_interval = `timer/interval`;
 app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res: Response, next) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res, AuthType.Admin);
+        email = await validateUser(req, res, AuthType.Admin);
         if (!email) {
             return;
         }
@@ -5122,15 +5176,16 @@ app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res:
             .contentType("text/plain")
             .send(`Timer HTTP POST Ack: ${currentTimeinSeconds}`);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 const user_org_connectors_openai_files = `user/:org/connectors/openai/files`;
 app.get(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (req: Request, res: Response, next) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -5162,15 +5217,15 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (req: 
             .send(aiFiles);
             
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 const user_org_connectors_openai_assistants = `user/:org/connectors/openai/assistants`;
 app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, async (req: Request, res: Response, next) => {
 
+    let email : string | undefined = undefined;
     try {
-        let email = undefined;
         let admin = false;
         try {
             // try to elevate to admin first to determine if we should search all assistants
@@ -5203,16 +5258,17 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, async (
             .send(aiAssistants);
             
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 const user_org_connectors_openai_assistant = `user/:org/connectors/openai/assistants/:assistantId`;
 app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistant}`, async (req: Request, res: Response, next) => {
 
+    let email : string | undefined = undefined;
     try {
         // try to elevate to admin first to determine - since we don't know what org the assistant may be attached to
-        const email = await validateUser(req, res, AuthType.Admin, true);
+        email = await validateUser(req, res, AuthType.Admin, true);
 
         if (!email) {
             return;
@@ -5221,13 +5277,13 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistant}`, async (r
         const org = req.params.org;
 
         if (!org) {
-            console.error(`${email} ${req.method} ${req.originalUrl} Org is required`);
+            console.error(`${undefined} ${req.method} ${req.originalUrl} Org is required`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
 
         const assistantId = req.params.assistantId;
         if (!assistantId) {
-            console.error(`${email} ${req.method} ${req.originalUrl} AssistantId is required`);
+            console.error(`${undefined} ${req.method} ${req.originalUrl} AssistantId is required`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing assistantId in resource');
         }
 
@@ -5246,14 +5302,14 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistant}`, async (r
             .send(aiAssistant);
             
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 app.delete(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, async (req: Request, res: Response, next) => {
 
+    let email : string | undefined = undefined;
     try {
-        let email = undefined;
         let admin = false;
         try {
             // try to elevate to admin first to determine if we should search all assistants
@@ -5339,15 +5395,16 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, asyn
             .send(aiAssistants);
             
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 const user_org_connectors_openai_files_id = `user/:org/connectors/openai/files/:id`;
 app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files_id}`, async (req: Request, res: Response, next) => {
 
+    let email : string | undefined = undefined;
     try {
-        const email = await validateUser(req, res);
+        email = await validateUser(req, res);
         if (!email) {
             return;
         }
@@ -5372,15 +5429,15 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files_id}`, async 
             .send(fileId);
             
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
 app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (req: Request, res: Response, next) => {
 
+    let email : string | undefined = undefined;
     try {
         let admin = false;
-        let email = undefined;
 
         try {
             // try to elevate to admin first to determine if we should search all files
@@ -5504,7 +5561,7 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
             .send(aiFiles);
             
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(email, error, req, res);
     }
 });
 
@@ -5518,7 +5575,7 @@ app.get("/test", (req: Request, res: Response, next) => {
             .contentType("text/plain")
             .send("Test HTTP GET Ack");
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(undefined, error, req, res);
     }
 });
 
@@ -5534,7 +5591,7 @@ app.post("/test", (req: Request, res: Response, next) => {
             .contentType("text/plain")
             .send(`Test HTTP POST Ack: ${data}`);
     } catch (error) {
-        return handleErrorResponse(error, req, res);
+        return handleErrorResponse(undefined, error, req, res);
     }
 });
 
