@@ -126,6 +126,7 @@ def main(email, org, project, method, stage, data, frontend=False, output=None):
         "project_create": f"{URL}/api/user_project/{org}/{project}",
         "project_delete": f"{URL}/api/user_project/{org}/{project}",
 
+        "groom": f"{URL}/api/user_project/{org}/{project}/groom",
         "groom_status": f"{URL}/api/user_project/{org}/{project}/groom",
         "groom_toggle": f"{URL}/api/user_project/{org}/{project}/groom",
 
@@ -234,7 +235,8 @@ def main(email, org, project, method, stage, data, frontend=False, output=None):
             "status_assistant",
             "timer_interval",
             "groom_discoveries",
-            "groom_toggle"
+            "groom_toggle",
+            "groom",
         ]
     ) else "DELETE" if (
         "delete" in method or  # noqa: W504
