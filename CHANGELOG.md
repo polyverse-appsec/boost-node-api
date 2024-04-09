@@ -15,6 +15,7 @@ Polyverse Boost ReST API (Backend)
 ### Bug Fixes
 - Ensure DiscoveryTrigger (e.g. manual user request) is correctly stored on Project Discovery
 - Ensure Grooming Discoveries are recorded; enabling retry limits to be enforced
+- Fix grooming window check - was incorrectly blocking grooming outside the window
 
 ## Version 1.2.3: April 8th, 2024
 

@@ -2727,8 +2727,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             const cycleBusyWindowPercentage = 0.75; // don't overlap last 75% of the grooming cycle
             // we only run at most once every grooming cycle - with adjustment for lag (e.g. checking status took part of the last cycle)
             //  this ensures we settle whatever processing happened in the last cycle
-            if (currentGroomingState.lastUpdated > (callStart - (cycleBusyWindowPercentage * DefaultGroomingIntervalInMinutes * 60))) {
-                const nextOpeningDate = new Date((currentGroomingState.lastUpdated + ((1 - cycleBusyWindowPercentage) * DefaultGroomingIntervalInMinutes * 60)) * 1000);
+            const endOfNextGroomingWindowTimeInSeconds = currentGroomingState.lastUpdated + (cycleBusyWindowPercentage * DefaultGroomingIntervalInMinutes * 60);
+            if (callStart < endOfNextGroomingWindowTimeInSeconds) {
+                const nextOpeningDate = new Date(endOfNextGroomingWindowTimeInSeconds * 1000);
                 const groomerBusy : ProjectGroomState = {
                     status: GroomingStatus.Skipping,
                     statusDetails: `Last Grooming cycle still active - next opening at ${usFormatter.format(nextOpeningDate)}`,
