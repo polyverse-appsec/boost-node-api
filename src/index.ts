@@ -2649,7 +2649,11 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         const callStart = Math.floor(Date.now() / 1000);
         const groomingCyclesToWaitForSettling = 2;
 
+        // force grooming to run even if we're in the middle of a grooming cycle
         const force = req.query.force !== undefined?true:false;
+
+        // reset the grooming error count to enable automated grooming to restart
+        const reset = req.query.reset !== undefined?true:false;
 
         const storeGroomingState = async (groomingState: ProjectGroomState) => {
             await storeProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom', groomingState);
@@ -2699,6 +2703,16 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         if (currentGroomingState || input) {
             if (!currentGroomingState) {
                 throw new Error(`Invalid State - currentGroomingState is undefined with input specified ${JSON.stringify(input)}`);
+            }
+            // if caller requested to reset the max error count, then we'll reset it
+            if (reset) {
+                if (input?.consecutiveErrors !== undefined) {
+                    console.info(`${email} ${req.method} ${req.originalUrl} Reset grooming error count to 0 from input: ${input.consecutiveErrors}`);
+                    input.consecutiveErrors = 0;
+                } else if (currentGroomingState.consecutiveErrors !== undefined) {
+                    console.info(`${email} ${req.method} ${req.originalUrl} Reset grooming error count to 0 from current: ${currentGroomingState.consecutiveErrors}`);
+                    currentGroomingState.consecutiveErrors = 0;
+                }
             }
             if (input) {
                 currentGroomingState.status = input.status;
