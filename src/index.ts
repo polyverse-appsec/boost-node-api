@@ -2963,6 +2963,10 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         } else {
             // if we don't know if the last discovery worked, or we're starting fresh (no current groomer state), then we'll just start grooming
             //      and we'll assume it will work
+            if (currentGroomingState?.consecutiveErrors &&
+                currentGroomingState.consecutiveErrors > MaxGroomingErrorsBeforeManualDiscovery) {
+                console.warn(`${email} ${req.method} ${req.originalUrl} Groomer bypassing maximum errors (${MaxGroomingErrorsBeforeManualDiscovery}) due to unknown last groomer result`);
+            }
         }
 
         const groomingDiscoveryState : DiscoverState = {
