@@ -100,19 +100,19 @@ export async function validateUser(req: Request, res: Response, accessType: Auth
     email = normalizeEmail(email);
 
     if (process.env.TRACE_LEVEL) {
-        console.log(`${req.method} ${req.originalUrl} User authenticated: ${email}`);
+        console.log(`${email} ${req.method} ${req.originalUrl} User authenticated`);
     }
     
     if (accessType === AuthType.Admin) {
         if (email !== local_sys_admin_email) {
-            console.error(`${req.method} ${req.originalUrl} Unauthorized: Admin access is required`);
+            console.error(`${email} ${req.method} ${req.originalUrl} Unauthorized: Admin access is required`);
             if (throwIfNotAuthorized) {
                 throw new Error(`Unauthorized`);
             }
             res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
             return undefined;
         }
-        console.log(`${req.method} ${req.originalUrl} Admin access granted: ${email}`);
+        console.log(`${email} ${req.method} ${req.originalUrl} Admin access granted`);
     }
 
     logRequest(req, email);

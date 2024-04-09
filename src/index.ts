@@ -1550,7 +1550,7 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
                 const result = await localSelfDispatch<UserProjectData[]>(email, "", req, groom_projects, 'POST', groomProjectsState, millisecondsToLaunchGrooming, false);
                 if (result?.length === undefined) {
                     if (process.env.TRACE_LEVEL) {
-                        console.warn(`${req.method} ${req.originalUrl} Timeout starting next batch of grooming; unclear result`);
+                        console.warn(`${email} ${req.method} ${req.originalUrl} Timeout starting next batch of grooming; unclear result`);
                     }
                 }
             } catch (error: any) {
@@ -2574,9 +2574,9 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req:
 
         if (!org || !project) {
             if (!org) {
-                console.error(`${req.method} ${req.originalUrl} Org is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Org is required`);
             } else if (!project) {
-                console.error(`${req.method} ${req.originalUrl} Project is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Project is required`);
             }
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
@@ -2658,9 +2658,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         if (!projectData) {
             try {
                 await localSelfDispatch(email, getSignedIdentityFromHeader(req)!, req, `${projectPath}/groom`, 'DELETE');
-                console.info(`${req.method} ${req.originalUrl} Deleted project groom data - since project not found`);
+                console.info(`${email} ${req.method} ${req.originalUrl} Deleted project groom data - since project not found`);
             } catch (error) {
-                console.error(`${req.method} ${req.originalUrl} Unable to delete project groom data: ${error}`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Unable to delete project groom data: ${error}`);
             }
             return res.status(HTTP_FAILURE_NOT_FOUND).send('Project not found');
         }
@@ -3009,7 +3009,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 .contentType('application/json')
                 .send(launchedGroomingState);
         } catch (error) {
-            console.error(`${req.method} ${req.originalUrl} Groomer unable to launch discovery for ${projectPath}`, error);
+            console.error(`${email} ${req.method} ${req.originalUrl} Groomer unable to launch discovery for ${projectPath}`, error);
 
             launchedGroomingState.status = GroomingStatus.Error;
             launchedGroomingState.statusDetails = `Error launching discovery: ${error}`;
@@ -3042,9 +3042,9 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req:
 
         if (!org || !project) {
             if (!org) {
-                console.error(`${req.method} ${req.originalUrl} Org is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Org is required`);
             } else if (!project) {
-                console.error(`${req.method} ${req.originalUrl} Project is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Project is required`);
             }
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
@@ -3072,9 +3072,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
 
         if (!org || !project) {
             if (!org) {
-                console.error(`${req.method} ${req.originalUrl} Org is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Org is required`);
             } else if (!project) {
-                console.error(`${req.method} ${req.originalUrl} Project is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Project is required`);
             }
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
         }
@@ -3093,7 +3093,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
         }
 
         if (body === '' || body === undefined) {
-            console.error(`${req.method} ${req.originalUrl} ${user_profile}: empty body`);
+            console.error(`${email} ${req.method} ${req.originalUrl} ${user_profile}: empty body`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
 
@@ -3102,7 +3102,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: R
         try {
             updatedGoals = JSON.parse(body);
         } catch (error: any) {
-            console.error(`${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack);
+            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
         }
 
