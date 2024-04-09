@@ -4844,6 +4844,7 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
         // remap the billing url from the billing field name - portal_url
         accountStatus.billingUrl = (accountStatus as any).portal_url || '';
+        delete (accountStatus as any).portal_url;
 
         const user = await getUser(email);
         accountStatus.githubUsername = user?.username || '';

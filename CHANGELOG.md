@@ -9,7 +9,7 @@ Polyverse Boost ReST API (Backend)
 - N/A
 
 ### Enhancements
-- N/A
+- Remove duplicated account billing url (i.e. portal_url)
 
 ### Bug Fixes
 - N/A
