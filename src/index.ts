@@ -2728,7 +2728,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             // we only run at most once every grooming cycle - with adjustment for lag (e.g. checking status took part of the last cycle)
             //  this ensures we settle whatever processing happened in the last cycle
             const endOfNextGroomingWindowTimeInSeconds = currentGroomingState.lastUpdated + (cycleBusyWindowPercentage * DefaultGroomingIntervalInMinutes * 60);
-            if (callStart < endOfNextGroomingWindowTimeInSeconds) {
+            if (!force && callStart < endOfNextGroomingWindowTimeInSeconds) {
                 const nextOpeningDate = new Date(endOfNextGroomingWindowTimeInSeconds * 1000);
                 const groomerBusy : ProjectGroomState = {
                     status: GroomingStatus.Skipping,
