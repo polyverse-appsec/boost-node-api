@@ -1717,7 +1717,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
         if (requestor !== undefined) {
             discoverState.requestor = requestor;
         } else {
-            requestor = DiscoveryTrigger.UserManual;
+            discoverState.requestor = DiscoveryTrigger.UserManual;
         }
         if (discoverState.resetResources !== undefined) {
             discoverState.resetResources = discoverState.resetResources;

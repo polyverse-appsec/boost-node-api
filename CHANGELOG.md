@@ -12,7 +12,7 @@ Polyverse Boost ReST API (Backend)
 - Remove duplicated account billing url (i.e. portal_url)
 
 ### Bug Fixes
-- N/A
+- Ensure DiscoveryTrigger (e.g. manual user request) is correctly stored on Project Discovery
 
 ## Version 1.2.3: April 8th, 2024
 
