@@ -86,6 +86,7 @@ import {
     HTTP_SUCCESS_NO_CONTENT,
     HTTP_LOCKED,
     HTTP_FAILURE_SERVICE_UNAVAILABLE,
+    millisecondsBeforeRestRequestMicroTimeout,
 } from './utility/dispatch';
 
 import { usFormatter } from './utility/log';
@@ -907,12 +908,11 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
 
         await storeProjectData(email, SourceType.General, org, project, '', 'project', storedProject);
 
-        // we're going to initialize an async project status refresh (but only wait 250 ms to ensure it starts)
+        // we're going to initialize an async project status refresh (but only wait a few milliseconds to make sure it starts)
         try {
-            const projectStatusRefreshDelayInMs = 250;
             await localSelfDispatch<ProjectStatusState>(
                 email, "", req,
-                `${projectPath}/status`, 'POST', undefined, projectStatusRefreshDelayInMs, false);
+                `${projectPath}/status`, 'POST', undefined, millisecondsBeforeRestRequestMicroTimeout, false);
         } catch (error: any) {
             // we don't care if the project status refresh fails - it's just a nice to have
             console.warn(`${email} ${req.method} ${req.originalUrl} Unable to initialize the project status: `, error.stack || error);
@@ -1762,12 +1762,12 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
                 status: ProjectStatus.Unknown,
                 lastUpdated: Date.now() / 1000
             };
-            // we're going to start an async project status refresh (but only wait 250 ms to ensure it starts)
+
+            // we're going to initialize an async project status refresh (but only wait a few milliseconds to make sure it starts)
             try {
-                const projectStatusRefreshDelayInMs = 250;
                 await localSelfDispatch<ProjectStatusState>(
                     email, "", req,
-                    `${projectDataPath}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs, false);
+                    `${projectDataPath}/status`, 'PATCH', projectStatusRefreshRequest, millisecondsBeforeRestRequestMicroTimeout, false);
             } catch (error: any) {
                 // we don't care if the project refresh fails - it's just a nice to have
                 console.warn(`${email} ${req.method} ${req.originalUrl} Unable to start post-discovery async project status refresh for due to error: `, error.stack || error);
@@ -3744,43 +3744,18 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
 
             // we have completed all stages or reached a terminal point (e.g. error or non-active updating)
             if (generatorState.status === TaskStatus.Idle && generatorState.stage === Stages.Complete) {
-                console.debug(`${email} ${req.method} ${req.originalUrl} Completed all stages`);
+                console.debug(`${email} ${req.method} ${req.originalUrl} Completed all ${resource} stages`);
             } else if (generatorState.status === TaskStatus.Error) {
                 console.debug(`${email} ${req.method} ${req.originalUrl} Generator errored out: ${generatorState.statusDetails}`);
             } else if (generatorState.status === TaskStatus.Processing) {
                 console.debug(`${email} ${req.method} ${req.originalUrl} Incremental File Refresh mid-processing: ${generatorState.statusDetails}`);
             }
 
-            const projectStatusRefreshDelayInMs = 250;
-
-            // force a refresh of the project status
-            const projectStatusRefreshRequest : ProjectStatusState = {
-                status: ProjectStatus.Unknown,
-                lastUpdated: generatorState.lastUpdated
-            };
-            // we're going to start an async project status refresh (but only wait 250 ms to ensure it starts)
-            try {
-                await localSelfDispatch<ProjectStatusState>(
-                    email, getSignedIdentityFromHeader(req)!, req,
-                    `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs, false);
-            } catch (error: any) {
-                if (error.response) {
-                    switch (error.response.status) {
-                        case HTTP_FAILURE_NOT_FOUND:
-                            console.debug(`${email} ${req.method} ${req.originalUrl} Unable to refresh project status for ${org}/${project} - Project Not Found`);
-                            break;
-                        default:
-                            console.warn(`${email} ${req.method} ${req.originalUrl} Unable to refresh project status for ${org}/${project} - due to error: ${error.response.data.body || error.response.data}`);
-                        }
-                } else {
-                    console.warn(`${email} ${req.method} ${req.originalUrl} Unable to refresh project status for ${org}/${project} - due to error: ${error.stack || error}`);
-                }
-            }
             // upload what resources we have to the AI servers
             // this is all an async process (we don't wait for it to complete)
             try {
                 await localSelfDispatch<ProjectDataReference[]>(email, getSignedIdentityFromHeader(req)!, req,
-                    `user_project/${org}/${project}/data_references`, 'PUT', undefined, projectStatusRefreshDelayInMs, false);
+                    `user_project/${org}/${project}/data_references`, 'PUT', undefined, millisecondsBeforeRestRequestMicroTimeout, false);
             } catch (error: any) {
                 if (axios.isAxiosError(error) && error.response) {
                     switch (error.response?.status) {
@@ -3795,6 +3770,32 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     }
                 } else {
                     console.error(`${email} ${req.method} ${req.originalUrl} Error uploading data references to AI Servers: `, (error.stack || error));
+                }
+            }
+
+
+            // force a refresh of the project status
+            const projectStatusRefreshRequest : ProjectStatusState = {
+                status: ProjectStatus.Unknown,
+                lastUpdated: generatorState.lastUpdated
+            };
+
+            // we're going to initialize an async project status refresh (but only wait a few milliseconds to make sure it starts)
+            try {
+                await localSelfDispatch<ProjectStatusState>(
+                    email, getSignedIdentityFromHeader(req)!, req,
+                    `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, millisecondsBeforeRestRequestMicroTimeout, false);
+            } catch (error: any) {
+                if (error.response) {
+                    switch (error.response.status) {
+                        case HTTP_FAILURE_NOT_FOUND:
+                            console.debug(`${email} ${req.method} ${req.originalUrl} Unable to refresh project status for ${org}/${project} - Project Not Found`);
+                            break;
+                        default:
+                            console.warn(`${email} ${req.method} ${req.originalUrl} Unable to refresh project status for ${org}/${project} - due to error: ${error.response.data.body || error.response.data}`);
+                        }
+                } else {
+                    console.warn(`${email} ${req.method} ${req.originalUrl} Unable to refresh project status for ${org}/${project} - due to error: ${error.stack || error}`);
                 }
             }
         };
@@ -4351,7 +4352,6 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
             await storeProjectData(email, SourceType.General, userProjectData.org, userProjectData.name, '', 'data_references', projectDataFileIds);
 
             // now refresh project status since we've completed uploads
-            const projectStatusRefreshDelayInMs = 250;
             const projectStatusRefreshRequest : ProjectStatusState = {
                 status: ProjectStatus.Unknown,
                 lastUpdated: Date.now() / 1000
@@ -4359,7 +4359,7 @@ const postUserProjectDataReferences = async (req: Request, res: Response) => {
             try {
                 await localSelfDispatch<ProjectStatusState>(
                     email, getSignedIdentityFromHeader(req)!, req,
-                    `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, projectStatusRefreshDelayInMs, false);
+                    `user_project/${org}/${project}/status`, 'PATCH', projectStatusRefreshRequest, millisecondsBeforeRestRequestMicroTimeout, false);
 
             } catch (error: any) {
                 if ((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||

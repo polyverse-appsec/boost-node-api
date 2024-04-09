@@ -9,10 +9,10 @@ Polyverse Boost ReST API (Backend)
 - N/A
 
 ### Enhancements
-- N/A
+- Logging improvements to show email with all external API calls
 
 ### Bug Fixes
-- N/A
+- Fix issue with Project being fully synchronized, but reporting AI Files out of date (until status was refreshed explicitly)
 
 ## Version 1.2.2: April 6th, 2024
 
