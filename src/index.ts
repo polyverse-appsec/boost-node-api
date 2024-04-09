@@ -3863,7 +3863,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     if (currentGeneratorState.stage === Stages.Complete && currentGeneratorState.status === TaskStatus.Processing) {
                         currentGeneratorState.status = TaskStatus.Idle;
                         const currentDateTime = usFormatter.format(new Date(Date.now()));
-                        currentGeneratorState.statusDetails = `Completed all stages (${currentGeneratorState.processedStages}) at ${currentDateTime}`;
+                        currentGeneratorState.statusDetails = `Completed all ${resource} stages (${currentGeneratorState.processedStages}) at ${currentDateTime}`;
                     }
 
                     await updateGeneratorState(currentGeneratorState);
