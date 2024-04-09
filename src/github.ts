@@ -678,7 +678,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
             zip = new AdmZip(response.data);
         } catch (error) {
             if (axios.isCancel(error)) {
-                const errorMsg = `${req.originalUrl} GitHub Zip Download cancelled due to ${secondsBeforeRestRequestMaximumTimeout} seconds timeout`;
+                const errorMsg = `${email} ${req.method} ${req.originalUrl} GitHub Zip Download cancelled due to ${secondsBeforeRestRequestMaximumTimeout} seconds timeout`;
                 console.error(errorMsg);
                 throw new Error(errorMsg);
             } else {

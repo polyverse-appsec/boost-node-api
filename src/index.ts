@@ -1114,7 +1114,7 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
         const projectDataList : UserProjectData[] = await searchProjectData<UserProjectData>(user?user as string:searchWildcard, SourceType.General, org?org as string:searchWildcard, project?project as string:searchWildcard, "", 'project');
 
         if (process.env.TRACE_LEVEL) {
-            console.log(`${req.originalUrl}: retrieved data for ${projectDataList.length} raw project data`);
+            console.log(`${email} ${req.method} ${req.originalUrl} : retrieved data for ${projectDataList.length} raw project data`);
         }
 
         for (const projectData of projectDataList) {
@@ -1146,7 +1146,7 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
         }
 
         if (process.env.TRACE_LEVEL) {
-            console.log(`${req.originalUrl} retrieved data for ${projectDataList.length} projects`);
+            console.log(`${email} ${req.method} ${req.originalUrl}  retrieved data for ${projectDataList.length} projects`);
         }
 
         return res
@@ -1347,7 +1347,7 @@ app.get(`${api_root_endpoint}/${search_projects_generators_groom}`, async (req: 
             resource?`/${resource as string}`:searchWildcard,
             'generator');
 
-        console.info(`${req.originalUrl} retrieved ${generatorDataList.length} Generators`);
+        console.info(`${email} ${req.method} ${req.originalUrl}  retrieved ${generatorDataList.length} Generators`);
 
         const generatorDataListFilteredByStatus : GeneratorState[] =
             generatorDataList.filter((generatorData) => status?generatorData.status === status:true);
@@ -1838,7 +1838,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req:
         }
 
         if (body === '' || body === undefined) {
-            console.error(`${req.originalUrl}: empty body`);
+            console.error(`${email} ${req.method} ${req.originalUrl} : empty body`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
 
@@ -3321,7 +3321,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource}`, asy
             await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, statusPath, 'DELETE');
         } catch (error: any) { // ignore 404 errors
             if (!error.code || error.code !== HTTP_FAILURE_NOT_FOUND.toString()) {
-                console.warn(`${req.originalUrl} Unable to delete resource status for ${org}/${project} - due to error: ${error}`);
+                console.warn(`${email} ${req.method} ${req.originalUrl}  Unable to delete resource status for ${org}/${project} - due to error: ${error}`);
             }
         }
 
@@ -3330,7 +3330,7 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource}`, asy
             await localSelfDispatch<void>(email, (await signedAuthHeader(email))[header_X_Signed_Identity], req, generatorPath, 'DELETE');
         } catch (error: any) { // ignore 404 errors
             if (!error.code || error.code !== HTTP_FAILURE_NOT_FOUND.toString()) {
-                console.warn(`${req.originalUrl} Unable to delete resource generator for ${org}/${project} - due to error: ${error}`);
+                console.warn(`${email} ${req.method} ${req.originalUrl}  Unable to delete resource generator for ${org}/${project} - due to error: ${error}`);
             }
         }
 
@@ -3432,7 +3432,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
         const { _, __, resource } = req.params;
         const currentInput = await getProjectData(email, SourceType.GitHub, ownerName, repoName, '', `${resource}/generator`);
         if (!currentInput) {
-            console.log(`${req.originalUrl}: simulated idle data`);
+            console.log(`${email} ${req.method} ${req.originalUrl} : simulated idle data`);
 
             return res
                 .status(HTTP_SUCCESS)
@@ -3823,7 +3823,7 @@ const putOrPostuserProjectDataResourceGenerator = async (req: Request, res: Resp
                     }
 
                     if (currentGeneratorState?.processedStages && currentGeneratorState.processedStages > maximumLimitForProcessedStages) {
-                        throw new Error(`${req.originalUrl} Generator exceeded Processing Limit of ${maximumLimitForProcessedStages} stages - ${currentGeneratorState.processedStages} stages already processed`);
+                        throw new Error(`${email} ${req.method} ${req.originalUrl}  Generator exceeded Processing Limit of ${maximumLimitForProcessedStages} stages - ${currentGeneratorState.processedStages} stages already processed`);
                     } else if (currentGeneratorState?.processedStages) {
                         currentGeneratorState.processedStages++;
                     } else {
@@ -4456,13 +4456,13 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, a
         const dataReferencesRaw = await getProjectData(email, SourceType.General, org, project, '', 'data_references');
         if (!dataReferencesRaw) {
 
-            console.warn(`${req.originalUrl} No data references found for DELETE`);
+            console.warn(`${email} ${req.method} ${req.originalUrl}  No data references found for DELETE`);
 
         } else {
             const dataReferences = JSON.parse(dataReferencesRaw) as ProjectDataReference[];
             for (let i = 0; i < dataReferences.length; i++) {
                 if (dataReferences[i].id.includes('simulate')) {
-                    console.warn(`${req.originalUrl} Skipping deletion of simulate data: ${dataReferences[i].name}`);
+                    console.warn(`${email} ${req.method} ${req.originalUrl}  Skipping deletion of simulate data: ${dataReferences[i].name}`);
                     continue;
                 }
                 try {
@@ -5147,7 +5147,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (req: 
         if (project) {
             const projectData = await loadProjectData(email, org, project);
             if (!projectData) {
-                console.warn(`${req.originalUrl} Project not found: ${org}/${project} - cannot filter on repos`);
+                console.warn(`${email} ${req.method} ${req.originalUrl}  Project not found: ${org}/${project} - cannot filter on repos`);
             } else if (projectData.resources &&
                 projectData.resources.length > 0) {
                 repoUri = new URL(projectData.resources[0].uri);
@@ -5416,7 +5416,7 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
             }
             const projectData = await loadProjectData(email, org, project);
             if (!projectData) {
-                console.warn(`${req.originalUrl} Project not found: ${org}/${project} - cannot filter on repos`);
+                console.warn(`${email} ${req.method} ${req.originalUrl}  Project not found: ${org}/${project} - cannot filter on repos`);
             } else if (projectData.resources &&
                 projectData.resources.length > 0) {
                 repoUri = new URL(projectData.resources[0].uri);
