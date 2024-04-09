@@ -10,9 +10,11 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Remove duplicated account billing url (i.e. portal_url)
+- Enable support for forcing a grooming on a project, regardless of active grooming status
 
 ### Bug Fixes
 - Ensure DiscoveryTrigger (e.g. manual user request) is correctly stored on Project Discovery
+- Ensure Grooming Discoveries are recorded; enabling retry limits to be enforced
 
 ## Version 1.2.3: April 8th, 2024
 

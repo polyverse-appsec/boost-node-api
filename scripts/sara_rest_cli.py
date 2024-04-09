@@ -127,6 +127,7 @@ def main(email, org, project, method, stage, data, frontend=False, output=None):
         "project_delete": f"{URL}/api/user_project/{org}/{project}",
 
         "groom": f"{URL}/api/user_project/{org}/{project}/groom",
+        "groom_force": f"{URL}/api/user_project/{org}/{project}/groom?force",
         "groom_status": f"{URL}/api/user_project/{org}/{project}/groom",
         "groom_toggle": f"{URL}/api/user_project/{org}/{project}/groom",
 
@@ -237,6 +238,7 @@ def main(email, org, project, method, stage, data, frontend=False, output=None):
             "groom_discoveries",
             "groom_toggle",
             "groom",
+            "groom_force",
         ]
     ) else "DELETE" if (
         "delete" in method or  # noqa: W504
@@ -341,6 +343,8 @@ if __name__ == "__main__":
                                  'project_delete',
                                  'project_create',
 
+                                 'groom',
+                                 'groom_force',
                                  'groom_status',
                                  'groom_disable',
 

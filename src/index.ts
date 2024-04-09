@@ -2649,6 +2649,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
         const callStart = Math.floor(Date.now() / 1000);
         const groomingCyclesToWaitForSettling = 2;
 
+        const force = req.query.force !== undefined?true:false;
+
         const storeGroomingState = async (groomingState: ProjectGroomState) => {
             await storeProjectData(email, SourceType.General, req.params.org, req.params.project, '', 'groom', groomingState);
         }
@@ -2745,7 +2747,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             const timeOutsideTheLongGroomingCycleWindow = callStart - (groomingCyclesToWaitForSettling * DefaultGroomingIntervalInMinutes * 60);
 
             // if the last discovery run was started within the long grooming cycle window, then we'll skip this run
-            if (currentGroomingState.lastDiscoveryStart &&
+            if (!force && currentGroomingState.lastDiscoveryStart &&
                 currentGroomingState.lastDiscoveryStart > timeOutsideTheLongGroomingCycleWindow) {
 
                 // we only skip if we were actively grooming before... otherwise, we'll just let it run
@@ -2771,7 +2773,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             if (currentGroomingState.status === GroomingStatus.LaunchPending) {
                 // if the last update of the groomer was within than 2 grooming cycle windows, and we have a pending launch
                 //     then we'll skip this run
-                if (currentGroomingState.lastUpdated > timeOutsideTheLongGroomingCycleWindow) {
+                if (!force && currentGroomingState.lastUpdated > timeOutsideTheLongGroomingCycleWindow) {
 
                     // if we're in a pending state, then we'll just skip this run
                     const groomingState = {
@@ -2962,8 +2964,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             //      and we'll assume it will work
         }
 
-        const discoveryWithResetState : DiscoverState = {
-            resetResources: true,
+        const groomingDiscoveryState : DiscoverState = {
+            resetResources: projectStatus.status === ProjectStatus.OutOfDateProjectData,
             requestor: DiscoveryTrigger.AutomaticGrooming
         };
 
@@ -2989,7 +2991,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 const discoveryResult = await localSelfDispatch<ProjectDataReference[]>(
                     email, "", req,
                     `${projectPath}/discovery`, 'POST',
-                    projectStatus.status === ProjectStatus.OutOfDateProjectData?discoveryWithResetState:undefined,
+                    groomingDiscoveryState,
                     timeRemainingToDiscoverInSeconds * 1000);
 
                     // if discovery result is an empty object (i.e. {}), then we launched discovery but don't know if it finished (e.g. timeout waiting)
