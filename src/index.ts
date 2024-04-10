@@ -4692,6 +4692,12 @@ const handleProxyRequest = async (req: Request, res: Response) => {
             return;
         }
 
+        if (!org) {
+            return handleErrorResponse(email, new Error('Org is required'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
+        } else if (!endpoint) {
+            return handleErrorResponse(email, new Error('Endpoint is required'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
+        }
+
         const signedIdentity = await signedAuthHeader(email, org);
 
         let externalEndpoint;
@@ -4790,6 +4796,9 @@ app.patch(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
 
         // for updating the username, we don't need the org, since the username is tied back to the email address
         const org = req.params.org;
+        if (!org) {
+            return handleErrorResponse(email, new Error('Org is required'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
+        }
 
         let body = req.body;
         if (!body) {
@@ -4861,6 +4870,9 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
         }
 
         const org = req.params.org;
+        if (!org) {
+            return handleErrorResponse(email, new Error('Org is required'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
+        }
 
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
         // remap the billing url from the billing field name - portal_url
@@ -4908,6 +4920,10 @@ app.get(`${api_root_endpoint}/${org_org_account}`, async (req, res) => {
         }
 
         const org = req.params.org;
+        if (!org) {
+            return handleErrorResponse(email, new Error('Org is required'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
+        }
+
         const orgId = await getUser(org);
 
         const userAccountStatus = await localSelfDispatch<UserAccountState>(email, getSignedIdentityFromHeader(req)!, req, `user/${org}/account`, 'GET');

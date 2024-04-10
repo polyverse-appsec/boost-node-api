@@ -13,6 +13,7 @@ Polyverse Boost ReST API (Backend)
 - Enable support for forcing a grooming on a project, regardless of active grooming status
 - Log warning if we exceed maximum groomer retries due to failure to identify previous groomer launch status
 - Enable groomer error count to be reset to restart disabled grooming
+- Improved validation of org in account lookups
 
 ### Bug Fixes
 - Ensure DiscoveryTrigger (e.g. manual user request) is correctly stored on Project Discovery
