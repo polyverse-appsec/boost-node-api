@@ -3,6 +3,18 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 1.2.5: April 10th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Add support for PATCH /api/user/profile to update user profile data
+    - Added lastUpdated timestamp and aiData field to user profile data
+
+### Bug Fixes
+- N/A
+
 ## Version 1.2.4: April 10th, 2024
 
 ### New Features

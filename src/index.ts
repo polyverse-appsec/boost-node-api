@@ -4986,6 +4986,8 @@ interface UserProfile {
     name?: string,
     title?: string,
     details?: string,
+    aiData?: string,
+    lastUpdated?: number,
 };
 
 app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Response) => {
@@ -5011,28 +5013,100 @@ app.put(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Respon
             }
         }
         if (body === '' || body === undefined) {
-            console.error(`${user_profile}: empty body`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
+            return handleErrorResponse(email, new Error('Missing body'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         let newProfileData : UserProfile;
         try {
             newProfileData = JSON.parse(body) as UserProfile;
         } catch (error: any) {
-            console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack || error);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON Body');
+            return handleErrorResponse(email, error, req, res, `Error parsing profile data ${JSON.stringify(body)}: ${JSON.stringify(error.stack || error)}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const profileData: UserProfile = {};
-        profileData.name = newProfileData.name;
-        profileData.title = newProfileData.title;
-        profileData.details = newProfileData.details;
+        if (newProfileData.name) {
+            profileData.name = newProfileData.name;
+        }
+        if (newProfileData.title) {
+            profileData.title = newProfileData.title;
+        }
+        if (newProfileData.details) {
+            profileData.details = newProfileData.details;
+        }
+        if (newProfileData.aiData) {
+            profileData.aiData = newProfileData.aiData;
+        }
+        newProfileData.lastUpdated = Date.now() / 1000;
         await storeProjectData(email, SourceType.General, 'user', '', '', 'profile', profileData);
 
         return res
             .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(profileData);
+    } catch (error) {
+        return handleErrorResponse(email, error, req, res);
+    }
+});
+
+app.patch(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Response) => {
+
+    let email : string | undefined = undefined;
+    try {
+        email = await validateUser(req, res);
+        if (!email) {
+            return;
+        }
+
+        // if req body is not a string, then we need to convert back into a normal string
+        let body = req.body;
+        if (typeof body !== 'string') {
+            if (Buffer.isBuffer(body)) {
+                body = Buffer.from(body).toString('utf8');
+            }
+            else if (Array.isArray(body)) {
+                body = Buffer.from(body).toString('utf8');
+            } else {
+                body = JSON.stringify(body);
+            }
+        }
+        if (body === '' || body === undefined) {
+            return handleErrorResponse(email, new Error('Missing body'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
+        }
+
+        let newProfileData : UserProfile;
+        try {
+            newProfileData = JSON.parse(body) as UserProfile;
+        } catch (error: any) {
+            return handleErrorResponse(email, error, req, res, `Error parsing profile data ${JSON.stringify(body)}: ${JSON.stringify(error.stack || error)}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
+        }
+
+        const profileDataRaw = await getProjectData(email, SourceType.General, 'user', '', '', 'profile');
+        let profileData: UserProfile = {};
+        if (profileDataRaw) {
+            profileData = JSON.parse(profileDataRaw) as UserProfile;
+        }
+
+        if (newProfileData.name) {
+            profileData.name = newProfileData.name;
+        }
+        if (newProfileData.title) {
+            profileData.title = newProfileData.title;
+        }
+        if (newProfileData.details) {
+            profileData.details = newProfileData.details;
+        }
+        if (newProfileData.aiData) {
+            profileData.aiData = newProfileData.aiData;
+        }
+        profileData.lastUpdated = Date.now() / 1000;
+
+        await storeProjectData(email, SourceType.General, 'user', '', '', 'profile', profileData);
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType('application/json')
+            .send(profileData);
+        
     } catch (error) {
         return handleErrorResponse(email, error, req, res);
     }
@@ -5078,13 +5152,13 @@ app.get(`${api_root_endpoint}/${api_status}`, async (req: Request, res: Response
         // get the version from the environment variable APP_VERSION
         const version = process.env.APP_VERSION;
         if (!version) {
-            console.error(`Missing APP_VERSION environment variable`);
-            return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
+            console.error(`${req.method} ${req.originalUrl} Missing APP_VERSION environment variable`);
+            return handleErrorResponse(undefined, new Error('Missing APP_VERSION environment variable'), req, res);
         }
         const type = process.env.DEPLOYMENT_STAGE;
         if (!type) {
-            console.error(`Missing DEPLOYMENT_STAGE environment variable`);
-            return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
+            console.error(`${req.method} ${req.originalUrl} Missing DEPLOYMENT_STAGE environment variable`);
+            return handleErrorResponse(undefined, new Error('Missing DEPLOYMENT_STAGE environment variable'), req, res);
         }
 
         const status : ServiceStatusState = {
@@ -5135,8 +5209,7 @@ app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: R
             try {
                 groomingInterval = parseInt(body);
             } catch (error) {
-                console.error(`Error parsing numeric: ${body}`, error);
-                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid Numberic Body');
+                return handleErrorResponse(email, error, req, res, `Invalid grooming interval: ${body}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
         }
 
@@ -5145,16 +5218,15 @@ app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: R
             try {
                 const identityHeader = await signedAuthHeader(local_sys_admin_email)
                 const data = await localSelfDispatch<string>("", identityHeader[header_X_Signed_Identity], req, `timer/interval`, "POST");
-                console.log('Timer API Response:', data);
+                console.log(`${email} ${req.method} ${req.originalUrl} Timer API response: ${data}`)
             } catch (error: any) {
-                console.error(`Error calling Timer API: ${error}`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Error calling Timer API:`, error.stack || error);
             }
         };
 
         if (!process.env.IS_OFFLINE) {
             // if we're in AWS - and not running offline - then fail this call with a HTTP_FAILURE_BAD_REQUEST_INPUT
-            console.error(`Timer API is not available in AWS`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Bad Request');
+            return handleErrorResponse(email, new Error('Timer API configuration not supported in AWS'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         if (groomingInterval === -1) {
@@ -5170,14 +5242,14 @@ app.post(`${api_root_endpoint}/${api_timer_config}`, async (req: Request, res: R
 
         // Set up the repeating interval in local Serverless offline env
         if (existingInterval) {
-            console.log(`Clearing existing Timer API interval`);
+            console.log(`${email} ${req.method} ${req.originalUrl} Clearing existing Timer API interval`);
             clearInterval(existingInterval!);
         }
 
         if (groomingInterval === 0) {
-            console.log(`Timer API interval disabled`);
+            console.log(`${email} ${req.method} ${req.originalUrl} Timer API interval disabled`);
         } else {
-            console.log(`Setting up Timer API interval for every ${groomingInterval} seconds`);
+            console.log(`${email} ${req.method} ${req.originalUrl} Setting Timer API interval to ${groomingInterval} seconds`)
             existingInterval = setInterval(callTimerAPI, groomingInterval * milliseconds);
         }
         
@@ -5215,8 +5287,8 @@ app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res:
         try {
             // async launch of groom projects process
             await localSelfDispatch<void>("", originalIdentity, req, groom_projects, "POST", undefined, 0, false);
-        } catch (error) {
-            console.error(`Timer Triggered: Error starting async groom projects process:`, error);
+        } catch (error: any) {
+            console.error(`${email} ${req.method} ${req.originalUrl} Timer Triggered: Error starting async groom projects process: `, error.stack || error);
         }
 
         return res
@@ -5240,8 +5312,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (req: 
 
         const org = req.params.org;
         if (!org) {
-            console.error(`Org is required`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error('Org is required'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const project = typeof req.query.project === 'string' ? req.query.project : undefined;
@@ -5292,8 +5363,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, async (
 
         const org = admin?undefined:req.params.org;
         if (!org && !admin) {
-            console.error(`Org is required`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error('Org is required'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const project = typeof req.query.project === 'string' ? req.query.project : undefined;
@@ -5375,8 +5445,7 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, asyn
 
         const org = admin?undefined:req.params.org;
         if (!org && !admin) {
-            console.error(`Org is required`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error('Org is required'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const project = (typeof req.query.project === 'string') ? req.query.project : undefined;
@@ -5390,25 +5459,25 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, asyn
             if (startDate) {
                 if (assistant.created_at > parseInt(startDate)) {
                     const startingDate = new Date(parseInt(startDate) * 1000);
-                    console.warn(`Identified assistant ${assistant.name}:${assistant.id} for deletion - created at ${createdDate.toLocaleDateString()} after ${startingDate.toLocaleDateString()}`);
+                    console.warn(`${email} ${req.method} ${req.originalUrl} Identified assistant ${assistant.name}:${assistant.id} for deletion - created at ${createdDate.toLocaleDateString()} after ${startingDate.toLocaleDateString()}`);
                     return true;
                 }
             }
             if (noFiles) {
                 if (!assistant.file_ids || assistant.file_ids.length === 0) {
-                    console.warn(`Identified assistant ${assistant.name}:${assistant.id} for deletion (created: ${createdDate.toLocaleDateString()}) - no files`);
+                    console.warn(`${email} ${req.method} ${req.originalUrl} Identified assistant ${assistant.name}:${assistant.id} for deletion (created: ${createdDate.toLocaleDateString()}) - no files`);
                     return true;
                 }
                 // verify each openai file exists
                 for (const fileId of assistant.file_ids) {
                     const file : OpenAIFile | undefined = await getOpenAIFile(fileId);
                     if (!file) {
-                        console.warn(`Identified assistant ${assistant.name}:${assistant.id} for deletion (created: ${createdDate.toLocaleDateString()}) - missing file ${fileId}`);
+                        console.warn(`${email} ${req.method} ${req.originalUrl} Identified assistant ${assistant.name}:${assistant.id} for deletion (created: ${createdDate.toLocaleDateString()}) - missing file ${fileId}`);
                         return true;
                     }
                 }
             }
-            console.log(`Keeping assistant ${assistant.name}:${assistant.id} (created: ${createdDate.toLocaleDateString()})`);
+            console.log(`${email} ${req.method} ${req.originalUrl} Keeping assistant ${assistant.name}:${assistant.id} (created: ${createdDate.toLocaleDateString()})`);
             return false;
         }
 
@@ -5422,13 +5491,13 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_assistants}`, asyn
                 try {
                     await deleteOpenAIAssistant(assistant.id);
                     deletedAssistants.push(assistant);
-                    console.info(`Deleted assistant ${assistant.name}:${assistant.id} created at ${new Date(assistant.created_at * 1000).toLocaleDateString()}`);
+                    console.info(`${email} ${req.method} ${req.originalUrl} Deleted assistant ${assistant.name}:${assistant.id} created at ${new Date(assistant.created_at * 1000).toLocaleDateString()}`);
                     const remainingTimeOutOfOneSecond = 1000 - (Date.now() - beforeDeleteTimeInMs);
                     if (remainingTimeOutOfOneSecond > 0) {
                         await delay(remainingTimeOutOfOneSecond);
                     }
                 } catch (error) {
-                    console.error(`Error deleting assistant ${assistant.name}:${assistant.id} created at ${new Date(assistant.created_at * 1000).toLocaleDateString()}:`, error);
+                    console.error(`${email} ${req.method} ${req.originalUrl} Error deleting assistant ${assistant.name}:${assistant.id} created at ${new Date(assistant.created_at * 1000).toLocaleDateString()}:`, error);
                 }
             }
             return res
@@ -5459,14 +5528,12 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files_id}`, async 
 
         const org = req.params.org;
         if (!org) {
-            console.error(`Org is required`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error('Org is required'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const fileId = req.params.id;
         if (!fileId) {
-            console.error(`File Id is required`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error('FileId is required'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
         
         await deleteAssistantFile(fileId);
@@ -5504,8 +5571,7 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
 
         const org = admin?undefined:req.params.org;
         if (!org && !admin) {
-            console.error(`Org is required`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error('Org is required'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const project : string | undefined = typeof req.query.project === 'string' ? req.query.project : undefined;
@@ -5513,11 +5579,9 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
         let repoUri = undefined;
         if (project) {
             if (!email) {
-                console.error(`Email is required when deleting files in a project`);
-                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+                return handleErrorResponse(email, new Error('Email is required when deleting files in a project'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
             } else if (!org) {
-                console.error(`Org is required when deleting files in a project`);
-                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+                return handleErrorResponse(email, new Error('Org is required when deleting files in a project'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
             const projectData = await loadProjectData(email, org, project);
             if (!projectData) {
@@ -5552,28 +5616,28 @@ app.delete(`${api_root_endpoint}/${user_org_connectors_openai_files}`, async (re
             if (!liveReferencedDataFiles.has(file.id)) {
 
                 if (activeFileIdsInAssistants.includes(file.id)) {
-                    console.warn(`Identified file ${file.filename}:${file.id} for grooming, but it is still in use`);
+                    console.warn(`${email} ${req.method} ${req.originalUrl} Identified file ${file.filename}:${file.id} for grooming, but it is still in use`);
                     return false;
                 }
 
                 if (process.env.TRACE_LEVEL) {
-                    console.warn(`Identified file ${file.filename}:${file.id} for grooming`);
+                    console.warn(`${email} ${req.method} ${req.originalUrl} Identified file ${file.filename}:${file.id} for grooming`);
                 }
                 return true;
             }
 
             if (!activeFileIdsInAssistants.includes(file.id)) {
-                console.warn(`File ${file.filename}:${file.id} is reported to to be active, but not linked to any assistant`);
+                console.warn(`${email} ${req.method} ${req.originalUrl} File ${file.filename}:${file.id} is reported to to be active, but not linked to any assistant`);
             }
 
-            console.debug(`File ${file.filename}:${file.id} is still in use`);
+            console.debug(`${email} ${req.method} ${req.originalUrl} File ${file.filename}:${file.id} is still in use`);
             return false;
         }
         if (shouldGroomInactiveFiles) {
 
             const assistants = await searchOpenAIAssistants({email, org, project}, assistantSearchHandler);
 
-            console.log(`Found ${activeFileIdsInAssistants.length} active files in ${assistants.length} assistants`);
+            console.log(`${email} ${req.method} ${req.originalUrl} Found ${activeFileIdsInAssistants.length} active files in ${assistants.length} assistants`);
 
             // Split the pathname by '/' and filter out empty strings
             const pathSegments = !repoUri?undefined:repoUri.pathname!.split('/').filter(segment => segment);
