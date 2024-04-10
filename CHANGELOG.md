@@ -10,6 +10,7 @@ Polyverse Boost ReST API (Backend)
 
 ### Enhancements
 - Enable support for simulation "whatif" of a grooming check on a project, without launching discovery
+- Enable Groomer support in Production
 
 ### Bug Fixes
 - Fix enforcement of Grooming error maximum retries - was incorrectly ignoring post-synchronization failures

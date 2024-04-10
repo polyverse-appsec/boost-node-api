@@ -6,7 +6,7 @@ custom:
   # DISCOVERY_GROOMER: "whatif"                       # set the discovery groomer to report grooming attempts, but skip discovery
   # DISCOVERY_GROOMER: "automatic"                    # perform automatic rediscovery on grooming cycle
   prod:
-    DISCOVERY_GROOMER: "whatif"
+    DISCOVERY_GROOMER: "automatic"
   
   dev:
     DISCOVERY_GROOMER: "automatic"
