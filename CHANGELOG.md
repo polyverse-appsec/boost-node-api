@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 1.2.5: April 10th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Enable support for simulation "whatif" of a grooming check on a project, without launching discovery
+
+### Bug Fixes
+- Fix enforcement of Grooming error maximum retries - was incorrectly ignoring post-synchronization failures
+
 ## Version 1.2.4: April 9th, 2024
 
 ### New Features
