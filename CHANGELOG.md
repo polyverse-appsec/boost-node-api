@@ -3,19 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 1.2.5: April 10th, 2024
-
-### New Features
-- N/A
-
-### Enhancements
-- Enable support for simulation "whatif" of a grooming check on a project, without launching discovery
-- Enable Groomer support in Production
-
-### Bug Fixes
-- Fix enforcement of Grooming error maximum retries - was incorrectly ignoring post-synchronization failures
-
-## Version 1.2.4: April 9th, 2024
+## Version 1.2.4: April 10th, 2024
 
 ### New Features
 - N/A
@@ -26,11 +14,14 @@ Polyverse Boost ReST API (Backend)
 - Log warning if we exceed maximum groomer retries due to failure to identify previous groomer launch status
 - Enable groomer error count to be reset to restart disabled grooming
 - Improved validation of org in account lookups
+- Enable support for simulation "whatif" of a grooming check on a project, without launching discovery
+- Enable Groomer support in Production
 
 ### Bug Fixes
 - Ensure DiscoveryTrigger (e.g. manual user request) is correctly stored on Project Discovery
 - Ensure Grooming Discoveries are recorded; enabling retry limits to be enforced
 - Fix grooming window check - was incorrectly blocking grooming outside the window
+- Fix enforcement of Grooming error maximum retries - was incorrectly ignoring post-synchronization failures
 
 ## Version 1.2.3: April 8th, 2024
 
