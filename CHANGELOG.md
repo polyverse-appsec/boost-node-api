@@ -9,6 +9,7 @@ Polyverse Boost ReST API (Backend)
 - N/A
 
 ### Enhancements
+- Add full software project file list to the Blueprint
 - Add support for PATCH /api/user/profile to update user profile data
     - Added lastUpdated timestamp and aiData field to user profile data
 

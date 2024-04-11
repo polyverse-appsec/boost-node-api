@@ -60,7 +60,10 @@ export class BlueprintGenerator extends Generator {
 `## ${this.blueprintId} for: {projectName}
 * The architecture of the software project is defined in the source code summary documents.
 * The project is a {projectSize} project with {fileCount} source files.
-* The majority of the source code is written in Programming Language with file extension {mostCommonFileExtension}`;
+* The majority of the source code is written in Programming Language with file extension {mostCommonFileExtension}
+
+Full Software Project File paths:
+{softwareProjectFilePathList}`;
 
     readonly sampleBlueprint =
 `## Architectural Blueprint Summary for: {projectName}
@@ -144,13 +147,17 @@ readonly defaultBlueprint =
                 project_size = "tiny";
             }
 
+            const fileBulletPrefix = '  * ';
+            const softwareProjectFilePathList = filteredFileList.map((file) => `${fileBulletPrefix}${file}`).join('\n${fileBulletPrefix}');
+
             const mostCommonFileExtension = this.getMostCommonFileExtension(filteredFileList);
             this.data =
                 this.staticBlueprintWithFilenames
                     .replace('{projectName}', this.projectData.name)
                     .replace('{mostCommonFileExtension}', mostCommonFileExtension)
                     .replace('{fileCount}', fileCount.toString())
-                    .replace('{projectSize}', 'small');
+                    .replace('{projectSize}', 'small')
+                    .replace('{softwareProjectFilePathList}', softwareProjectFilePathList);
 
             if (process.env.AI_BLUEPRINT) {
                 nextStage = BlueprintStage.FileScan;
