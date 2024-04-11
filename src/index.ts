@@ -4871,6 +4871,10 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
             return;
         }
 
+        // don't create the account if we are in verify only mode
+        // const verifyOnly = (req.query.verifyOnly !== undefined)?true:false;
+        const verifyOnly = false;
+
         const signedIdentity = getSignedIdentityFromHeader(req);
         if (!signedIdentity) {
             console.error(`${email} ${req.method} ${req.originalUrl} Missing signed identity - after User Validation passed`);
@@ -4884,7 +4888,7 @@ app.get(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
             return handleErrorResponse(email, new Error('Org is required'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
-        const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}`, "GET");
+        const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `proxy/ai/${org}/${Services.CustomerPortal}${verifyOnly?'?verifyOnly':''}`, "GET");
         // remap the billing url from the billing field name - portal_url
         accountStatus.billingUrl = (accountStatus as any).portal_url || '';
         delete (accountStatus as any).portal_url;
@@ -4936,14 +4940,18 @@ app.get(`${api_root_endpoint}/${org_org_account}`, async (req, res) => {
 
         const orgId = await getUser(org);
 
-        const userAccountStatus = await localSelfDispatch<UserAccountState>(email, getSignedIdentityFromHeader(req)!, req, `user/${org}/account`, 'GET');
+        // we don't yet have a clean way to lookup the org payment plan, so we'll return Org app data only
+        // const userAccountStatus = await localSelfDispatch<UserAccountState>(email, getSignedIdentityFromHeader(req)!, req, `user/${org}/account?verifyOnly`, 'GET');
 
         const orgAccountState : OrgAccountState = {
             enabled: orgId?.username !== undefined,
-            status: userAccountStatus.status,
-            plan: userAccountStatus.plan,
+            //status: userAccountStatus.status,
+            status: orgId?.username !== undefined?'trial':'free',
+            // plan: userAccountStatus.plan,
+            plan: 'free',
             // remap the billing url from the billing field name - portal_url
-            billingUrl: (userAccountStatus as any).portal_url,
+            // billingUrl: (userAccountStatus as any).portal_url,
+            billingUrl: '',
             // remap the github username from the user account status
             adminUsername: (orgId?.admin !== undefined)?orgId.admin:'',
             details: orgId?.details || `Org Account retrieved at ${usFormatter.format(new Date())}`,

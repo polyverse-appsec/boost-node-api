@@ -13,7 +13,7 @@ Polyverse Boost ReST API (Backend)
     - Added lastUpdated timestamp and aiData field to user profile data
 
 ### Bug Fixes
-- N/A
+- Fix issue with implicitly created user accounts when looking up Billing Organization app status
 
 ## Version 1.2.4: April 10th, 2024
 
