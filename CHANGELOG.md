@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 1.2.5: April 10th, 2024
+## Version 1.2.5: April 11th, 2024
 
 ### New Features
 - N/A
