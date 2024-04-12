@@ -145,9 +145,9 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
 
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Org is required`);
             } else if (!project) {
-                console.error(`Project is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Project is required`);
             }
 
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
@@ -180,7 +180,7 @@ const postOrPutUserProjectDataResource = async (req: Request, res: Response) => 
         }
 
         if (body === '') {
-            console.error(`${user_profile}: empty body`);
+            console.error(`${email} ${req.method} ${req.originalUrl} : empty body`);
             return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing body');
         }
 
@@ -209,7 +209,7 @@ async function loadProjectData(email: string, org: string, project: string): Pro
     let projectDataRaw = await getProjectData(email, SourceType.General, org, project, '', 'project');
     if (!projectDataRaw) {
         if (process.env.TRACE_LEVEL) {
-            console.warn(`loadProjectData: not found: ${org}/${project}`);
+            console.warn(`${email} ${org} ${project} loadProjectData: not found`);
         }
         return undefined;
     }
@@ -252,7 +252,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: R
 
         if (!req.query.uri) {
             if (!req.query.repo && !req.query.path) {
-                console.error(`URI is required`);
+                console.error(`${email} ${req.method} ${req.originalUrl} URI is required`);
                 return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('URI or Repo/Path is required');
             }
         }
@@ -270,7 +270,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: R
                 try {
                     uriString = decodeURIComponent(uriString);
                 } catch (error) {
-                    console.error(`Invalid encoded URI: ${uriString}`);
+                    console.error(`${email} ${req.method} ${req.originalUrl} Invalid encoded URI: ${uriString}`);
                     return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded URI');
                 }
             }
@@ -278,7 +278,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: R
             try {
                 uri = new URL(uriString as string);
             } catch (error) {
-                console.error(`Invalid URI: ${uriString}`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Invalid URI: ${uriString}`);
                 return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
             }
         } else if (repoString && pathString) {

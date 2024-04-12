@@ -120,7 +120,7 @@ export class ProjectSourceGenerator extends Generator {
                             .replace('{relativeFileName}', fileContent.path)
                             .replace('{fileSource}', fileContent.source)
                 }
-                console.log(`Total size to save: ${totalSizeSaved} bytes of ${totalSizeImported} bytes Imported`);
+                console.log(`${this.email} ${this.projectData.org} ${this.projectData.name} ${this.dataType} Imported ${totalSizeSaved} bytes of ${totalSizeImported} bytes`);
 
                 nextStage = Stages.Complete;
                 break;
