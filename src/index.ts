@@ -100,7 +100,7 @@ app.use(express.text({ limit: '5mb' })); // Make sure to use express.text middle
 /*
 // Error handling middleware
 app.use((err : any, req : Request, res : Response) => {
-    console.error(`Request ${req} failed with error ${err}`);
+    console.error(`${email} ${req.method} ${req.originalUrl} Request ${req} failed with error ${err}`);
     res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
 });
 */
@@ -286,22 +286,19 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: R
                 try {
                     repoString = decodeURIComponent(repoString);
                 } catch (error) {
-                    console.error(`Invalid encoded repo: ${repoString}`);
-                    return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded repo');
+                    return handleErrorResponse(email, error, req, res, `Invalid encoded repo: ${repoString}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
                 }
             }
             try {
                 repo = new URL(repoString as string);
             } catch (error) {
-                console.error(`Invalid repo: ${repoString}`);
-                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid repo');
+                return handleErrorResponse(email, error, req, res, `Invalid repo: ${repoString}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
             if (pathString.match(/%[0-9a-f]{2}/i)) {
                 try {
                     path = decodeURIComponent(pathString);
                 } catch (error) {
-                    console.error(`Invalid encoded path: ${pathString}`);
-                    return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded path');
+                    return handleErrorResponse(email, error, req, res, `Invalid encoded path: ${pathString}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
                 }
             } else {
                 path = pathString;
@@ -312,8 +309,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_file}`, async (req: R
 
         const signedIdentity = getSignedIdentityFromHeader(req);
         if (!signedIdentity) {
-            console.error(`Unauthorized: Signed Header missing`);
-            return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Unauthorized');
+            return handleErrorResponse(email, new Error("Unauthorized"), req, res, `Missing signed identity - after User Validation passed`, HTTP_FAILURE_UNAUTHORIZED);
         }
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
         const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
@@ -336,8 +332,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_folders}`, async (req
         }
 
         if (!req.query.uri) {
-            console.error(`URI is required`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('URI is required');
+            return handleErrorResponse(email, new Error("URI is required"), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         let uriString = req.query.uri as string;
@@ -347,8 +342,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_folders}`, async (req
             try {
                 uriString = decodeURIComponent(uriString);
             } catch (error) {
-                console.error(`Invalid encoded URI: ${uriString}`);
-                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded URI');
+                return handleErrorResponse(email, error, req, res, `Invalid encoded URI: ${uriString}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
         }
 
@@ -356,18 +350,14 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_folders}`, async (req
         try {
             uri = new URL(uriString as string);
         } catch (error) {
-            console.error(`Invalid URI: ${uriString}`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
+            return handleErrorResponse(email, error, req, res, `Invalid URI: ${uriString}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const { org } = req.params;
 
         const signedIdentity = getSignedIdentityFromHeader(req);
         if (!signedIdentity) {
-            console.error(`Missing signed identity - after User Validation passed`);
-            return res
-                .status(HTTP_FAILURE_UNAUTHORIZED)
-                .send('Unauthorized');
+            return handleErrorResponse(email, new Error("Unauthorized"), req, res, `Missing signed identity - after User Validation passed`, HTTP_FAILURE_UNAUTHORIZED);
         }
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
         const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
@@ -389,8 +379,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_files}`, async (req: 
         }
 
         if (!req.query.uri) {
-            console.error(`URI is required`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('URI is required');
+            return handleErrorResponse(email, new Error("URI is required"), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         let uriString = req.query.uri as string;
@@ -400,8 +389,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_files}`, async (req: 
             try {
                 uriString = decodeURIComponent(uriString);
             } catch (error) {
-                console.error(`Invalid encoded URI: ${uriString}`);
-                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded URI');
+                return handleErrorResponse(email, error, req, res, `Invalid encoded URI: ${uriString}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
         }
 
@@ -409,18 +397,14 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_files}`, async (req: 
         try {
             uri = new URL(uriString as string);
         } catch (error) {
-            console.error(`Invalid URI: ${uriString}`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
+            return handleErrorResponse(email, error, req, res, `Invalid URI: ${uriString}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const { org } = req.params;
 
         const signedIdentity = getSignedIdentityFromHeader(req);
         if (!signedIdentity) {
-            console.error(`Missing signed identity - after User Validation passed`);
-            return res
-                .status(HTTP_FAILURE_UNAUTHORIZED)
-                .send('Unauthorized');
+            return handleErrorResponse(email, new Error("Unauthorized"), req, res, `Missing signed identity - after User Validation passed`, HTTP_FAILURE_UNAUTHORIZED);
         }
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
         const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
@@ -445,8 +429,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
         }
 
         if (!req.query.uri) {
-            console.error(`URI is required`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('URI is required');
+            return handleErrorResponse(email, new Error("URI is required"), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         let uriString = req.query.uri as string;
@@ -456,8 +439,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
             try {
                 uriString = decodeURIComponent(uriString);
             } catch (error) {
-                console.error(`Invalid encoded URI: ${uriString}`);
-                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded URI');
+                return handleErrorResponse(email, error, req, res, `Invalid encoded URI: ${uriString}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
         }
 
@@ -465,18 +447,14 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
         try {
             uri = new URL(uriString as string);
         } catch (error) {
-            console.error(`Invalid URI: ${uriString}`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
+            return handleErrorResponse(email, error, req, res, `Invalid URI: ${uriString}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const { org } = req.params;
 
         const signedIdentity = getSignedIdentityFromHeader(req);
         if (!signedIdentity) {
-            console.error(`Missing signed identity - after User Validation passed`);
-            return res
-                .status(HTTP_FAILURE_UNAUTHORIZED)
-                .send('Unauthorized');
+            return handleErrorResponse(email, new Error("Unauthorized"), req, res, `Missing signed identity - after User Validation passed`, HTTP_FAILURE_UNAUTHORIZED);
         }
         const accountStatus = await localSelfDispatch<UserAccountState>(email, signedIdentity, req, `user/${org}/account`, 'GET');
         const privateAccessAllowed = checkPrivateAccessAllowed(accountStatus);
@@ -499,8 +477,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_permission}`,
         }
 
         if (!req.query.uri) {
-            console.error(`URI is required`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('URI is required');
+            return handleErrorResponse(email, new Error("URI is required"), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         let uriString = req.query.uri as string;
@@ -510,8 +487,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_permission}`,
             try {
                 uriString = decodeURIComponent(uriString);
             } catch (error) {
-                console.error(`Invalid encoded URI: ${uriString}`);
-                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded URI');
+                return handleErrorResponse(email, error, req, res, `Invalid encoded URI: ${uriString}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
         }
 
@@ -519,8 +495,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_permission}`,
         try {
             uri = new URL(uriString as string);
         } catch (error) {
-            console.error(`Invalid URI: ${uriString}`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
+            return handleErrorResponse(email, error, req, res, `Invalid URI: ${uriString}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         // check if this user has access to this private repo
@@ -547,8 +522,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_details}`,
         }
 
         if (!req.query.uri) {
-            console.error(`URI is required`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('URI is required');
+            return handleErrorResponse(email, new Error("URI is required"), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         let uriString = req.query.uri as string;
@@ -559,8 +533,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_details}`,
             try {
                 uriString = decodeURIComponent(uriString);
             } catch (error) {
-                console.error(`Invalid encoded URI: ${uriString}`);
-                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid encoded URI');
+                return handleErrorResponse(email, error, req, res, `Invalid encoded URI: ${uriString}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
         }
 
@@ -568,8 +541,7 @@ app.get(`${api_root_endpoint}/${user_org_connectors_github_details}`,
         try {
             resourceUri = new URL(uriString as string);
         } catch (error) {
-            console.error(`Invalid URI: ${uriString}`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid URI');
+            return handleErrorResponse(email, error, req, res, `Invalid URI: ${uriString}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         // get the account status
@@ -604,7 +576,6 @@ async function validateProjectRepositories(email: string, org: string, resources
         try {
             resourceUri = new URL(resource.uri);
         } catch (error) {
-            console.error(`Invalid URI: ${resource.uri}`);
             return handleErrorResponse(email, new Error(`Invalid URI: ${resource.uri}`), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
@@ -653,7 +624,6 @@ app.get(`${api_root_endpoint}/${user_project_org_projects}`, async (req: Request
         const { org } = req.params;
 
         if (!org) {
-            console.error(`Org is required`);
             return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
@@ -692,11 +662,9 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
 
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
-            } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error("Project is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         let body = req.body;
@@ -740,23 +708,19 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
             discoveryRequired = true;
         }
         if (body.title !== undefined && (body.title === '' || typeof body.title !== 'string')) {
-            console.error(`Invalid id: ${body.title}`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid id ${body.title} - must be a non-empty string`);
+            return handleErrorResponse(email, new Error(`Invalid id: ${body.title}`), req, res, `Invalid id ${body.title} - must be a non-empty string`, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
         if (body.description !== undefined && typeof body.description !== 'string') {
-            console.error(`Invalid description: ${body.description}`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid description ${body.description} - must be a string`);
+            return handleErrorResponse(email, new Error(`Invalid description: ${body.description}`), req, res, `Invalid description ${body.description} - must be a string`, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         if (body.guidelines !== undefined) {
             if (typeof body.guidelines === 'string') {
-                console.error(`Invalid guidelines: ${body.guidelines}`);
-                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid guidelines - cannot be a string');
+                return handleErrorResponse(email, new Error(`Invalid guidelines: ${body.guidelines}`), req, res, `Invalid guidelines - cannot be a string`, HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
             // must be an array of Record<string, string>
             else if (!Array.isArray(body.guidelines)) {
-                console.error(`Invalid guidelines: ${body.guidelines}`);
-                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid guidelines - must be an array');
+                return handleErrorResponse(email, new Error(`Invalid guidelines: ${body.guidelines}`), req, res, `Invalid guidelines - must be an array`, HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
             updates.guidelines = body.guidelines;
             discoveryRequired = true;
@@ -786,7 +750,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
             try {
                 await localSelfDispatch<void>(email, signedIdentity, req, `${projectDataPath}/discovery`, 'POST', discoveryWithResetState);
             } catch (error) {
-                console.error(`Unable to launch discovery for ${projectDataPath}`, error);
+                console.error(`${email} ${req.method} ${req.originalUrl} Unable to launch discovery for ${projectDataPath}`, error);
             }
         }
 
@@ -811,11 +775,9 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
 
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
-            } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error("Project is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         // if req body is not a string, then we need to convert back into a normal string
@@ -943,21 +905,21 @@ const postOrPutUserProject = async (req: Request, res: Response) => {
                 discoveryWithResetState, maximumDiscoveryTimeoutOnProjectCreationInSeconds * 1000);
 
             // if the new task stage completes in 1 seconds, we'll wait...
-            console.log(`TIMECHECK: ${org}:${project}:discovery completed in ${maximumDiscoveryTimeoutOnProjectCreationInSeconds} seconds`);
+            console.log(`${email} ${req.method} ${req.originalUrl} TIMECHECK: discovery completed in ${maximumDiscoveryTimeoutOnProjectCreationInSeconds} seconds`);
         } catch (error: any) {
             if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
-                console.log(`TIMECHECK: TIMEOUT: ${org}:${project}:discovery timed out after ${maximumDiscoveryTimeoutOnProjectCreationInSeconds} seconds`);
+                console.log(`${email} ${req.method} ${req.originalUrl} TIMECHECK: TIMEOUT: discovery timed out after ${maximumDiscoveryTimeoutOnProjectCreationInSeconds} seconds`);
             } else {
                 // This block is for handling errors, including HTTP_FAILURE_NOT_FOUND and HTTP_FAILURE_INTERNAL_SERVER_ERROR status codes
                 if (axios.isAxiosError(error) && error.response) {
                     const errorMessage = error.message;
                     const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
-                    console.log(`TIMECHECK: ${org}:${project}:discovery failed ${error.response.status}:${error.response.data} - due to error: ${errorMessage} - ${errorDetails}`);
+                    console.log(`${email} ${req.method} ${req.originalUrl} TIMECHECK: discovery failed ${error.response.status}:${error.response.data} - due to error: ${errorMessage} - ${errorDetails}`);
                 } else if (error.code !== undefined) {
-                    console.log(`TIMECHECK: ${org}:${project}:discovery failed ${error.code} - due to error: ${error}`);
+                    console.log(`${email} ${req.method} ${req.originalUrl} TIMECHECK: discovery failed ${error.code} - due to error: ${error}`);
                 } else {
                     // Handle other errors (e.g., network errors)
-                    console.log(`TIMECHECK: ${org}:${project}:discovery failed due to error: ${error}`);
+                    console.log(`${email} ${req.method} ${req.originalUrl} TIMECHECK: discovery failed due to error: ${error}`);
                 }
             }
         }
@@ -988,11 +950,9 @@ app.get(`${api_root_endpoint}/${user_project_org_project}`, async (req: Request,
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
-            } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error("Project is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const projectData = await loadProjectData(email, org, project);
@@ -1028,11 +988,9 @@ app.delete(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reque
 
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
-            } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error("Project is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const projectPath = req.originalUrl.substring(req.originalUrl.indexOf("user_project"));

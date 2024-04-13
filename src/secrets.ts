@@ -58,12 +58,12 @@ export async function getSecretsAsObject(
             return data;
         }
     } catch (err) {
-        console.error(`Error retrieving data from DynamoDB for ${secretName}:`, err);
+        console.error(`[SecretManager] Error retrieving data from DynamoDB for ${secretName}:`, err);
     }
 
     // Fallback to SecretManager
     try {
-        console.warn(`Falling back to SecretManager for ${secretEntry?secretEntry:secretName}`);
+        console.warn(`[SecretManager] Falling back to SecretManager for ${secretEntry?secretEntry:secretName}`);
         const command = new GetSecretValueCommand({ SecretId: secretName });
         const rawSecretData = await secretsClient.send(command);
         if (!rawSecretData.SecretString) {
@@ -78,7 +78,7 @@ export async function getSecretsAsObject(
 
         return secretData;
     } catch (err) {
-        console.error(`Error retrieving secrets from SecretManager for ${secretName}:`, err);
+        console.error(`[SecretManager] retrieving secrets from SecretManager for ${secretName}:`, err);
         throw err;
     }
 }
@@ -106,12 +106,12 @@ export async function getSingleSecret(secretName: string): Promise<string> {
             return result.Item.data;
         }
     } catch (err) {
-        console.error(`Error retrieving data from DynamoDB for ${secretName}:`, err);
+        console.error(`[SecretManager] retrieving data from DynamoDB for ${secretName}:`, err);
     }
 
     // Fallback to SecretManager
     try {
-        console.warn(`Falling back to SecretManager for ${secretName}`);
+        console.warn(`[SecretManager] Falling back to SecretManager for ${secretName}`);
         const command = new GetSecretValueCommand({ SecretId: secretName });
         const rawSecretData = await secretsClient.send(command);
         if (!rawSecretData.SecretString) {
@@ -126,7 +126,7 @@ export async function getSingleSecret(secretName: string): Promise<string> {
 
         return rawSecretData.SecretString;
     } catch (err) {
-        console.error(`Error retrieving secret from SecretManager for ${secretName}:`, err);
+        console.error(`[SecretManager] Error retrieving secret from SecretManager for ${secretName}:`, err);
         throw err;
     }
 }
