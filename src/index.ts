@@ -1294,20 +1294,15 @@ app.get(`${api_root_endpoint}/${search_projects_generators_groom}`, async (req: 
 
         const { org, project, user, resource, status } = req.query;
         if (org && typeof org !== 'string') {
-            console.error(`Org must be a string`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid org');
+            return handleErrorResponse(email, new Error("Org must be a string"), req, res, "Invalid org", HTTP_FAILURE_BAD_REQUEST_INPUT);
         } else if (project && typeof project !== 'string') {
-            console.error(`Project must be a string`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid project');
+            return handleErrorResponse(email, new Error("Project must be a string"), req, res, "Invalid project", HTTP_FAILURE_BAD_REQUEST_INPUT);
         } else if (user && typeof user !== 'string') {
-            console.error(`User must be a string`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid user');
+            return handleErrorResponse(email, new Error("User must be a string"), req, res, "Invalid user", HTTP_FAILURE_BAD_REQUEST_INPUT);
         } else if (resource && typeof resource !== 'string') {
-            console.error(`Resource must be a string`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource');
+            return handleErrorResponse(email, new Error("Resource must be a string"), req, res, "Invalid resource", HTTP_FAILURE_BAD_REQUEST_INPUT);
         } else if (status && typeof status !== 'string') {
-            console.error(`Status must be a string`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid status');
+            return handleErrorResponse(email, new Error("Status must be a string"), req, res, "Invalid status", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const generatorDataList : GeneratorState[] =
@@ -1553,11 +1548,9 @@ app.get(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (req
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
-            } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error("Project is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const rawDiscoverState = await getProjectData(email, SourceType.General, org, project, '', 'discovery');
@@ -1593,11 +1586,9 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
-            } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error("Project is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         await deleteProjectData(email, SourceType.General, org, project, '', 'discovery');
@@ -1768,14 +1759,11 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_status}`, async (req
         }
 
         const { org, project } = req.params;
-
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
-            } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error("Project is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         await deleteProjectData(email, SourceType.General, org, project, '', 'status');
@@ -1800,8 +1788,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_status}`, async (req:
 
         let body = req.body;
         if (!body) {
-            console.error(`No body found`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid body');
+            return handleErrorResponse(email, new Error("No body found"), req, res, "Invalid body", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
         if (typeof body !== 'string') {
             // Check if body is a Buffer
@@ -3114,14 +3101,11 @@ app.get(`${api_root_endpoint}/${user_project_org_project_goals}`, async (req: Re
         }
 
         const { org, project } = req.params;
-
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
-            } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error("Project is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const projectGoalsRaw = await getProjectData(email, SourceType.General, org, project, '', 'goals');
@@ -3185,11 +3169,9 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async 
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
-            } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error("Project is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const projectData = await loadProjectData(email, org, project);
@@ -3241,11 +3223,9 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
-            } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error("Project is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const projectData = await loadProjectData(email, org, project);
@@ -3306,11 +3286,9 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource}`, asy
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
-            } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error("Project is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const projectData = await loadProjectData(email, org, project);
@@ -3380,11 +3358,9 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_resource_genera
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
-            } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error("Project is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const projectData = await loadProjectData(email, org, project);
@@ -4419,12 +4395,9 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_references}`, asyn
         const { org, project } = req.params;
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
-            } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error("Project is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const projectData = await loadProjectData(email, org, project);
@@ -4468,14 +4441,11 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, a
         }
 
         const { org, project } = req.params;
-
         if (!org || !project) {
             if (!org) {
-                console.error(`Org is required`);
-            } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error("Org is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error("Project is required"), req, res, "Invalid resource path", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const dataReferencesRaw = await getProjectData(email, SourceType.General, org, project, '', 'data_references');
@@ -4522,19 +4492,17 @@ app.delete(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}
 
         if (!source || !owner || !project || !pathBase64 || !analysisType) {
             if (!source) {
-                console.error(`Source is required`);
+                return handleErrorResponse(email, new Error('Source is required'), req, res, 'Invalid resource path', HTTP_FAILURE_BAD_REQUEST_INPUT);
             } else if (!owner) {
-                console.error(`Owner is required`);
+                return handleErrorResponse(email, new Error('Owner is required'), req, res, 'Invalid resource path', HTTP_FAILURE_BAD_REQUEST_INPUT);
             } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error('Project is required'), req, res, 'Invalid resource path', HTTP_FAILURE_BAD_REQUEST_INPUT);
+            } else if (!pathBase64) {
+                return handleErrorResponse(email, new Error('Path is required'), req, res, 'Invalid resource path', HTTP_FAILURE_BAD_REQUEST_INPUT);
+            } else if (!analysisType) {
+                return handleErrorResponse(email, new Error('Analysis type is required'), req, res, 'Invalid resource path', HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            else if (!pathBase64) {
-                console.error(`Path is required`);
-            }
-            else if (!analysisType) {
-                console.error(`Analysis type is required`);
-            }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error('Invalid resource path'), req, res, 'Invalid resource path', HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         let decodedPath;
@@ -4568,19 +4536,17 @@ app.get(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, 
 
         if (!source || !owner || !project || !pathBase64 || !analysisType) {
             if (!source) {
-                console.error(`Source is required`);
+                return handleErrorResponse(email, new Error('Source is required'), req, res, 'Invalid resource path', HTTP_FAILURE_BAD_REQUEST_INPUT);
             } else if (!owner) {
-                console.error(`Owner is required`);
+                return handleErrorResponse(email, new Error('Owner is required'), req, res, 'Invalid resource path', HTTP_FAILURE_BAD_REQUEST_INPUT);
             } else if (!project) {
-                console.error(`Project is required`);
+                return handleErrorResponse(email, new Error('Project is required'), req, res, 'Invalid resource path', HTTP_FAILURE_BAD_REQUEST_INPUT);
+            } else if (!pathBase64) {
+                return handleErrorResponse(email, new Error('Path is required'), req, res, 'Invalid resource path', HTTP_FAILURE_BAD_REQUEST_INPUT);
+            } else if (!analysisType) {
+                return handleErrorResponse(email, new Error('Analysis type is required'), req, res, 'Invalid resource path', HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
-            else if (!pathBase64) {
-                console.error(`Path is required`);
-            }
-            else if (!analysisType) {
-                console.error(`Analysis type is required`);
-            }
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error('Invalid resource path'), req, res, 'Invalid resource path', HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         let decodedPath;
