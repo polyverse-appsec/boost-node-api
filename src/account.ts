@@ -39,7 +39,7 @@ export async function getAccountByUsername(username: string): Promise<UserInfo |
             }
         }
     } catch (error: any) {
-        console.error(`Error retrieving user info by username:`, error.stack || error);
+        console.error(`[Account] Error retrieving user info by username:`, error.stack || error);
     }
     return undefined;
 }
@@ -58,7 +58,7 @@ export async function getUser(accountName: string): Promise<UserInfo | undefined
             return item.Item as UserInfo;
         }
     } catch (error: any) {
-        console.error(`Error retrieving user info:`, error.stack || error);
+        console.error(`[Account] Error retrieving user info:`, error.stack || error);
     }
     return undefined;
 }
@@ -101,9 +101,9 @@ export async function saveUser(
         } as UpdateCommandInput;
 
         await dynamoDB.update(updateParams);
-        console.log(`Successfully updated user info for account: ${accountName}`);
+        console.log(`[Account] Successfully updated user info for account: ${accountName}`);
     } catch (error: any) {
-        console.error(`Error saving user info for account: ${accountName}`, error.stack || error);
+        console.error(`[Account] Error saving user info for account: ${accountName}`, error.stack || error);
     }
 }
 
@@ -123,7 +123,7 @@ export async function deleteUserByUsername(username: string, requestor: string, 
 
         // If there are matching items, delete each one by its account name
         if (!queryResult.Items || queryResult.Items.length === 0) {
-            console.log(`No user info found for username: ${username}`);
+            console.log(`[Account] No user info found for username: ${username}`);
             return;
         }
 
@@ -135,21 +135,21 @@ export async function deleteUserByUsername(username: string, requestor: string, 
                     installationId: undefined,
                     details: `Installation info deleted for username: ${username} by ${requestor} at ${usFormatter.format(new Date())}`,
                 });
-                console.log(`Successfully deleted installation info for account: ${accountName} for username: ${username}`);
+                console.log(`[Account] Successfully deleted installation info for account: ${accountName} for username: ${username}`);
             } else {
                 try {
                     await dynamoDB.delete({
                         TableName: githubAppUserKeyValueStore,
                         Key: { account: accountName },
                     });
-                    console.log(`Successfully deleted user info for account: ${accountName} for username: ${username}`);
+                    console.log(`[Account] Successfully deleted user info for account: ${accountName} for username: ${username}`);
                 } catch (error: any) {
-                    console.error(`Error in deleting user info for account: ${accountName} for username: ${username}`, error.stack || error);
+                    console.error(`[Account] Error in deleting user info for account: ${accountName} for username: ${username}`, error.stack || error);
                 }
             }
         }
     } catch (error: any) {
-        console.error(`Error in deleting user info for username: ${username}`, error.stack || error);
+        console.error(`[Account] Error in deleting user info for username: ${username}`, error.stack || error);
     }
 }
 
@@ -159,9 +159,9 @@ export async function deleteUser(accountName: string): Promise<void> {
             TableName: githubAppUserKeyValueStore,
             Key: { account: accountName },
         });
-        console.log(`Successfully deleted user info for account: ${accountName}`);
+        console.log(`[Account] Successfully deleted user info for account: ${accountName}`);
     } catch (error: any) {
-        console.error(`Error in deleting user info for accountName: ${accountName}`, error.stack || error);
+        console.error(`[Account] Error in deleting user info for accountName: ${accountName}`, error.stack || error);
     }
 }
 
@@ -211,7 +211,7 @@ export async function updateUser(accountName: string, updatedInfo: UserInfo): Pr
     }
 
     if (updateParts.length === 1 && removeParts.length === 0) {
-        console.warn(`No updates needed for user info for account: ${accountName}`);
+        console.warn(`[Account] No updates needed for user info for account: ${accountName}`);
         return;
     }
 
@@ -224,9 +224,9 @@ export async function updateUser(accountName: string, updatedInfo: UserInfo): Pr
         };
 
         await dynamoDB.update(updateParams);
-        console.log(`Successfully updated user info for account: ${accountName}`);
+        console.log(`[Account] Successfully updated user info for account: ${accountName}`);
     } catch (error) {
-        console.error(`Error in updating user info for account: ${accountName}`, error);
+        console.error(`[Account] Error in updating user info for account: ${accountName}`, error);
     }
 }
 
