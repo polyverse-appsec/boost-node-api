@@ -1072,14 +1072,11 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
 
         const { org, project, user } = req.query;
         if (org && typeof org !== 'string') {
-            console.error(`Org must be a string`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid org');
+            return handleErrorResponse(email, new Error("Org must be a string"), req, res, "Invalid org", HTTP_FAILURE_BAD_REQUEST_INPUT);
         } else if (project && typeof project !== 'string') {
-            console.error(`Project must be a string`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid project');
+            return handleErrorResponse(email, new Error("Project must be a string"), req, res, "Invalid project", HTTP_FAILURE_BAD_REQUEST_INPUT);
         } else if (user && typeof user !== 'string') {
-            console.error(`User must be a string`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid user');
+            return handleErrorResponse(email, new Error("User must be a string"), req, res, "Invalid user", HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const projectDataList : UserProjectData[] = await searchProjectData<UserProjectData>(user?user as string:searchWildcard, SourceType.General, org?org as string:searchWildcard, project?project as string:searchWildcard, "", 'project');
@@ -1102,7 +1099,7 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
                         const newGuidelineRecord : Record<string, string> = {
                             'default' : projectData.guidelines
                         };
-                        console.warn(`Repaired guidelines: from: ${projectData.guidelines} to: ${newGuidelineRecord}`);
+                        console.warn(`${email} ${req.method} ${req.originalUrl} Repaired guidelines: from: ${projectData.guidelines} to: ${newGuidelineRecord}`);
                         projectData.guidelines = [newGuidelineRecord];
                     } else {
                         projectData.guidelines = [];
@@ -1110,7 +1107,7 @@ app.get(`${api_root_endpoint}/${search_projects}`, async (req: Request, res: Res
                 }
                 // must be an array of Record<string, string>
                 else if (!Array.isArray(projectData.guidelines)) {
-                    console.error(`Invalid guidelines - resetting to empty: ${projectData.guidelines}`);
+                    console.error(`${email} ${req.method} ${req.originalUrl} Invalid guidelines - resetting to empty: ${projectData.guidelines}`);
                     projectData.guidelines = [];
                 }
             }
@@ -1915,7 +1912,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
         }
 
         if (process.env.TRACE_LEVEL) {
-            console.log(`Project Status: ${JSON.stringify(projectStatus)}`);
+            console.log(`${email} ${req.method} ${req.originalUrl} Project Status: ${JSON.stringify(projectStatus)}`);
         }
 
         return res
@@ -3215,8 +3212,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource}`, async 
         const { _, __, resource } = req.params;
         const resourceData = await getCachedProjectData<string>(email, SourceType.GitHub, ownerName, repoName, '', resource);
         if (!resourceData) {
-            console.error(`${user_project_org_project_data_resource}: not found: ${ownerName}/${repoName}/data/${resource}`);
-            return res.status(HTTP_FAILURE_NOT_FOUND).send('Resource not found');
+            return handleErrorResponse(email, new Error(`Resource not found: ${ownerName}/${repoName}/data/${resource}`), req, res, undefined, HTTP_FAILURE_NOT_FOUND);
         }
 
         return res
@@ -3279,15 +3275,14 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_status}`,
             const resourceData = await getCachedProjectData<string>(email, SourceType.GitHub, ownerName, repoName, '', resource, false);
             // resource doesn't exist, so just report missing/Not Found
             if (!resourceData) {
-                console.error(`${user_project_org_project_data_resource_status}: not found: ${ownerName}/${repoName}/data/${resource}`);
-                return res.status(HTTP_FAILURE_NOT_FOUND).send('Resource not found');
+                return handleErrorResponse(email, new Error(`${user_project_org_project_data_resource_status}: not found: ${ownerName}/${repoName}/data/${resource}`), req, res, undefined, HTTP_FAILURE_NOT_FOUND);
             }
             // resource exists, so we'll generate the status
             const resourceStatusWithTimestamp : ResourceStatusState = {
                 lastUpdated: Math.floor(Date.now() / 1000)
             };
             await storeProjectData(email, SourceType.GitHub, ownerName, repoName, `resource/${resource}`, "status", resourceStatusWithTimestamp);
-            console.warn(`Missing status for resource ${req.originalUrl}: generating with current timestamp`);
+            console.warn(`${email} ${req.method} ${req.originalUrl} Missing status for resource: generating with current timestamp`);
         }
 
         return res
@@ -3481,7 +3476,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_data_resource_generator
                     .contentType('application/json')
                     .send(generatorData);
             } catch (parseError: any) {
-                console.error(`Parsing error for generator data: ${parseError}`);
+                console.error(`${email} ${req.method} ${req.originalUrl} Parsing error for generator data: `, parseError.stack || parseError);
 
                 return res
                     .status(HTTP_SUCCESS)
@@ -3629,8 +3624,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project_data_resource_generat
                 .send(currentGeneratorState);
         } else {
             // patch is only supported for processing tasks
-            console.error(`Invalid PATCH status: ${currentGeneratorState.status}`);
-            return res.status(HTTP_CONFLICT).send(`Invalid PATCH status: ${currentGeneratorState.status}`)
+            return handleErrorResponse(email, new Error(`Invalid PATCH status: ${currentGeneratorState.status}`), req, res, undefined, HTTP_CONFLICT);
         }
     } catch (error) {
         return handleErrorResponse(email, error, req, res);
@@ -4498,8 +4492,8 @@ app.delete(`${api_root_endpoint}/${user_project_org_project_data_references}`, a
                 }
                 try {
                     await deleteAssistantFile(dataReferences[i].id);
-                } catch (error) {
-                    console.warn(`Error deleting file ${dataReferences[i].id}:`, error);
+                } catch (error: any) {
+                    console.warn(`${email} ${req.method} ${req.originalUrl} Error deleting file ${dataReferences[i].id}:`, error.stack || error);
                 }
             }
 
@@ -4547,8 +4541,7 @@ app.delete(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}
         try {
             decodedPath = Buffer.from(pathBase64, 'base64').toString('utf8');
         } catch (error) {
-            console.error(`Error decoding path: ${pathBase64}`, error);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid resource path`);
+            return handleErrorResponse(email, error, req, res, `Error decoding path: ${pathBase64}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         await deleteProjectData(email, convertToSourceType(source), owner, project, decodedPath, analysisType);
@@ -4594,14 +4587,12 @@ app.get(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`, 
         try {
             decodedPath = Buffer.from(pathBase64, 'base64').toString('utf8');
         } catch (error) {
-            console.error(`Error decoding path: ${pathBase64}`, error);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid resource path`);
+            return handleErrorResponse(email, error, req, res, `Error decoding path: ${pathBase64}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const data = await getProjectData(email, convertToSourceType(source), owner, project, decodedPath, analysisType);
         if (!data) {
-            console.error(`Resource not found: ${source}, ${owner}, ${project}, ${decodedPath}, ${analysisType}`);
-            return res.status(HTTP_FAILURE_NOT_FOUND).send('Resource not found');
+            return handleErrorResponse(email, new Error('Resource not found'), req, res, `Resource not found`, HTTP_FAILURE_NOT_FOUND);
         }
 
         return res.status(HTTP_SUCCESS).contentType('text/plain').send(data);
@@ -4630,13 +4621,12 @@ app.post(`${api_root_endpoint}/${files_source_owner_project_path_analysisType}`,
         try {
             decodedPath = Buffer.from(pathBase64, 'base64').toString('utf8');
         } catch (error) {
-            console.error(`Error decoding path: ${pathBase64}`, error);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, error, req, res, `Error decoding path: ${pathBase64}`, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const data = req.body; // Assuming data is sent directly in the body
         if (!data) {
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('No data provided');
+            return handleErrorResponse(email, new Error('No data provided'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         await storeProjectData(email, convertToSourceType(source), owner, project, decodedPath, analysisType, data, false);
@@ -4693,18 +4683,18 @@ const handleProxyRequest = async (req: Request, res: Response) => {
             const endTimeOfCall = Date.now();
 
             if (process.env.TRACE_LEVEL) {
-                console.log(`${externalEndpoint} Proxy response: ${response.status} ${response.statusText} (${(endTimeOfCall - startTimeOfCall) / 1000} seconds)`);
+                console.log(`[Proxy] ${externalEndpoint} Proxy response: ${response.status} ${response.statusText} (${(endTimeOfCall - startTimeOfCall) / 1000} seconds)`);
             }
 
             return res
                 .status(response.status)
                 .contentType('application/json')
                 .send(response.data);
-        } catch (error) {
+        } catch (error: any) {
             const endTimeOfCallError = Date.now();
             if (axios.isAxiosError(error)) {
                 if (error.code === 'ECONNABORTED' && error.message.includes('timeout')) {
-                    console.error(`Error: TIMEOUT: Request to ${externalEndpoint} timed out after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
+                    console.error(`${email} ${req.method} ${req.originalUrl} TIMEOUT: Request to ${externalEndpoint} timed out after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error.stack || error);
                 } else if (error.code === 'ECONNREFUSED') {
                     let errorMessage;
                     if (error.message.includes('localhost') || error.message.includes('::1')) {
@@ -4716,15 +4706,15 @@ const handleProxyRequest = async (req: Request, res: Response) => {
                 } else if (error.response) {
                     const errorMessage = error.message;
                     const errorDetails = error.response?.data ? JSON.stringify(error.response.data) : 'No additional error information';
-                    console.error(`Error: Server responded with status ${error.response.status} ${error.response.statusText} - ${errorMessage} - ${errorDetails} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
+                    console.error(`${email} ${req.method} ${req.originalUrl}Server responded with status ${error.response.status} ${error.response.statusText} - ${errorMessage} - ${errorDetails} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error.stack || error);
                     return res.status(error.response.status).send(error.response.statusText);
                 } else if (error.request) {
-                    console.error(`Error: No response received from ${externalEndpoint} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
+                    console.error(`${email} ${req.method} ${req.originalUrl} No response received from ${externalEndpoint} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error.stack || error);
                 } else {
-                    console.error(`Error: Request setup failed for ${externalEndpoint} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
+                    console.error(`${email} ${req.method} ${req.originalUrl} Request setup failed for ${externalEndpoint} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error.stack || error);
                 }
             } else {
-                console.error(`Unknown error during proxy request for ${externalEndpoint} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error);
+                console.error(`${email} ${req.method} ${req.originalUrl} Unknown error during proxy request for ${externalEndpoint} after ${(endTimeOfCallError - startTimeOfCall) / 1000} seconds`, error.stack || error);
             }
             return res.status(HTTP_FAILURE_INTERNAL_SERVER_ERROR).send('Internal Server Error');
         }
@@ -4938,7 +4928,9 @@ app.delete(`${api_root_endpoint}/${user_profile}`, async (req: Request, res: Res
         }
 
         await deleteProjectData(email, SourceType.General, 'user', '', '', 'profile');
-        console.log(`${user_profile}: deleted data`);
+        if (process.env.TRACE_LEVEL) {
+            console.log(`${email} ${req.method} ${req.originalUrl} deleted data`);
+        }
 
         return res
             .status(HTTP_SUCCESS)
@@ -5118,12 +5110,10 @@ app.get(`${api_root_endpoint}/${api_status}`, async (req: Request, res: Response
         // get the version from the environment variable APP_VERSION
         const version = process.env.APP_VERSION;
         if (!version) {
-            console.error(`${req.method} ${req.originalUrl} Missing APP_VERSION environment variable`);
             return handleErrorResponse(undefined, new Error('Missing APP_VERSION environment variable'), req, res);
         }
         const type = process.env.DEPLOYMENT_STAGE;
         if (!type) {
-            console.error(`${req.method} ${req.originalUrl} Missing DEPLOYMENT_STAGE environment variable`);
             return handleErrorResponse(undefined, new Error('Missing DEPLOYMENT_STAGE environment variable'), req, res);
         }
 
@@ -5244,10 +5234,7 @@ app.post(`${api_root_endpoint}/${api_timer_interval}`, async (req: Request, res:
         // run the project groomer
         const originalIdentity = getSignedIdentityFromHeader(req);
         if (!originalIdentity) {
-            console.error(`Missing signed identity - after User Validation passed`);
-            return res
-                .status(HTTP_FAILURE_UNAUTHORIZED)
-                .send('Unauthorized');
+            return handleErrorResponse(email, new Error('Missing signed identity - after User Validation passed'), req, res, undefined, HTTP_FAILURE_UNAUTHORIZED);
         }
 
         try {
@@ -5361,14 +5348,12 @@ app.get(`${api_root_endpoint}/${user_org_connectors_openai_assistant}`, async (r
         const org = req.params.org;
 
         if (!org) {
-            console.error(`${undefined} ${req.method} ${req.originalUrl} Org is required`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid resource path');
+            return handleErrorResponse(email, new Error('Org is required'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const assistantId = req.params.assistantId;
         if (!assistantId) {
-            console.error(`${undefined} ${req.method} ${req.originalUrl} AssistantId is required`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Missing assistantId in resource');
+            return handleErrorResponse(email, new Error('AssistantId is required'), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const aiAssistant : OpenAIAssistant | undefined = await getOpenAIAssistant(assistantId);
