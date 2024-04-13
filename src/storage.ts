@@ -38,7 +38,7 @@ export async function getProjectData(
     const dataPath = `${resourcePath}/${analysisType}`;
 
     if (process.env.TRACE_LEVEL) {
-        console.log(`getProjectData for: ${projectPath}${dataPath}`);
+        console.log(`[Storage] getProjectData for: ${projectPath}${dataPath}`);
     }
 
     const params : GetCommandInput = {
@@ -55,10 +55,10 @@ export async function getProjectData(
             const data = await dynamoDB.send(new GetCommand(params));
             return data.Item ? data.Item.data : undefined;
         } catch (storageReadError: any) {
-            console.error(`Attempt ${attempt + 1}: Error getting project data: ${storageReadError}`);
+            console.error(`[Storage] Attempt ${attempt + 1}: Error getting project data: `, storageReadError.stack || storageReadError);
             if (storageReadError.name === 'ProvisionedThroughputExceededException') {
                 const waitTime = (1000 * attempt) + (Math.random() * 2000); // Random backoff
-                console.error(`Throughput exceeded, retrying in ${waitTime / 1000} seconds`);
+                console.error(`[Storage] Throughput exceeded, retrying in ${waitTime / 1000} seconds`);
                 await sleep(waitTime);
             } else {
                 throw storageReadError;
@@ -134,7 +134,7 @@ export async function searchProjectData<T>(email: string | undefined, sourceType
                             const projectPathParts = thisItem.projectPath.S.split('/');
 
                             if (!thisItem?.data?.S) {
-                                console.error(`StorageSchemaError: No data field found for ${thisItem.projectPath.S}${thisItem.dataPath.S}`);
+                                console.error(`[Storage] SchemaError: No data field found for ${thisItem.projectPath.S}${thisItem.dataPath.S}`);
                                 return null;
                             }
 
@@ -146,7 +146,7 @@ export async function searchProjectData<T>(email: string | undefined, sourceType
                                 _projectName: projectPathParts[3],
                             } as T; // Cast to T, if T is the type you're working with
                         } catch (error: any) {
-                            console.error(`StorageSchemaError: Error retrieving ${thisItem?.projectPath?.S} ${thisItem?.dataPath?.S}:`, error.stack || error);
+                            console.error(`[Storage] SchemaError: Error retrieving ${thisItem?.projectPath?.S} ${thisItem?.dataPath?.S}:`, error.stack || error);
                             return null;
                         }
                     });
@@ -161,7 +161,7 @@ export async function searchProjectData<T>(email: string | undefined, sourceType
 
             attempt = 0; // Reset attempt after successful response
         } catch (error: any) {
-            console.error(`Attempt ${attempt + 1}: Error scanning project data:`, error);
+            console.error(`[Storage] Attempt ${attempt + 1}: Error scanning project data:`, error.stack || error);
             if (error.name === 'ProvisionedThroughputExceededException' && attempt < maxAttempts - 1) {
                 const waitTime = (1000 * attempt) + (Math.random() * 1000); // Exponential backoff with jitter
                 await new Promise(resolve => setTimeout(resolve, waitTime));
@@ -201,7 +201,7 @@ export async function storeProjectData(
     }
     const dataSize = Buffer.byteLength(serializedProjectData, 'utf8');
     if (process.env.TRACE_LEVEL) {
-        console.log(`storeProjectData for (${dataSize} bytes): ${projectPath}${dataPath}`);
+        console.log(`[Storage] storeProjectData for (${dataSize} bytes): ${projectPath}${dataPath}`);
     }
     
     const params : PutCommandInput = {
@@ -220,10 +220,10 @@ export async function storeProjectData(
             await dynamoDB.send(new PutCommand(params));
             return;
         } catch (storageWriteError: any) {
-            console.error(`Error writing to DynamoDB: ${storageWriteError}`);
+            console.error(`[Storage] Error writing to DynamoDB `, storageWriteError.stack || storageWriteError);
             if (storageWriteError.name === 'ProvisionedThroughputExceededException') {
                 const waitTime = (2 ** retries) + Math.random() * 7000;
-                console.error(`Throughput exceeded, retrying in ${waitTime / 1000} seconds`);
+                console.error(`[Storage] Throughput exceeded, retrying in ${waitTime / 1000} seconds`);
                 await sleep(waitTime);
                 retries++;
             } else {
@@ -276,7 +276,7 @@ export async function splitAndStoreData(
                 await deleteProjectData(email, sourceType, ownerName, repoName, resourcePath, analysisType);
             // we don't care if this fails, since the multi-part will be read by default anyway - but for debugging, its better to try and delete it, and log a warning if it fails
             } catch (error: any) {
-                console.warn(`StorageWarning:${email}:${ownerName}:${repoName}:${resourcePath}:${analysisType}:Unable to cleanup single-part data: `, error.stack || error);
+                console.warn(`[Storage] ${email}:${ownerName}:${repoName}:${resourcePath}:${analysisType}:Unable to cleanup single-part data: `, error.stack || error);
             }
         }
     }
@@ -341,8 +341,8 @@ export async function deleteProjectData(email: string | null, sourceType: Source
 
     try {
         await dynamoDB.send(new DeleteCommand(params));
-    } catch (error) {
-        console.error(`Error deleting project data: ${error}`);
+    } catch (error: any) {
+        console.error(`[Storage] Error deleting project data: `, error.stack || error);
         throw error;
     }
 }
