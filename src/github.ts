@@ -39,8 +39,7 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
 
     // Check if owner, repo, and pathParts are valid
     if (!owner || !repo || pathParts.length === 0 || !pathParts[0]) {
-        console.error(`Error: Invalid GitHub.com resource URI: ${fullFileUri || repoUri}`);
-        return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Invalid URI: owner:${owner}, repo:${repo}, path:${pathParts.join('/')}`);
+        return handleErrorResponse(email, new Error(`Invalid GitHub.com resource URI: ${fullFileUri || repoUri}`), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
     }
 
     // Convert pathParts array back to a string path if necessary
@@ -67,7 +66,7 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
         const octokit = new Octokit();
         const fileContent = await getFileContent(octokit);
 
-        console.log(`Success Retrieving File ${filePathWithoutBranch} from Public Repo ${repo}`)
+        console.log(`${email} Success Retrieving File ${filePathWithoutBranch} from Public Repo ${repo}`)
 
         return res
             .status(HTTP_SUCCESS)
@@ -83,9 +82,9 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
 
                 // if private access is allowed, then we'll try that - log a warning instead of an error and skip other error handling
                 if (allowPrivateAccess) {
-                    console.warn(`Warning: Rate limit exceeded for Public Access to ${repo} File ${filePathWithoutBranch}. Trying Private Access with ${email}`);
+                    console.warn(`${email} Warning: Rate limit exceeded for Public Access to ${repo} File ${filePathWithoutBranch}. Trying Private Access`);
                 } else {
-                    console.error(`Rate limit exceeded for Public Access to ${repo} File ${filePathWithoutBranch}. Reset time: ${new Date(resetTime * 1000)}`);
+                    console.error(`${email} Rate limit exceeded for Public Access to ${repo} File ${filePathWithoutBranch}. Reset time: ${new Date(resetTime * 1000)}`);
                     // return a rate limit response
                     return res.status(HTTP_FAILURE_BUSY).send('Rate Limit Exceeded');
                 }
@@ -94,22 +93,18 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
             }
         } else {
             // HTTP_FAILURE_NOT_FOUND Not Found
-            console.log(`Cannot access repo ${owner}/${repo} at path ${filePathWithoutBranch}`);
+            console.log(`${email} Cannot access repo ${owner}/${repo} at path ${filePathWithoutBranch}`);
         }
     }
 
     if (!allowPrivateAccess) {
-        console.error(`Error: Private Access Not Allowed for this Plan: ${filePath}`);
-        return res.status(HTTP_FAILURE_UNAUTHORIZED).send('Access to Private GitHub Resources is not allowed for this Account');
+        return handleErrorResponse(email, new Error(`Private Access Not Allowed for this Plan: ${filePath}`), req, res, undefined, HTTP_FAILURE_UNAUTHORIZED);
     }
 
     // check if this user has access to this private repo
     const accessGrantedToPrivateRepo : boolean = await verifyUserAccessToPrivateRepo(email, repoUri);
     if (!accessGrantedToPrivateRepo) {
-        console.error(`Error: User ${email} does not have access to ${owner}:${repo}`);
-        return res
-            .status(HTTP_FAILURE_NO_ACCESS)
-            .send(`User ${email} does not have access to ${owner}:${repo}`);
+        return handleErrorResponse(email, new Error(`User ${email} does not have access to ${owner}:${repo}`), req, res, undefined, HTTP_FAILURE_NO_ACCESS);
     }
 
     // Process for private access
@@ -119,14 +114,12 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
         if (!user) {
             user = await getUser(email);
             if (!user) {
-                console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                return handleErrorResponse(email, new Error(`GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
         }
         const installationId = user?.installationId;
         if (!installationId) {
-            console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+            return handleErrorResponse(email, new Error(`GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
         }
 
         const secretStore = 'boost/GitHubApp';
@@ -144,7 +137,7 @@ export async function getFileFromRepo(email: string, fullFileUri: URL, repoUri: 
 
         const fileContent = await getFileContent(octokit);
 
-        console.log(`Success Retrieving File ${filePathWithoutBranch} from Private Repo ${repo}`)
+        console.log(`[GitHub:getFileFromRepo] ${email} Success Retrieving File ${filePathWithoutBranch} from Private Repo ${repo}`)
 
         return res
             .status(HTTP_SUCCESS)
@@ -220,7 +213,7 @@ export async function getFolderPathsFromRepo(email: string, uri: URL, req: Reque
                 return handleErrorResponse(email, publicError, req, res, `Error retrieving folder paths for ${owner} to ${repo}`);
             }
         } else {
-            console.log(`Unable to publicly retrieve folder paths for user ${email} - ${owner} - ${repo}${allowPrivateAccess? ' - Trying Private Access' : ''}`);
+            console.log(`[GitHub:getFolderPathsFromRepo] ${email} ${owner} ${repo} Unable to publicly retrieve folder paths for user - ${allowPrivateAccess? ' - Trying Private Access' : ''}`);
         }
     }
 
@@ -602,15 +595,15 @@ export async function verifyUserAccessToPrivateRepo(email: string, uri: URL) : P
             const response = await octokit.rest.repos.get({owner, repo,});
             if (response.data.private === false) {
                 if (process.env.TRACE_LEVEL) {
-                    console.log(`${owner}/${repo} is Public`);
+                    console.log(`[GitHub:verifyUserAccessToPrivateRepo] ${email} ${uri} ${owner}/${repo} is Public`);
                 }
                 return true;
             }
             if (process.env.TRACE_LEVEL) {
-                console.warn(`${owner}/${repo} is Private - but user ${user.username} has access it`);
+                console.warn(`[GitHub:verifyUserAccessToPrivateRepo] ${email} ${uri} ${owner}/${repo} is Private - but user ${user.username} has access it`);
             }
         } catch (error: any) {
-            console.warn(`Error checking access Repo Access for ${user.username} to ${owner}:${repo}: `, error?.response?.data);
+            console.warn(`[GitHub:verifyUserAccessToPrivateRepo] ${email} ${uri} Error checking access Repo Access for ${user.username} to ${owner}:${repo}: `, error?.response?.data);
         }
     }
 
@@ -712,9 +705,9 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
         });
     
         if (process.env.TRACE_LEVEL) {
-            console.log(`Skipped ${skippedFiles.length} probable binary files: ${skippedFiles.join(', ')}`);
+            console.log(`[GitHub:getFullSourceFromRepo] ${email} ${url} Skipped ${skippedFiles.length} probable binary files: ${skippedFiles.join(', ')}`);
         } else {
-            console.log(`Skipped ${skippedFiles.length} probable binary files`);
+            console.log(`[GitHub:getFullSourceFromRepo] ${email} ${url} Skipped ${skippedFiles.length} probable binary files`);
         }
     
         return filteredEntries;  // Return the filtered entries
@@ -777,14 +770,12 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
             if (!user) {
                 user = await getUser(email);
                 if (!user) {
-                    console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                    return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                    return handleErrorResponse(email, new Error(`GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
                 }
             }
             const installationId = user?.installationId;
             if (!installationId) {
-                console.error(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
-                return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send(`Error: GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`);
+                return handleErrorResponse(email, new Error(`GitHub App Installation not found - ensure GitHub App is installed to access private source code: ${email} or ${owner}`), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
             }
 
             const secretStore = 'boost/GitHubApp';
@@ -816,7 +807,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
 
             let fileContents : FileContent[] = await downloadAndExtractRepo(archiveUrl, installationAccessToken.token);
 
-            console.log(`Success Retrieving ${fileContents.length} files (${(JSON.stringify(fileContents).length / (1024 * 1024)).toFixed(2)} MB) from Private Repo ${owner}:${repo}`)
+            console.log(`[GitHub:getFullSourceFromRepo] ${email}  ${owner}:${repo} Success Retrieving ${fileContents.length} files (${(JSON.stringify(fileContents).length / (1024 * 1024)).toFixed(2)} MB) from Private Repo`)
 
             return res
                 .status(HTTP_SUCCESS)
