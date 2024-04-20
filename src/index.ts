@@ -677,6 +677,8 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
         if (typeof body !== 'string') {
             if (Buffer.isBuffer(body) || Array.isArray(body)) {
                 body = Buffer.from(body).toString('utf8');
+            } else {
+                body = JSON.stringify(body);
             }
         }
 
@@ -688,7 +690,7 @@ app.patch(`${api_root_endpoint}/${user_project_org_project}`, async (req: Reques
             body = JSON.parse(body) as UserProjectData;
         } catch (error: any) {
             console.error(`${email} ${req.method} ${req.originalUrl} Error parsing JSON ${JSON.stringify(body)}: `, error.stack || error);
-            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON');
+            return res.status(HTTP_FAILURE_BAD_REQUEST_INPUT).send('Invalid JSON: ' + JSON.stringify(body));
         }
         if (Object.keys(body).length === 0) {
             console.error(`${email} ${req.method} ${req.originalUrl} empty body`);
@@ -4734,6 +4736,8 @@ app.patch(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
         if (typeof body !== 'string') {
             if (Buffer.isBuffer(body) || Array.isArray(body)) {
                 body = Buffer.from(body).toString('utf8');
+            } else {
+                body = JSON.stringify(body);
             }
         }
 
@@ -5620,6 +5624,22 @@ app.post("/test", (req: Request, res: Response, next) => {
             .status(HTTP_SUCCESS)
             .contentType("text/plain")
             .send(`Test HTTP POST Ack: ${data}`);
+    } catch (error) {
+        return handleErrorResponse(undefined, error, req, res);
+    }
+});
+
+app.patch("/test", (req: Request, res: Response, next) => {
+
+    try {
+        logRequest(req, "");
+
+        const data = req.body;
+
+        return res
+            .status(HTTP_SUCCESS)
+            .contentType("text/plain")
+            .send(`Test HTTP PATCH Ack: ${data}`);
     } catch (error) {
         return handleErrorResponse(undefined, error, req, res);
     }

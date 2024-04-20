@@ -12,7 +12,9 @@ Polyverse Boost ReST API (Backend)
 - Add last discovery time to the project status API
 
 ### Bug Fixes
-- N/A
+- Fix issue with PATCH not handling incoming serialized objects correctly
+    - /api/user_project/{org}/{project}
+    - /api/user/{org}/account
 
 ## Version 1.2.5: April 11th, 2024
 

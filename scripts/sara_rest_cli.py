@@ -53,6 +53,8 @@ def make_request(method, url, email, data, timeout=None):
         response = requests.post(url, headers=signed_header_value, data=data)
     elif method == "DELETE":
         response = requests.delete(url, headers=signed_header_value)
+    elif method == "PATCH":
+        response = requests.patch(url, headers=signed_header_value)
     else:
         raise ValueError("Unsupported method")
     return response
@@ -104,6 +106,7 @@ def main(email, org, project, method, stage, data, frontend=False, output=None):
     URL = stage_url[stage]
     endpoints = {
         "test": f"{URL}/test",
+        "test_patch": f"{URL}/test",
         "version": f"{URL}/api/status",
 
         "status": f"{URL}/api/user_project/{org}/{project}/status",
@@ -245,6 +248,8 @@ def main(email, org, project, method, stage, data, frontend=False, output=None):
     ) else "DELETE" if (
         "delete" in method or  # noqa: W504
         "purge" in method
+    ) else "PATCH" if (
+        "test_patch" in method
     ) else "GET"
     data = data if method not in ["rediscover"] else json.dumps({"resetResources": True})
     data = data if method not in ["groom_toggle"] else json.dumps({"status": "Disabled"}) if data is None else json.dumps({"status": "Idle"})
@@ -325,6 +330,7 @@ if __name__ == "__main__":
     parser.add_argument("--project", required=False, help="The project name")
     parser.add_argument("--method", default="status",
                         choices=['test',
+                                 'test_patch',
                                  'version',
 
                                  'status',
@@ -393,6 +399,7 @@ if __name__ == "__main__":
 
     if (args.project is None and args.method not in [
         "test",
+        "test_patch",
         "version",
         "account",
         "create_auth_token",
@@ -427,11 +434,15 @@ if __name__ == "__main__":
         parser.error("The --project argument is required for the method"
                      f" {args.method}.")
     if (args.email is None and args.method not in [
+            "test",
+            "test_patch",
             "projects_all"]):
         parser.error("The --email argument is required for the method"
                      f" {args.method}.")
     if args.org is None:
         if args.method not in [
+            "test",
+            "test_patch",
             "aifiles_purge",
             "aifiles_purge_at",
             "aifile_delete",
