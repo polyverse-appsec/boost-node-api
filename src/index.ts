@@ -2022,6 +2022,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
                 await localSelfDispatch(email, getSignedIdentityFromHeader(req)!, req, `${projectDataUri}/discovery`, 'GET');
 
                 projectStatus.lastDiscoveryTrigger = discoverState?.requestor;
+                projectStatus.lastDiscoveryLaunch = discoverState?.lastUpdated;
         } catch (error: any) {
             if (!((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
                 (error.code === HTTP_FAILURE_NOT_FOUND.toString()))) {

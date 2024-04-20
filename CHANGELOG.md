@@ -3,6 +3,17 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
+## Version 1.2.6: April 19th, 2024
+
+### New Features
+- N/A
+
+### Enhancements
+- Add last discovery time to the project status API
+
+### Bug Fixes
+- N/A
+
 ## Version 1.2.5: April 11th, 2024
 
 ### New Features
