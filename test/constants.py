@@ -49,3 +49,5 @@ PRIVATE_PROJECT_LARGE = "https://github.com/polyverse-appsec/polyx"
 
 PRIVATE_PROJECT_NAME_CUSTOM_NFTMINT = "test-sara-nftmint"
 PRIVATE_PROJECT_CUSTOM_NFTMINT = "https://github.com/polyverse-appsec/NFT-Mint"
+
+PRIVATE_PROJECT_MEDIUM = "https://github.com/polyverse-appsec/EXM_DP_BizRules"

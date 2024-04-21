@@ -13,7 +13,8 @@ from constants import (
     BASIC_EMAIL_WITH_GITHUB_APP,
     PRIVATE_PROJECT, PUBLIC_PROJECT,
     PRIVATE_PROJECT_CUSTOM_NFTMINT,
-    PRIVATE_PROJECT_LARGE
+    PRIVATE_PROJECT_LARGE,
+    PRIVATE_PROJECT_MEDIUM,
 )
 
 
@@ -51,6 +52,19 @@ class GitHubUnitTestSuite(unittest.TestCase):
         endTime = time.time()
         print(f"Time to retrieve full source from a private repo LARGE: {endTime - startTime}")
         self.assertEqual(response.status_code, 200)
+
+    def test_retrieve_fullsource_private_medium_repo_access(self):
+        print("Running test: Retrieve full source from a private repo MEDIUM")
+        signedHeaders = get_signed_headers(PREMIUM_EMAIL)
+        # add the Accept-Encoding gzip header to the request
+        signedHeaders['Accept-Encoding'] = 'gzip'
+        startTime = time.time()
+        response = requests.get(f"{TARGET_URL}/api/user/{ORG}/connectors/github/fullsource?uri={PRIVATE_PROJECT_MEDIUM}", headers=signedHeaders)
+        endTime = time.time()
+        print(f"Time to retrieve full source from a private repo LARGE: {endTime - startTime}")
+        self.assertEqual(response.status_code, 200)
+        responseObj = response.json() if 'body' not in response else json.loads(response['body'])
+        print(f"Length of response: {len(responseObj)}")
 
     def test_retrieve_fullsource_private_custom_repo_access(self):
         print("Running test: Retrieve full source from nftmint repo")
