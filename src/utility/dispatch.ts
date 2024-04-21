@@ -207,15 +207,13 @@ export async function localSelfDispatch<T>(
                     return {} as T;
                 }
             } else {
-                if (process.env.TRACE_LEVEL) {
-                    // This block is for handling errors, including HTTP_FAILURE_NOT_FOUND and HTTP_FAILURE_INTERNAL_SERVER_ERROR status codes
-                    if (axios.isAxiosError(error) && error.response) {
-                        const errorMessage = error.response.data.body || error.response.data;
-                        console.error(`[Dispatch] ${httpVerb} ${selfEndpoint} failed with status ${error.response.status}:${error.response.statusText} due to error: `, errorMessage);
-                    } else {
-                        // Handle other errors (e.g., network errors)
-                        console.error(`[Dispatch] ${httpVerb} ${selfEndpoint} failed : `, error.stack || error);
-                    }
+                // This block is for handling errors, including HTTP_FAILURE_NOT_FOUND and HTTP_FAILURE_INTERNAL_SERVER_ERROR status codes
+                if (axios.isAxiosError(error) && error.response) {
+                    const errorMessage = JSON.stringify(error.response.data.body || error.response.data);
+                    console.error(`[Dispatch] ${httpVerb} ${selfEndpoint} failed with status ${error.response.status}:${error.response.statusText} due to error: `, errorMessage);
+                } else {
+                    // Handle other errors (e.g., network errors)
+                    console.error(`[Dispatch] ${httpVerb} ${selfEndpoint} failed : `, error.stack || error);
                 }
                 if (axios.isAxiosError(error) && error.response) {
                     throw new axios.AxiosError(error.response.data, error.code, undefined, undefined, error.response);
