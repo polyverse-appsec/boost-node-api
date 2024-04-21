@@ -93,9 +93,11 @@ import { usFormatter } from './utility/log';
 
 export const app = express();
 
-// set limits to 1mb for text and 10mb for json
-app.use(express.json({ limit: '50mb' })); // Make sure to use express.json middleware to parse json request body
-app.use(express.text({ limit: '5mb' })); // Make sure to use express.text middleware to parse text request body
+export const mbLimitForJSON = 10
+export const mbLimitForText = 10
+
+app.use(express.json({ limit: `${mbLimitForJSON}mb` }));
+app.use(express.text({ limit: `${mbLimitForText}mb` }));
 
 /*
 // Error handling middleware
@@ -419,7 +421,7 @@ const user_org_connectors_github_fullsource = `user/:org/connectors/github/fulls
 app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
     express.text({ limit: '10mb' }),
     express.json({ limit: '10mb' }),
-    express.raw({ limit: '10mb' }),
+
     async (req: Request, res: Response) => {
 
     let email : string | undefined = undefined;
