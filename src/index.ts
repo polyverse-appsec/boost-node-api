@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 
 import { AuthType } from './auth';
-import { getUser, saveUser, updateUser, UserInfo } from './account';
+import { getUser, saveUser } from './account';
 
 import serverless from 'serverless-http';
 import {
@@ -419,6 +419,7 @@ const user_org_connectors_github_fullsource = `user/:org/connectors/github/fulls
 app.get(`${api_root_endpoint}/${user_org_connectors_github_fullsource}`,
     express.text({ limit: '10mb' }),
     express.json({ limit: '10mb' }),
+    express.raw({ limit: '10mb' }),
     async (req: Request, res: Response) => {
 
     let email : string | undefined = undefined;
@@ -1859,6 +1860,8 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
 
         const { org, project } = req.params;
 
+        const readOnly = req.query?.readOnly !== undefined;
+
         const rawProjectStatusData = await getProjectData(email, SourceType.General, org, project, '', 'status');
 
         let projectStatus : ProjectStatusState | undefined = undefined;
@@ -1876,7 +1879,7 @@ app.get(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: R
         const msToWaitBeforeSkippingProjectStatus = 100;
 
         // if there's no project status or unknown project status - let's try and build one
-        if (!projectStatus || projectStatus.status === ProjectStatus.Unknown) {
+        if (!readOnly && (!projectStatus || projectStatus.status === ProjectStatus.Unknown)) {
             // if we have a real project, and we have no status, then let's try and generate it now
             if (!projectStatus && process.env.TRACE_LEVEL) {
                 console.warn(`${email} ${req.method} ${req.originalUrl} Project Status not found; Project exists so let's refresh status`);
