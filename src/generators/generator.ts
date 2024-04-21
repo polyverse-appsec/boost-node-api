@@ -412,12 +412,14 @@ export class Generator {
             
             return fileContentList;
 
-        } catch (err) {
-            console.error(`${this.email} ${this.projectData.org}:${this.projectData.name}:${this.dataType} Unable to get project source: ${err}`);
+        } catch (err: any) {
             if (axios.isAxiosError(err) && err.response) {
-                const errorMsg = err.response.data?.body || err.response.data || err.message;
+                const errorMsg = err.response.data?.body?JSON.stringify(err.response.data?.body):
+                    err.response.data?JSON.stringify(err.response.data):err.message;
+                console.error(`${this.email} ${this.projectData.org}:${this.projectData.name}:${this.dataType} Unable to get project source ${errorMsg}: `, err.stack || err);
                 throw new axios.AxiosError(`Unable to get project source: ${errorMsg}`, err.code, undefined, err.request, err.response);
-            }
+            } 
+            console.error(`${this.email} ${this.projectData.org}:${this.projectData.name}:${this.dataType} Unable to get project source: `, err.stack || err);
             throw err;
         }
     }
