@@ -110,6 +110,7 @@ def main(email, org, project, method, stage, data, frontend=False, output=None):
         "version": f"{URL}/api/status",
 
         "status": f"{URL}/api/user_project/{org}/{project}/status",
+        "status_norefresh": f"{URL}/api/user_project/{org}/{project}/status?readOnly",
         "status_refresh": f"{URL}/api/user_project/{org}/{project}/status",
         "status_assistant": f"{URL}/api/user_project/{org}/{project}/status?verifyAssistant",
         "status_all": f"{URL}/api/search/projects/status",
@@ -334,6 +335,7 @@ if __name__ == "__main__":
                                  'version',
 
                                  'status',
+                                 'status_norefresh',
                                  'status_refresh',
                                  'status_assistant',
                                  'status_all',
