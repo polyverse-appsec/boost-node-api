@@ -14,9 +14,9 @@ import {
     HTTP_FAILURE_NO_ACCESS,
     HTTP_FAILURE_UNAUTHORIZED,
     HTTP_FAILURE_BUSY,
-    secondsBeforeRestRequestMaximumTimeout
+    secondsBeforeRestRequestMaximumTimeout,
 } from './utility/dispatch';
-
+import zlib from 'zlib';
 
 const BoostGitHubAppId = "472802";
 
@@ -628,7 +628,7 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
         return handleErrorResponse(email, new Error(`Invalid GitHub.com resource URI: ${uri.toString()}`), req, res, undefined, HTTP_FAILURE_BAD_REQUEST_INPUT);
     }
 
-    const downloadAndExtractRepo = async (url: string, authToken: string): Promise<FileContent[]> => {
+    const downloadAndExtractRepo = async (url: string, authToken: string): Promise<{fileContents: FileContent[], compressed: boolean}> => {
         const source = axios.CancelToken.source();
         const getConfig: AxiosRequestConfig = {
             responseType: 'arraybuffer',
@@ -668,12 +668,14 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
         const rootFolderName = zipEntries[0].entryName;
     
         // Skip the first entry and filter out directories and binary files
-        const filteredEntries = zipEntries.slice(1).filter(entry => {
+        let filteredEntries = zipEntries.slice(1).filter(entry => {
             if (entry.isDirectory) {
                 return false;  // Skip directories (folders)
             }
 
-            if (isBinary(entry.getData())) {
+            const rawData = entry.getData();
+
+            if (isBinary(rawData)) {
                 skippedFiles.push(entry.entryName.replace(rootFolderName, ''));
                 return false;  // Skip this entry
             }
@@ -682,16 +684,30 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
         }).map(entry => {
             const relativePath = entry.entryName.replace(rootFolderName, '');
             const source = entry.getData().toString('utf8');  // Convert to UTF-8 string
-            return { path: relativePath, source: source };
+            return { path: relativePath, source: source } as FileContent;
         });
-    
-        if (process.env.TRACE_LEVEL) {
-            console.log(`[GitHub:getFullSourceFromRepo] ${email} ${url.toString()} Skipped ${skippedFiles.length} probable binary files: ${skippedFiles.join(', ')}`);
+
+        let compressed = false;
+
+        // Serialize to JSON to check the size
+        const jsonContent = JSON.stringify(filteredEntries);
+        const sizeInBytes = Buffer.byteLength(jsonContent);
+        
+        // Define a size limit for compression (5 MB)
+        // We need to stay under the 6mb limit for AWS Gateway
+        const compressionSizeLimit = 5 * 1024 * 1024;  // 5 MB in bytes
+
+        if (sizeInBytes > compressionSizeLimit) {
+            // Apply compression when content is larger than 5 MB
+            console.warn(`[GitHub:getFullSourceFromRepo] ${email} ${url.toString()} Compressing ${(sizeInBytes / 1024 / 1024).toFixed(2)} MB of source code (${jsonContent.length} characters)`);
+            compressed = true;
         } else {
-            console.log(`[GitHub:getFullSourceFromRepo] ${email} ${url.toString()} Skipped ${skippedFiles.length} probable binary files`);
+            console.log(`[GitHub:getFullSourceFromRepo] ${email} ${url.toString()} Source code size: ${(sizeInBytes / 1024 / 1024).toFixed(2)} MB - ${jsonContent.length} characters`);
         }
     
-        return filteredEntries;  // Return the filtered entries
+        console.log(`[GitHub:getFullSourceFromRepo] ${email} ${url.toString()} Skipped ${skippedFiles.length} probable binary files: ${skippedFiles.join(', ')}`);
+    
+        return {fileContents: filteredEntries, compressed};  // Return the filtered entries
     };
     
     // Function to check if a buffer contains binary data
@@ -711,14 +727,18 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
         // Attempt to retrieve the repository source publicly
         const publicArchiveUrl = `https://api.github.com/repos/${owner}/${repo}/zipball/${defaultBranch}`;
 
-        const fileContents : FileContent[]= await downloadAndExtractRepo(publicArchiveUrl, '');
+        const {fileContents, compressed} = await downloadAndExtractRepo(publicArchiveUrl, '');
 
-        console.log(`[GitHub:getFullSourceFromRepo] ${email} ${uri.toString()} Success Retrieving ${fileContents.length} files (${(JSON.stringify(fileContents).length / (1024 * 1024)).toFixed(2)} MB) from Public Repo ${owner}:${repo}`)
+        console.log(`[GitHub:getFullSourceFromRepo] ${email} ${uri.toString()} Success Retrieving ${fileContents.length} files (${(Buffer.byteLength(JSON.stringify(fileContents)) / (1024 * 1024)).toFixed(2)} MB) from Public Repo ${owner}:${repo}`)
 
-        return res
+        if (compressed) {
+            res.setHeader('Content-Encoding', 'gzip');
+        }
+        res
             .status(HTTP_SUCCESS)
             .contentType('application/json')
             .send(fileContents);
+        return res;
 
     } catch (publicError: any) {
         if (publicError.status !== HTTP_FAILURE_NOT_FOUND && publicError?.response?.data?.message !== 'Not Found') {
@@ -783,9 +803,34 @@ export async function getFullSourceFromRepo(email: string, uri: URL, req: Reques
                 return handleErrorResponse(email, getInstallationAccessTokenError, req, res);
             }
 
-            let fileContents : FileContent[] = await downloadAndExtractRepo(archiveUrl, installationAccessToken.token);
+            let {fileContents, compressed} = await downloadAndExtractRepo(archiveUrl, installationAccessToken.token);
 
-            console.log(`[GitHub:getFullSourceFromRepo] ${email}  ${owner}:${repo} Success Retrieving ${fileContents.length} files (${(JSON.stringify(fileContents).length / (1024 * 1024)).toFixed(2)} MB) from Private Repo`)
+            if (compressed) {
+                const jsonData = JSON.stringify(fileContents);
+                const buffer = Buffer.from(jsonData, 'utf-8');
+
+                try {
+                    const compressedData = await zlib.gzipSync(buffer);
+
+                    // if the compressed buffer is more than 5mb then we can't process the project source
+                    //     so return an error
+                    if (compressedData.length > 5 * 1024 * 1024) {
+                        return handleErrorResponse(email, new Error(`Compressed data is too large: ${compressedData.length} bytes`), req, res, 'Error Compressing Project Source from size of ' + jsonData.length + ' characters to ' + compressedData.length + ' bytes');
+                    }
+
+                    console.log(`[GitHub:getFullSourceFromRepo] ${email} ${owner}:${repo} Success Retrieving ${fileContents.length} files (${(Buffer.byteLength(JSON.stringify(fileContents)) / (1024 * 1024)).toFixed(2)} MB - Compressed to ${(compressedData.length / 1024 / 1024).toFixed(2)} MB) from Private Repo`)
+
+                    return res
+                        .status(HTTP_SUCCESS)
+                        .setHeader('Content-Encoding', 'gzip')
+                        .contentType('application/json')
+                        .send(compressedData);
+                } catch (err) {
+                    return handleErrorResponse(email, err, req, res, 'Error Compressing Project Source from size of ' + jsonData.length + ' characters');
+                }
+            }
+
+            console.log(`[GitHub:getFullSourceFromRepo] ${email} ${owner}:${repo} Success Retrieving ${fileContents.length} files (${(Buffer.byteLength(JSON.stringify(fileContents)) / (1024 * 1024)).toFixed(2)} MB) from Private Repo`)
 
             return res
                 .status(HTTP_SUCCESS)

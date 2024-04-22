@@ -9,6 +9,8 @@ Polyverse Boost ReST API (Backend)
 - N/A
 
 ### Enhancements
+- Enable support for 7-15 MB of Customer Project Source - was blocking Customer Examinatics
+    - source is now compressed in download and delivery of GitHub source
 - Add ability to GET project status without forcing a refresh
 - Slight reduction in Package size (0.1 MB) by removing unused source files
 - Turn off Server Streaming - its causing compression issues with the chunking HTTP frames
