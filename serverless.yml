@@ -60,6 +60,13 @@ provider:
   httpApi:
     cors: true
 
+package:
+  exclude:
+    - scripts/**
+    - src/**
+    - test/**
+    - tsconfig.json
+
 functions:
   api:
     handler: build/index.handler
