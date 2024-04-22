@@ -90,6 +90,9 @@ import {
 } from './utility/dispatch';
 
 import { usFormatter } from './utility/log';
+import { getCurrentVersion } from './utility/version';
+import { DiscoverState } from './types/DiscoverState';
+import { ProjectGoals } from './types/ProjectGoals';
 
 export const app = express();
 
@@ -1529,17 +1532,6 @@ app.post(`${api_root_endpoint}/${groom_projects}`, async (req: Request, res: Res
     }
 });
 
-// create an object with the project goals
-interface ProjectGoals {
-    goals?: string;
-}
-
-interface DiscoverState {
-    resetResources?: boolean;
-    requestor?: DiscoveryTrigger;
-    lastUpdated?: number;
-}
-
 const user_project_org_project_discovery = `user_project/:org/:project/discovery`;
 app.get(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (req: Request, res: Response) => {
 
@@ -1663,7 +1655,8 @@ app.post(`${api_root_endpoint}/${user_project_org_project_discovery}`, async (re
         }
 
         const discoverState : DiscoverState = {
-            lastUpdated: Date.now() / 1000
+            lastUpdated: Date.now() / 1000,
+            version: getCurrentVersion(),
         };
         if (requestor !== undefined) {
             discoverState.requestor = requestor;
@@ -2030,6 +2023,7 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
 
                 projectStatus.lastDiscoveryTrigger = discoverState?.requestor;
                 projectStatus.lastDiscoveryLaunch = discoverState?.lastUpdated;
+                projectStatus.version = discoverState?.version;
         } catch (error: any) {
             if (!((error.response && error.response.status === HTTP_FAILURE_NOT_FOUND) ||
                 (error.code === HTTP_FAILURE_NOT_FOUND.toString()))) {

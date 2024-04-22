@@ -17,5 +17,6 @@ export interface ProjectStatusState {
     assistant?: ProjectAssistantInfo;
     lastDiscoveryTrigger?: DiscoveryTrigger;
     lastDiscoveryLaunch?: number;
+    version?: string;
     sourceDataStatus?: ResourceSourceState[];
 }

@@ -3,7 +3,7 @@ Polyverse Boost ReST API (Backend)
 
 # Release Notes
 
-## Version 1.2.7: April 21st, 2024
+## Version 1.2.7: April 22nd, 2024
 
 ### New Features
 - N/A
@@ -14,6 +14,9 @@ Polyverse Boost ReST API (Backend)
 - Add ability to GET project status without forcing a refresh
 - Slight reduction in Package size (0.1 MB) by removing unused source files
 - Turn off Server Streaming - its causing compression issues with the chunking HTTP frames
+- Save the version of the Backend API in the Discovery and Project status
+    - /api/user_project/{org}/{project}/discovery (GET)
+    - /api/user_project/{org}/{project}/status (GET)
 
 ### Bug Fixes
 - Fix missing error message in Axios network errors for local dispatch
