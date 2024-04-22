@@ -22,7 +22,7 @@ except ImportError:
 # Constants for URL options
 stage_url = {
     "local": "http://localhost:3000",
-    "dev": "https://3c27qu2ddje63mw2dmuqp6oa7u0ergex.lambda-url.us-west-2.on.aws",
+    "dev": "https://e22ksqihwjm3chxizytehhluee0jckbd.lambda-url.us-west-2.on.aws",
     "test": "https://sztg3725fqtcptfts5vrvcozoe0nxcew.lambda-url.us-west-2.on.aws",
     "prod": "https://33pdosoitl22c42c7sf46tabi40qwlae.lambda-url.us-west-2.on.aws"
 }
