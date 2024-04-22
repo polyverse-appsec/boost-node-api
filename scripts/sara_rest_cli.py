@@ -178,6 +178,9 @@ def main(email, org, project, method, stage, data, frontend=False, output=None):
     test_url = endpoints["test"]
     retry = 0
     while True:
+        if method == "test":
+            break
+
         def retryConnect():
             nonlocal retry
             if retry == 0:
