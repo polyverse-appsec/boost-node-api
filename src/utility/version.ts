@@ -11,5 +11,17 @@ export const isCurrentMinorVersion = (version: string) => {
     const versionParts = version.split('.');
 
     // compare the major and minor version numbers, ignoring the patch version
-    return currentVersionParts[0] === versionParts[0] && currentVersionParts[1] === versionParts[1];
+    const majorCurrentVersion: number = parseInt(currentVersionParts[0]);
+    const minorCurrentVersion: number = parseInt(currentVersionParts[1]);
+    const majorVersion: number = parseInt(versionParts[0]);
+    const minorVersion: number = parseInt(versionParts[1]);
+
+    // check that the input version is the same or newer major and minor version
+    if (majorCurrentVersion > majorVersion) {
+        return false;
+    } else if (majorCurrentVersion === majorVersion && minorCurrentVersion > minorVersion) {
+        return false;
+    } else {
+        return true;
+    }
 }

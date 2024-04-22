@@ -17,6 +17,7 @@ Polyverse Boost ReST API (Backend)
 - Save the version of the Backend API in the Discovery and Project status
     - /api/user_project/{org}/{project}/discovery (GET)
     - /api/user_project/{org}/{project}/status (GET)
+- Project will be marked out of date and automatically rediscovered if Project was discovered with an API version older than current minor revision
 
 ### Bug Fixes
 - Fix missing error message in Axios network errors for local dispatch

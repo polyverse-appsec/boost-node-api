@@ -90,7 +90,7 @@ import {
 } from './utility/dispatch';
 
 import { usFormatter } from './utility/log';
-import { getCurrentVersion } from './utility/version';
+import { getCurrentVersion, isCurrentMinorVersion } from './utility/version';
 import { DiscoverState } from './types/DiscoverState';
 import { ProjectGoals } from './types/ProjectGoals';
 
@@ -2072,6 +2072,24 @@ app.post(`${api_root_endpoint}/${user_project_org_project_status}`, async (req: 
             projectStatus.status = ProjectStatus.Synchronized;
             projectStatus.details = `No GitHub resources found - nothing to synchronize`;
             console.log(`${email} ${req.method} ${req.originalUrl}: NO-OP : ${JSON.stringify(projectStatus)}`);
+
+            await saveProjectStatusUpdate();
+
+            return res
+                .status(HTTP_SUCCESS)
+                .contentType('application/json')
+                .send(projectStatus);
+        }
+
+
+        // if the first resource was generated BEFORE the current project timestamp, then at least one of our resources is out of date
+        //      so we'll mark the whole project as out of date
+        if (projectStatus.version !== undefined &&
+            !isCurrentMinorVersion(projectStatus.version)) {
+            projectStatus.status = ProjectStatus.OutOfDateProjectData;
+            projectStatus.details = `Project Discovery version is out of date: ${projectStatus.version} - current version: ${getCurrentVersion()}`;
+
+            console.error(`${email} ${req.method} ${req.originalUrl}: ISSUE ${JSON.stringify(projectStatus)}`);
 
             await saveProjectStatusUpdate();
 
