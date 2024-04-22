@@ -82,7 +82,7 @@ const apiCanaryBlueprint = async function () {
     console.log("Executing HTTP Step with diagnostics...");
 
     let accountParams = {
-        'hostname': '3c27qu2ddje63mw2dmuqp6oa7u0ergex.lambda-url.us-west-2.on.aws',
+        'hostname': 'e22ksqihwjm3chxizytehhluee0jckbd.lambda-url.us-west-2.on.aws',
         'method': 'GET',
         'path': '/api/user/polyverse-appsec/account', // The path is the part of the URL after the hostname and before the querystring
         'port': 443,

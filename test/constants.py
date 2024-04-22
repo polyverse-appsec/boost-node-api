@@ -1,7 +1,7 @@
 LOCAL_URL = "http://localhost:3000"  # Local Test Server
 CLOUD_URL_LEGACY = "https://pt5sl5vwfjn6lsr2k6szuvfhnq0vaxhl.lambda-url.us-west-2.on.aws"  # AWS Legacy - no longer maintained/compatible
 
-CLOUD_URL_DEV = "https://3c27qu2ddje63mw2dmuqp6oa7u0ergex.lambda-url.us-west-2.on.aws"
+CLOUD_URL_DEV = "https://e22ksqihwjm3chxizytehhluee0jckbd.lambda-url.us-west-2.on.aws"
 CLOUD_URL_TEST = "https://sztg3725fqtcptfts5vrvcozoe0nxcew.lambda-url.us-west-2.on.aws"
 CLOUD_URL_PROD = "https://33pdosoitl22c42c7sf46tabi40qwlae.lambda-url.us-west-2.on.aws"
 
