@@ -11,6 +11,7 @@ Polyverse Boost ReST API (Backend)
 ### Enhancements
 - Add ability to GET project status without forcing a refresh
 - Slight reduction in Package size (0.1 MB) by removing unused source files
+- Turn off Server Streaming - its causing compression issues with the chunking HTTP frames
 
 ### Bug Fixes
 - Fix missing error message in Axios network errors for local dispatch
