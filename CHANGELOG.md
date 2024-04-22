@@ -18,6 +18,7 @@ Polyverse Boost ReST API (Backend)
     - /api/user_project/{org}/{project}/discovery (GET)
     - /api/user_project/{org}/{project}/status (GET)
 - Project will be marked out of date and automatically rediscovered if Project was discovered with an API version older than current minor revision
+- Ensure Project Status is forcibly refreshed at least once a day to ensure it is up to date
 
 ### Bug Fixes
 - Fix missing error message in Axios network errors for local dispatch

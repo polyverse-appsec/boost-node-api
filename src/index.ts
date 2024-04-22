@@ -2791,6 +2791,9 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
             return handleErrorResponse(email, error, req, res, `Unable to query Project Status`);
         }
 
+        const periodicForcedProjectStatusRefreshInDays = 5;
+        const nextForcedProjectStatusRefresh = projectStatus.lastUpdated + (periodicForcedProjectStatusRefreshInDays * 24 * 60 * 60);
+
         if (projectStatus.status === ProjectStatus.Unknown) {
             // if we're in an unknown project state, then we'll just skip this run - try looking up status again next time
             const groomingState : ProjectGroomState = {
@@ -2805,6 +2808,36 @@ app.post(`${api_root_endpoint}/${user_project_org_project_groom}`, async (req: R
                 .status(HTTP_SUCCESS_ACCEPTED)
                 .contentType('application/json')
                 .send(groomingState);
+        } else if (nextForcedProjectStatusRefresh < callStart) {
+            // to avoid a stampede on status refresh which may cause all the projects to be groomed
+            //      we'll only force a refresh once out of 24 random calls on this project
+            //      by picking a random number 1-24 and only grooming if it's 1
+            // Groomer runs about once every 15 minutes or hour... so at best we have 4 chances a day
+            //      and at worst one chance a day
+            const randomRefresh = Math.floor(Math.random() * 24) + 1;
+            if (randomRefresh === 1) {
+                try {
+                    await localSelfDispatch<ProjectStatusState>(email, "", req, `${projectPath}/status`, 'POST');
+                } catch (error: any) {
+                    return handleErrorResponse(email, error, req, res, `Unable to force Project Status refresh`);
+                }
+                const timeOfNextForcedRefresh = usFormatter.format(new Date(nextForcedProjectStatusRefresh * 1000));
+                const groomingState : ProjectGroomState = {
+                    status: GroomingStatus.Skipping,
+                    statusDetails: 'Grooming check skipped while Project Status refreshing - forced refresh due at ' + timeOfNextForcedRefresh,
+                    consecutiveErrors: 0,
+                    lastDiscoveryStart: 0,
+                    lastUpdated: Math.floor(Date.now() / 1000)
+                };
+                // if we're outside the forced project status refresh window, then we'll force a refresh
+                console.warn(`${email} ${req.method} ${req.originalUrl} Project Status is out of date - skipping: ${JSON.stringify(groomingState)}`);
+
+                return res
+                    .status(HTTP_SUCCESS_ACCEPTED)
+                    .contentType('application/json')
+                    .send(groomingState);
+            }
+            console.info(`${email} ${req.method} ${req.originalUrl} Project Status is out of date - randomizer skipped forced refresh at ${usFormatter.format(new Date(nextForcedProjectStatusRefresh * 1000))}`);
         }
 
         // we'll check the status of the project data
