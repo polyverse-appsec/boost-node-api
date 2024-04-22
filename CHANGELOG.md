@@ -12,7 +12,7 @@ Polyverse Boost ReST API (Backend)
 - Add ability to GET project status without forcing a refresh
 
 ### Bug Fixes
-- N/A
+- Fix missing error message in Axios network errors for local dispatch
 
 ## Version 1.2.6: April 19th, 2024
 

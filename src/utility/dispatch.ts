@@ -84,7 +84,8 @@ export const handleErrorResponse = (email: string | undefined, error: any, req: 
 
 export async function localSelfDispatch<T>(
     email: string, originalIdentityHeader: string, initialRequestOrSelfEndpoint: Request | string,
-    path: string, httpVerb: string, bodyContent?: any, timeoutMs: number = 0, throwOnTimeout: boolean = true): Promise<T> {
+    path: string, httpVerb: string, bodyContent?: any, timeoutMs: number = 0, throwOnTimeout: boolean = true,
+    extraHeaders = {}): Promise<T> {
 
     if (!originalIdentityHeader) {
         const identityHeader = await signedAuthHeader(email);
@@ -108,6 +109,7 @@ export async function localSelfDispatch<T>(
             method: httpVerb,
             headers: {
                 'X-Signed-Identity': originalIdentityHeader,
+                ...extraHeaders
             }
         };
 
@@ -160,7 +162,8 @@ export async function localSelfDispatch<T>(
     } else {
         const headers = {
             'X-Signed-Identity': originalIdentityHeader,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...extraHeaders
         };
     
         const axiosConfig = {
@@ -216,7 +219,7 @@ export async function localSelfDispatch<T>(
                     console.error(`[Dispatch] ${httpVerb} ${selfEndpoint} failed : `, error.stack || error);
                 }
                 if (axios.isAxiosError(error) && error.response) {
-                    throw new axios.AxiosError(error.response.data, error.code, undefined, undefined, error.response);
+                    throw new axios.AxiosError(error.response.data.body || error.response.data, error.code, undefined, undefined, error.response);
                 }
             }
             throw error;
