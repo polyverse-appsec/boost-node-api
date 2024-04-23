@@ -6,7 +6,7 @@ Polyverse Boost ReST API (Backend)
 ## Version 1.2.7: April 22nd, 2024
 
 ### New Features
-- N/A
+- Enable automatic Welcome to Sara email on first User "Sara" login (e.g. PATCH /api/user/{org}/account)
 
 ### Enhancements
 - Enable support for 7-15 MB of Customer Project Source - was blocking Customer Examinatics

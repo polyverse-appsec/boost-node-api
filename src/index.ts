@@ -93,6 +93,7 @@ import { usFormatter } from './utility/log';
 import { getCurrentVersion, isCurrentMinorVersion } from './utility/version';
 import { DiscoverState } from './types/DiscoverState';
 import { ProjectGoals } from './types/ProjectGoals';
+import { sendWelcomeEmail } from './serviceEmails';
 
 export const app = express();
 
@@ -4815,6 +4816,13 @@ app.patch(`${api_root_endpoint}/${user_org_account}`, async (req, res) => {
                 await saveUser(email, requestedUserAccountState.githubUsername,
                     // StephenAFisher Added Username via Sara/REST-API at March 25, 2024 at 02:21:49 AM
                     `${requestedUserAccountState.githubUsername} [SaraLogin] Added Username via Sara/REST-API at ${usFormatter.format(new Date())}`);
+
+                try {
+                    // send the invitation email when user first signs up via Sara frontend
+                    await sendWelcomeEmail(email); 
+                } catch (error: any) {
+                    console.error(`${email} ${req.method} ${req.originalUrl} Error sending welcome email: `, error.stack || error);
+                }
             }
         } else {
             console.error(`${email} ${req.method} ${req.originalUrl} Missing github username`);

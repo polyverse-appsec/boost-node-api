@@ -57,6 +57,12 @@ provider:
           Action:
             - secretsmanager:GetSecretValue
           Resource: "arn:aws:secretsmanager:us-west-2:*:secret:*"
+        - Effect: "Allow"
+          Action:
+            - ses:SendEmail
+          Resource:
+            - "arn:aws:ses:us-west-2:507760724064:identity/monitoring@polyverse.com"
+            - "arn:aws:ses:us-west-2:507760724064:identity/support@polyverse.com"
   httpApi:
     cors: true
 
